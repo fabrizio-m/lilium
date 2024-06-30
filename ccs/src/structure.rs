@@ -3,10 +3,22 @@ use crate::constraint_system::{
     ConstraintSystem, Gate, Var,
 };
 use ark_ff::Field;
-use std::collections::HashMap;
+use std::{
+    cmp::Ordering,
+    collections::BTreeMap,
+    fmt::Display,
+    ops::{Add, Mul, Sub},
+};
 
 ///with key being the variable and the value the number of times it appears (or its exponent)
-pub struct MultiSet(HashMap<usize, usize>);
+#[derive(Clone, Debug)]
+pub struct MultiSet<T>(BTreeMap<T, usize>);
+
+impl<T> Default for MultiSet<T> {
+    fn default() -> Self {
+        Self(Default::default())
+    }
+}
 ///sparse matrix
 #[derive(Default, Clone)]
 pub struct Matrix {
@@ -40,12 +52,39 @@ impl SelectorMatrix {
         }
     }
 }
+#[derive(PartialEq, Eq, Clone)]
+pub enum MatrixIndex {
+    Io(usize),
+    Selector(usize),
+}
+
+impl MatrixIndex {
+    fn order(&self, b: &Self) -> Ordering {
+        use MatrixIndex::{Io, Selector};
+        match (self, b) {
+            (Io(_), Selector(_)) => Ordering::Less,
+            (Selector(_), Io(_)) => Ordering::Greater,
+            (Io(a), Io(b)) | (Selector(a), Selector(b)) => a.cmp(b),
+        }
+    }
+}
+
+impl PartialOrd for MatrixIndex {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.order(other))
+    }
+}
+impl Ord for MatrixIndex {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.order(other)
+    }
+}
 pub struct CcsStructure<const IO: usize, const S: usize, F: Field> {
-    io_matrices: [Matrix; IO],
-    selector_matrices: [SelectorMatrix; S],
-    input_len: usize,
+    pub io_matrices: [Matrix; IO],
+    pub selector_matrices: [SelectorMatrix; S],
+    pub input_len: usize,
     ///with each multiset representing a term, and with corresponding constant coefficient
-    multisets: Vec<(F, MultiSet)>,
+    pub multisets: Vec<(F, MultiSet<MatrixIndex>)>,
 }
 
 #[derive(Debug)]
@@ -99,14 +138,14 @@ impl<const MAX_IO: usize> StructureBuilder<MAX_IO> {
             Self::execute::<Zero, 2, 2, 0>(self, [a, b]);
         }
     }
-    fn bit_decomposition<const BITS: usize>(mut selector: usize) -> [bool; BITS] {
+    /*fn bit_decomposition<const BITS: usize>(mut selector: usize) -> [bool; BITS] {
         let mut bits = [false; BITS];
         for i in 0..BITS {
             bits[i] = selector & 1 == 1;
             selector = selector >> 1;
         }
         bits
-    }
+    }*/
     pub fn build<F: Field, const S: usize>(
         self,
         public_io_len: usize,
@@ -127,13 +166,19 @@ impl<const MAX_IO: usize> StructureBuilder<MAX_IO> {
             for i in 0..len {
                 io_matrices[i].push_row_single_value(io[0]);
             }
-            let selector = Self::bit_decomposition::<S>(selector);
+            // let selector = Self::bit_decomposition::<S>(selector);
+
+            //TODO: for now using simpler linear selectors
+            let mut selector_row = [false; S];
+            selector_row[selector] = true;
+            let selector = selector_row;
+
             for i in 0..S {
                 selector_matrices[i].rows.push(selector[i]);
             }
         }
-        ///todo
-        let multisets = vec![];
+
+        let multisets = registry.multisets(0);
         CcsStructure {
             input_len: public_io_len,
             io_matrices,
@@ -175,5 +220,145 @@ impl<const MAX_IO: usize> ConstraintSystem for StructureBuilder<MAX_IO> {
         };
         self.constraints.push(constraint);
         output
+    }
+}
+
+#[derive(Debug, Clone)]
+pub enum Exp<T> {
+    Atom(T),
+    Add(Box<Self>, Box<Self>),
+    Mul(Box<Self>, Box<Self>),
+    Sub(Box<Self>, Box<Self>),
+}
+
+impl<T> Add<Self> for Exp<T> {
+    type Output = Self;
+
+    fn add(self, rhs: Self) -> Self::Output {
+        Self::Add(Box::new(self), Box::new(rhs))
+    }
+}
+
+impl<T> Mul<Self> for Exp<T> {
+    type Output = Self;
+
+    fn mul(self, rhs: Self) -> Self::Output {
+        Self::Mul(Box::new(self), Box::new(rhs))
+    }
+}
+
+impl<T> Sub<Self> for Exp<T> {
+    type Output = Self;
+
+    fn sub(self, rhs: Self) -> Self::Output {
+        Self::Sub(Box::new(self), Box::new(rhs))
+    }
+}
+impl<T: Clone> Var for Exp<T> {}
+
+impl<T: Display> Display for MultiSet<T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        for (i, n) in self.0.iter() {
+            for _ in 0..*n {
+                write!(f, "v{i}")?;
+            }
+        }
+        writeln!(f, "")
+    }
+}
+
+impl<T: Ord> Mul<Self> for MultiSet<T> {
+    type Output = Self;
+
+    fn mul(mut self, rhs: Self) -> Self::Output {
+        for (i, n) in rhs.0.into_iter() {
+            *self.0.entry(i).or_insert(0) += n;
+        }
+        self
+    }
+}
+
+impl<T: Ord + Clone> Exp<T> {
+    fn to_multisets<F: Field>(self) -> Vec<(F, MultiSet<T>)> {
+        match self {
+            Exp::Atom(i) => {
+                let mut multiset = MultiSet::default();
+                multiset.0.insert(i, 1);
+                vec![(F::one(), multiset)]
+            }
+            Exp::Add(e1, e2) => {
+                let mut multisets = e1.to_multisets();
+                multisets.extend(e2.to_multisets());
+                multisets
+            }
+            Exp::Mul(e1, e2) => {
+                let multisets1 = e1.to_multisets::<F>();
+                let multisets2 = e2.to_multisets::<F>();
+                let mut multisets = Vec::with_capacity(multisets1.len() * multisets2.len());
+                for m1 in multisets1.iter() {
+                    for m2 in multisets2.iter() {
+                        let multiset = (m1.0 * m2.0, m1.1.clone() * m2.1.clone());
+                        multisets.push(multiset);
+                    }
+                }
+                multisets
+            }
+            Exp::Sub(e1, e2) => {
+                let mut multisets = e1.to_multisets();
+                let mut multisets2 = e2.to_multisets::<F>();
+                for m in multisets2.iter_mut() {
+                    m.0 = -m.0;
+                }
+                multisets.extend(multisets2);
+                multisets
+            }
+        }
+    }
+    fn map<V, F>(self, f: &F) -> Exp<V>
+    where
+        F: Fn(T) -> V,
+    {
+        use Exp::*;
+        match self {
+            Atom(v) => Atom(f(v)),
+            Add(e1, e2) => Add(Box::new(e1.map(f)), Box::new(e2.map(f))),
+            Mul(e1, e2) => Mul(Box::new(e1.map(f)), Box::new(e2.map(f))),
+            Sub(e1, e2) => Sub(Box::new(e1.map(f)), Box::new(e2.map(f))),
+        }
+    }
+}
+
+#[test]
+fn exp_to_multiset() {
+    use ark_vesta::Fr;
+    let a = Exp::Atom(0);
+    let b = Exp::Atom(1);
+    let c = Exp::Atom(2);
+    let s1 = Exp::Atom(3);
+    let s2 = Exp::Atom(4);
+    let add = (a.clone() + b.clone() - c.clone()) * s1;
+    let mul = (a * b - c) * s2;
+    let exp = add + mul;
+    println!("exp:\n{:#?}", exp);
+    let multisets = exp.to_multisets::<Fr>();
+    // println!("multisets:\n{}", multisets);
+    for multiset in multisets {
+        println!("{} * {} +", multiset.0, multiset.1);
+    }
+}
+
+impl GateRegistry {
+    fn multisets<F: Field>(self, _bits: usize) -> Vec<(F, MultiSet<MatrixIndex>)> {
+        let mut multisets = vec![];
+        let mut gates: Vec<(usize, Exp<usize>)> =
+            self.gate_registry.into_iter().map(|x| x.1).collect();
+        gates.sort_by_key(|(i, _)| *i);
+        for (i, exp) in gates.into_iter() {
+            let selector = Exp::Atom(MatrixIndex::Selector(i));
+            let exp = exp.map(&MatrixIndex::Io);
+            let exp = selector * exp;
+            multisets.extend(exp.to_multisets());
+        }
+        multisets
     }
 }

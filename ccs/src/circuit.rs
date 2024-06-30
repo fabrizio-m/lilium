@@ -72,7 +72,7 @@ where
 mod test {
     use crate::{
         circuit::Circuit,
-        constraint_system::{cs_prototype::Add, ConstraintSystem},
+        constraint_system::{cs_prototype::Add, ConstraintSystem, Gate},
     };
     use ark_ff::Field;
 
@@ -86,7 +86,7 @@ mod test {
         type PrivateOutput = ();
         ///register the gates to be used in the circuit
         fn register_gates(registry: &mut crate::constraint_system::cs_prototype::GateRegistry) {
-            registry.register_gate::<Add>();
+            Add::register(registry);
         }
 
         fn circuit(cs: &mut C, public_input: [C::V; 2]) -> ([C::V; 1], [C::V; 1]) {
