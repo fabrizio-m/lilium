@@ -2,8 +2,6 @@ use crate::{constraint_system::cs_prototype::GateRegistry, structure::Exp};
 use std::ops;
 
 pub trait ConstraintSystem {
-    //number of input/outputs available to each gate
-    // const IO: usize;
     ///number of selectors, log of the number of gates
     const S: usize;
     type V: Var;

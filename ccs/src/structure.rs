@@ -169,6 +169,10 @@ impl<const MAX_IO: usize> StructureBuilder<MAX_IO> {
             // let selector = Self::bit_decomposition::<S>(selector);
 
             //TODO: for now using simpler linear selectors
+
+            if selector >= S {
+                panic!("not enough selectors for all gates, increase S");
+            }
             let mut selector_row = [false; S];
             selector_row[selector] = true;
             let selector = selector_row;
