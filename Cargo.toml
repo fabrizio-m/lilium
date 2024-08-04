@@ -1,5 +1,7 @@
 [workspace]
 
 members = [
-    "ccs"
-]
+    "ccs",
+    "sumcheck"
+    ]
+resolver = "2"
