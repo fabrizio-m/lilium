@@ -1,6 +1,6 @@
 //! A linear sumcheck prover
 
-// mod polynomials;
 pub(crate) mod barycentric_eval;
 pub(crate) mod message;
+mod polynomials;
 pub mod sumcheck;

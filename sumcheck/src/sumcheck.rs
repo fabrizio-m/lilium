@@ -1,11 +1,12 @@
 use crate::{
     barycentric_eval::BarycentricWeights,
     message::{Message, MessageEnv},
+    polynomials::{Evals, EvalsExt},
 };
 use ark_ff::Field;
 use std::{
     marker::PhantomData,
-    ops::{Add, Index, Mul, Sub},
+    ops::{Add, Mul, Sub},
 };
 
 pub trait Var:
@@ -31,14 +32,6 @@ where
     fn get(&self, i: I) -> V;
 }
 
-/// must be some wrapper over [F], representing all the evaluations at some
-/// point of the domain
-pub trait Evals<F: Field>: Index<Self::Idx, Output = F> {
-    type Idx: Copy;
-    ///should combine 2 [Self] into one by using `f` to combine each element
-    fn combine<C: Fn(F, F) -> F>(&mut self, other: &Self, f: C) -> Self;
-}
-
 /// Defines a polynomial used in sumcheck as a function of multilinear
 /// polynomials
 pub trait SumcheckFunction<F: Field> {
@@ -60,22 +53,6 @@ pub struct Proof<F: Field, SF: SumcheckFunction<F>> {
 }
 
 impl<F: Field, SF: SumcheckFunction<F>> SumcheckProver<F, SF> {
-    // fn prove(&self, evals: Vec<SF::Mles>) {
-    // }
-    fn fix_var(mut mle: Vec<SF::Mles>, var: F) -> Vec<SF::Mles> {
-        let half_len = mle.len() / 2;
-        let one_minus_var = F::one() - var;
-        let (left, right) = mle.split_at_mut(half_len);
-        type Eval<F, SF> = <SF as SumcheckFunction<F>>::Mles;
-
-        let f = |a, b| one_minus_var * a + var * b;
-        for (left, right) in left.iter_mut().zip(right) {
-            let left: &mut Eval<F, SF> = left;
-            left.combine(right, f);
-        }
-        mle.truncate(half_len);
-        mle
-    }
     fn message(mle: &[SF::Mles]) -> Message<F> {
         let half_len = mle.len() / 2;
         let (left, right) = mle.split_at(half_len);
@@ -100,7 +77,7 @@ impl<F: Field, SF: SumcheckFunction<F>> SumcheckProver<F, SF> {
             let m = Self::message(&mle);
             messages.push(m);
             let var = point.pop().unwrap();
-            Self::fix_var(mle, var)
+            EvalsExt::fix_var(mle, var)
         });
         Proof {
             messages,

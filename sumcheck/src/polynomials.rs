@@ -1,8 +1,6 @@
 use ark_ff::Field;
+use std::ops::Index;
 
-///A multilinear extension
-#[derive(Clone, Debug)]
-pub struct MultilinearPoly<F: Field>(Vec<F>);
 ///A point with `n` variables
 pub struct MultiPoint<F: Field>(Vec<F>);
 
@@ -16,7 +14,51 @@ impl<F: Field> MultiPoint<F> {
     }
 }
 
-impl<F: Field> MultilinearPoly<F> {
+/// must be some wrapper over [F], representing all the evaluations at some
+/// point of the domain
+pub trait Evals<F: Field>: Index<Self::Idx, Output = F> {
+    type Idx: Copy;
+    ///should combine 2 [Self] into one by using `f` to combine each element
+    fn combine<C: Fn(F, F) -> F>(&mut self, other: &Self, f: C) -> Self;
+}
+
+pub trait EvalsExt<F: Field>: Evals<F> + Sized {
+    fn fix_var(mut mle: Vec<Self>, var: F) -> Vec<Self> {
+        let half_len = mle.len() / 2;
+        let one_minus_var = F::one() - var;
+        let (left, right) = mle.split_at_mut(half_len);
+
+        let f = |a, b| one_minus_var * a + var * b;
+        for (left, right) in left.iter_mut().zip(right) {
+            let left: &mut Self = left;
+            left.combine(right, f);
+        }
+        mle.truncate(half_len);
+        mle
+    }
+    fn eval(mle: Vec<Self>, point: MultiPoint<F>) -> Self {
+        assert_eq!(
+            mle.len().ilog2() as usize,
+            point.vars(),
+            "number of variables missmatch"
+        );
+        let (point, var) = point.pop();
+        let mle = Self::fix_var(mle, var);
+        if point.vars() == 0 {
+            mle.into_iter().next().unwrap()
+        } else {
+            Self::eval(mle, point)
+        }
+    }
+}
+impl<F, T> EvalsExt<F> for T
+where
+    T: Evals<F> + Sized,
+    F: Field,
+{
+}
+
+/*impl<F: Field> MultilinearPoly<F> {
     fn new(extension: Vec<F>) -> Self {
         assert!(extension.len().is_power_of_two(), "len must be power of 2");
         MultilinearPoly(extension)
@@ -53,3 +95,4 @@ impl<F: Field> MultilinearPoly<F> {
         }
     }
 }
+*/

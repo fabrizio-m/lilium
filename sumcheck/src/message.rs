@@ -1,6 +1,7 @@
 use crate::{
     barycentric_eval::BarycentricWeights,
-    sumcheck::{Env, Evals, Var},
+    polynomials::Evals,
+    sumcheck::{Env, Var},
 };
 use ark_ff::Field;
 use std::{
