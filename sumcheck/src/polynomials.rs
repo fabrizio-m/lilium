@@ -5,11 +5,14 @@ use std::ops::Index;
 pub struct MultiPoint<F: Field>(Vec<F>);
 
 impl<F: Field> MultiPoint<F> {
-    fn pop(mut self) -> (Self, F) {
+    pub(crate) fn pop(mut self) -> (Self, F) {
         let var = self.0.pop().unwrap();
         (self, var)
     }
-    fn vars(&self) -> usize {
+    pub(crate) fn pop_mut(&mut self) -> F {
+        self.0.pop().unwrap()
+    }
+    pub fn vars(&self) -> usize {
         self.0.len()
     }
 }

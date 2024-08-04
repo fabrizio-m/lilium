@@ -1,7 +1,7 @@
 use crate::{
     barycentric_eval::BarycentricWeights,
     message::{Message, MessageEnv},
-    polynomials::{Evals, EvalsExt},
+    polynomials::{Evals, EvalsExt, MultiPoint},
 };
 use ark_ff::Field;
 use std::{
@@ -68,16 +68,16 @@ impl<F: Field, SF: SumcheckFunction<F>> SumcheckProver<F, SF> {
         }
         message
     }
-    pub fn prove(&self, mle: Vec<SF::Mles>) -> Proof<F, SF> {
-        //TODO: use schwartz-zippel
-        let mut point = vec![F::one(); self.vars];
+    pub fn prove(&self, r: MultiPoint<F>, mle: Vec<SF::Mles>) -> Proof<F, SF> {
+        assert_eq!(self.vars, r.vars());
+        let point = r;
         let mut messages = Vec::with_capacity(self.vars);
 
-        let _ = (0..self.vars).fold(mle, |mle, _| {
+        let _ = (0..self.vars).fold((mle, point), |(mle, point), _| {
             let m = Self::message(&mle);
             messages.push(m);
-            let var = point.pop().unwrap();
-            EvalsExt::fix_var(mle, var)
+            let (point, var) = point.pop();
+            (EvalsExt::fix_var(mle, var), point)
         });
         Proof {
             messages,
@@ -108,9 +108,11 @@ impl<F: Field, SF: SumcheckFunction<F>> SumcheckVerifier<F, SF> {
     // TODO: use multipoint
     /// Verifies sumcheck, leaving it up to the caller to evaluate the polynomial
     /// in the point r and check that c = P(r) for Ok(c) the return value
-    pub fn verify(&self, proof: Proof<F, SF>, sum: F) -> Result<F, ()> {
+    pub fn verify(&self, r: MultiPoint<F>, proof: Proof<F, SF>, sum: F) -> Result<F, ()> {
+        assert_eq!(self.vars, r.vars());
         let Proof { messages, _f } = proof;
-        let mut point = vec![F::one(); self.vars];
+        // let mut point = vec![F::one(); self.vars];
+        let mut point = r;
         let mut sum = sum;
         for message in messages {
             let e0 = message.eval_at_0();
@@ -118,7 +120,7 @@ impl<F: Field, SF: SumcheckFunction<F>> SumcheckVerifier<F, SF> {
             if e0 + e1 != sum {
                 return Err(());
             }
-            let var = point.pop().unwrap();
+            let var = point.pop_mut();
             sum = message.eval_at_x(var, &self.weights);
         }
         let check_eval = sum;
