@@ -10,14 +10,14 @@ use ark_ff::{fields::batch_inversion, Field};
 
 /// Weights that can be used to evaluate polynomials defined by
 /// n evaluation points over the implicit 0..n domain
-struct BarycentricWeights<F: Field> {
+pub(crate) struct BarycentricWeights<F: Field> {
     weights: Vec<F>,
     neg_domain: Vec<F>,
 }
 
 impl<F: Field> BarycentricWeights<F> {
     /// computes the weights for the inplicit domain 0..n
-    fn compute(degree: u32) -> Self {
+    pub(crate) fn compute(degree: u32) -> Self {
         let domain: Vec<F> = (0..=degree).into_iter().map(F::from).collect();
         let neg_domain: Vec<F> = domain.iter().cloned().map(|x| -x).collect();
         let degree = degree as usize;
@@ -37,7 +37,8 @@ impl<F: Field> BarycentricWeights<F> {
             neg_domain,
         }
     }
-    fn evaluate(&self, evals: &[F], point: F) -> F {
+    pub(crate) fn evaluate(&self, evals: &[F], point: F) -> F {
+        assert_eq!(self.weights.len(), evals.len());
         let terms: Vec<F> = self.neg_domain.iter().map(|neg_x| *neg_x + point).collect();
         let m = terms.iter().fold(F::one(), |acc, t| acc * t);
         let mut denominators = terms;

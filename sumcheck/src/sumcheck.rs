@@ -6,6 +6,8 @@ use std::{
 use ark_ff::Field;
 use message::{Message, MessageEnv};
 
+use crate::barycentric_eval::BarycentricWeights;
+
 pub trait Var:
     Sized
     + Add<Self, Output = Self>
@@ -48,6 +50,8 @@ pub trait SumcheckFunction<F: Field> {
 }
 
 mod message {
+    use crate::barycentric_eval::BarycentricWeights;
+
     use super::{Env, Evals, Var};
     use ark_ff::Field;
     use std::{
@@ -86,6 +90,15 @@ mod message {
                 *a = f(*a, *b);
             }
             self
+        }
+        pub fn eval_at_0(&self) -> F {
+            self.0[0]
+        }
+        pub fn eval_at_1(&self) -> F {
+            self.0[1]
+        }
+        pub fn eval_at_x(&self, x: F, weights: &BarycentricWeights<F>) -> F {
+            weights.evaluate(&self.0, x)
         }
     }
 
@@ -170,8 +183,9 @@ pub struct SumcheckProver<F: Field, SF: SumcheckFunction<F>> {
     vars: usize,
 }
 
-pub struct Proof<F: Field> {
+pub struct Proof<F: Field, SF: SumcheckFunction<F>> {
     messages: Vec<Message<F>>,
+    _f: PhantomData<SF>,
 }
 
 impl<F: Field, SF: SumcheckFunction<F>> SumcheckProver<F, SF> {
@@ -206,7 +220,7 @@ impl<F: Field, SF: SumcheckFunction<F>> SumcheckProver<F, SF> {
         }
         message
     }
-    pub fn prove(&self, mle: Vec<SF::Mles>) -> Proof<F> {
+    pub fn prove(&self, mle: Vec<SF::Mles>) -> Proof<F, SF> {
         //TODO: use schwartz-zippel
         let mut point = vec![F::one(); self.vars];
         let mut messages = Vec::with_capacity(self.vars);
@@ -217,6 +231,51 @@ impl<F: Field, SF: SumcheckFunction<F>> SumcheckProver<F, SF> {
             let var = point.pop().unwrap();
             Self::fix_var(mle, var)
         });
-        Proof { messages }
+        Proof {
+            messages,
+            _f: PhantomData,
+        }
+    }
+    //TODO: use multipoint
+    // pub fn verify(&self, proof: Proof<F, SF>, sum: F) -> Result<F, ()> {}
+}
+
+pub struct SumcheckVerifier<F: Field, SF: SumcheckFunction<F>> {
+    vars: usize,
+    weights: BarycentricWeights<F>,
+    _f: PhantomData<SF>,
+}
+
+impl<F: Field, SF: SumcheckFunction<F>> SumcheckVerifier<F, SF> {
+    fn degree() -> u32 {
+        todo!()
+    }
+    pub fn new(vars: usize) -> Self {
+        let degree = Self::degree();
+        let weights = BarycentricWeights::compute(degree);
+        Self {
+            vars,
+            weights,
+            _f: PhantomData,
+        }
+    }
+    // TODO: use multipoint
+    /// Verifies sumcheck, leaving it up to the caller to evaluate the polynomial
+    /// in the point r and check that c = P(r) for Ok(c) the return value
+    pub fn verify(&self, proof: Proof<F, SF>, sum: F) -> Result<F, ()> {
+        let Proof { messages, _f } = proof;
+        let mut point = vec![F::one(); self.vars];
+        let mut sum = sum;
+        for message in messages {
+            let e0 = message.eval_at_0();
+            let e1 = message.eval_at_1();
+            if e0 + e1 != sum {
+                return Err(());
+            }
+            let var = point.pop().unwrap();
+            sum = message.eval_at_x(var, &self.weights);
+        }
+        let check_eval = sum;
+        Ok(check_eval)
     }
 }
