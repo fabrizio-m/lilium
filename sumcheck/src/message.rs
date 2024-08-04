@@ -12,10 +12,6 @@ use std::{
 pub struct Message<F: Field>(Vec<F>);
 
 impl<F: Field> Message<F> {
-    /// creates a degree 0 message
-    // fn new_degree_0(eval: F) -> Self {
-    // Self(vec![eval])
-    // }
     pub(crate) fn new_degree_n(eval_at_0: F, eval_at_1: F, degree: usize) -> Self {
         assert!(degree >= 1, "degree should be >= 0");
         // e0, e1
@@ -30,6 +26,9 @@ impl<F: Field> Message<F> {
             last = last + diff;
         }
         Message(message)
+    }
+    pub(crate) fn degree(&self) -> usize {
+        self.0.len() - 1
     }
 }
 

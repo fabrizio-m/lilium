@@ -1,5 +1,6 @@
 use crate::{
     barycentric_eval::BarycentricWeights,
+    degree::DegreeEnv,
     message::{Message, MessageEnv},
     polynomials::{Evals, EvalsExt, MultiPoint},
 };
@@ -89,6 +90,7 @@ impl<F: Field, SF: SumcheckFunction<F>> SumcheckProver<F, SF> {
 pub struct SumcheckVerifier<F: Field, SF: SumcheckFunction<F>> {
     vars: usize,
     weights: BarycentricWeights<F>,
+    degree: usize,
     _f: PhantomData<SF>,
 }
 
@@ -99,9 +101,12 @@ impl<F: Field, SF: SumcheckFunction<F>> SumcheckVerifier<F, SF> {
     pub fn new(vars: usize) -> Self {
         let degree = Self::degree();
         let weights = BarycentricWeights::compute(degree);
+        let degree_env = DegreeEnv::new();
+        let degree = SF::function(degree_env).0;
         Self {
             vars,
             weights,
+            degree,
             _f: PhantomData,
         }
     }
@@ -115,6 +120,9 @@ impl<F: Field, SF: SumcheckFunction<F>> SumcheckVerifier<F, SF> {
         let mut point = r;
         let mut sum = sum;
         for message in messages {
+            if message.degree() != self.degree {
+                return Err(());
+            }
             let e0 = message.eval_at_0();
             let e1 = message.eval_at_1();
             if e0 + e1 != sum {
