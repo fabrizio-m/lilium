@@ -1,6 +1,7 @@
 use crate::{
     barycentric_eval::BarycentricWeights,
     degree::DegreeEnv,
+    eval_check::EvalCheckEnv,
     message::{Message, MessageEnv},
     polynomials::{Evals, EvalsExt, MultiPoint},
 };
@@ -133,5 +134,12 @@ impl<F: Field, SF: SumcheckFunction<F>> SumcheckVerifier<F, SF> {
         }
         let check_eval = sum;
         Ok(check_eval)
+    }
+    // Will check that c = P(r) from the evaluations of the
+    // multilinear polynomials that compose it
+    pub fn check_evals_at_r(&self, evals: SF::Mles, c: F) -> bool {
+        let env = EvalCheckEnv::new(evals);
+        let eval = SF::function(env);
+        eval == c
     }
 }
