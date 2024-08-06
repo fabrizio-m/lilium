@@ -4,6 +4,7 @@ use crate::{
     eval_check::EvalCheckEnv,
     message::{Message, MessageEnv},
     polynomials::{Evals, EvalsExt, MultiPoint},
+    SumcheckError,
 };
 use ark_ff::Field;
 use std::{
@@ -130,20 +131,25 @@ impl<F: Field, SF: SumcheckFunction<F>> SumcheckVerifier<F, SF> {
     }
     /// Verifies sumcheck, leaving it up to the caller to evaluate the polynomial
     /// in the point r and check that c = P(r) for Ok(c) the return value
-    pub fn verify(&self, r: &MultiPoint<F>, proof: Proof<F, SF>, sum: F) -> Result<F, ()> {
+    pub fn verify(
+        &self,
+        r: &MultiPoint<F>,
+        proof: Proof<F, SF>,
+        sum: F,
+    ) -> Result<F, SumcheckError> {
         assert_eq!(self.vars, r.vars());
         let Proof { messages, _f } = proof;
         let mut point = r.clone();
         let mut sum = sum;
         for message in messages {
             if message.degree() != self.degree {
-                return Err(());
+                return Err(SumcheckError::MessageDegree);
             }
             let e0 = message.eval_at_0();
             let e1 = message.eval_at_1();
 
             if e0 + e1 != sum {
-                return Err(());
+                return Err(SumcheckError::RoundSum);
             }
             let var = point.pop_mut();
             sum = message.eval_at_x(var, &self.weights);

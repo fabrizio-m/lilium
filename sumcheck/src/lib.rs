@@ -6,3 +6,11 @@ pub mod eval_check;
 pub(crate) mod message;
 mod polynomials;
 pub mod sumcheck;
+
+#[derive(Debug, Clone, Copy)]
+pub enum SumcheckError {
+    /// A message had an incorrect degree
+    MessageDegree,
+    /// The sum of both halves defers from the claimed sum
+    RoundSum,
+}
