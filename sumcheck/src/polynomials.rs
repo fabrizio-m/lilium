@@ -2,9 +2,13 @@ use ark_ff::Field;
 use std::ops::Index;
 
 ///A point with `n` variables
+#[derive(Clone)]
 pub struct MultiPoint<F: Field>(Vec<F>);
 
 impl<F: Field> MultiPoint<F> {
+    pub fn new(vars: Vec<F>) -> Self {
+        MultiPoint(vars)
+    }
     pub(crate) fn pop(mut self) -> (Self, F) {
         let var = self.0.pop().unwrap();
         (self, var)
@@ -22,7 +26,7 @@ impl<F: Field> MultiPoint<F> {
 pub trait Evals<F: Field>: Index<Self::Idx, Output = F> {
     type Idx: Copy;
     ///should combine 2 [Self] into one by using `f` to combine each element
-    fn combine<C: Fn(F, F) -> F>(&mut self, other: &Self, f: C) -> Self;
+    fn combine<C: Fn(F, F) -> F>(&self, other: &Self, f: C) -> Self;
 }
 
 pub trait EvalsExt<F: Field>: Evals<F> + Sized {
@@ -34,7 +38,8 @@ pub trait EvalsExt<F: Field>: Evals<F> + Sized {
         let f = |a, b| one_minus_var * a + var * b;
         for (left, right) in left.iter_mut().zip(right) {
             let left: &mut Self = left;
-            left.combine(right, f);
+            let comb = left.combine(right, f);
+            *left = comb;
         }
         mle.truncate(half_len);
         mle

@@ -9,6 +9,7 @@ use std::{
     ops::{Add, AddAssign, Mul, Sub},
 };
 
+#[derive(Clone, Debug)]
 pub struct Message<F: Field>(Vec<F>);
 
 impl<F: Field> Message<F> {
@@ -17,7 +18,7 @@ impl<F: Field> Message<F> {
         // e0, e1
         // P(x) = (e1 - e0)x + e0
         // TODO: it may be posible to exploit this structure further
-        let mut message = Vec::with_capacity(degree);
+        let mut message = Vec::with_capacity(degree + 1);
         let diff = eval_at_1 - eval_at_0;
         let mut last = F::zero();
         //as x is 0..d multiplication is unnecessary

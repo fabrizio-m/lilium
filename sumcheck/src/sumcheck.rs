@@ -19,6 +19,7 @@ pub trait Var:
     + for<'a> Sub<&'a Self, Output = Self>
     + Mul<Self, Output = Self>
     + for<'a> Mul<&'a Self, Output = Self>
+    + Clone
 // where
 // for<'a> &'a Self: Add<&'a Self, Output = Self>,
 // for<'a> &'a Self: Sub<&'a Self, Output = Self>,
@@ -47,6 +48,7 @@ pub trait SumcheckFunction<F: Field> {
 pub struct SumcheckProver<F: Field, SF: SumcheckFunction<F>> {
     _phantom: PhantomData<(F, SF)>,
     vars: usize,
+    degree: usize,
 }
 
 pub struct Proof<F: Field, SF: SumcheckFunction<F>> {
@@ -55,10 +57,23 @@ pub struct Proof<F: Field, SF: SumcheckFunction<F>> {
 }
 
 impl<F: Field, SF: SumcheckFunction<F>> SumcheckProver<F, SF> {
-    fn message(mle: &[SF::Mles]) -> Message<F> {
+    pub fn new(vars: usize) -> Self {
+        let degree = Self::degree();
+        Self {
+            _phantom: PhantomData,
+            degree,
+            vars,
+        }
+    }
+    fn degree() -> usize {
+        let degree_env = DegreeEnv::new();
+        let degree = SF::function(degree_env);
+        degree.0
+    }
+    fn message(&self, mle: &[SF::Mles]) -> Message<F> {
         let half_len = mle.len() / 2;
         let (left, right) = mle.split_at(half_len);
-        let degree = 8;
+        let degree = self.degree;
 
         let mut message = Message::new_degree_n(F::zero(), F::zero(), degree);
         for (left, right) in left.iter().zip(right) {
@@ -70,13 +85,13 @@ impl<F: Field, SF: SumcheckFunction<F>> SumcheckProver<F, SF> {
         }
         message
     }
-    pub fn prove(&self, r: MultiPoint<F>, mle: Vec<SF::Mles>) -> Proof<F, SF> {
+    pub fn prove(&self, r: &MultiPoint<F>, mle: Vec<SF::Mles>) -> Proof<F, SF> {
         assert_eq!(self.vars, r.vars());
-        let point = r;
+        let point = r.clone();
         let mut messages = Vec::with_capacity(self.vars);
 
         let _ = (0..self.vars).fold((mle, point), |(mle, point), _| {
-            let m = Self::message(&mle);
+            let m = self.message(&mle);
             messages.push(m);
             let (point, var) = point.pop();
             (EvalsExt::fix_var(mle, var), point)
@@ -97,7 +112,9 @@ pub struct SumcheckVerifier<F: Field, SF: SumcheckFunction<F>> {
 
 impl<F: Field, SF: SumcheckFunction<F>> SumcheckVerifier<F, SF> {
     fn degree() -> u32 {
-        todo!()
+        let degree_env = DegreeEnv::new();
+        let degree = SF::function(degree_env);
+        degree.0 as u32
     }
     pub fn new(vars: usize) -> Self {
         let degree = Self::degree();
@@ -111,14 +128,12 @@ impl<F: Field, SF: SumcheckFunction<F>> SumcheckVerifier<F, SF> {
             _f: PhantomData,
         }
     }
-    // TODO: use multipoint
     /// Verifies sumcheck, leaving it up to the caller to evaluate the polynomial
     /// in the point r and check that c = P(r) for Ok(c) the return value
-    pub fn verify(&self, r: MultiPoint<F>, proof: Proof<F, SF>, sum: F) -> Result<F, ()> {
+    pub fn verify(&self, r: &MultiPoint<F>, proof: Proof<F, SF>, sum: F) -> Result<F, ()> {
         assert_eq!(self.vars, r.vars());
         let Proof { messages, _f } = proof;
-        // let mut point = vec![F::one(); self.vars];
-        let mut point = r;
+        let mut point = r.clone();
         let mut sum = sum;
         for message in messages {
             if message.degree() != self.degree {
@@ -126,6 +141,7 @@ impl<F: Field, SF: SumcheckFunction<F>> SumcheckVerifier<F, SF> {
             }
             let e0 = message.eval_at_0();
             let e1 = message.eval_at_1();
+
             if e0 + e1 != sum {
                 return Err(());
             }
@@ -141,5 +157,131 @@ impl<F: Field, SF: SumcheckFunction<F>> SumcheckVerifier<F, SF> {
         let env = EvalCheckEnv::new(evals);
         let eval = SF::function(env);
         eval == c
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use crate::{
+        polynomials::{Evals, EvalsExt, MultiPoint},
+        sumcheck::{SumcheckFunction, SumcheckProver, SumcheckVerifier},
+    };
+    use ark_vesta::Fr;
+    use rand::{thread_rng, Rng};
+    use std::ops::Index;
+
+    #[derive(Clone, Copy)]
+    struct Eval {
+        a: Fr,
+        b: Fr,
+        c: Fr,
+    }
+    impl Index<usize> for Eval {
+        type Output = Fr;
+
+        fn index(&self, index: usize) -> &Self::Output {
+            match index {
+                0 => &self.a,
+                1 => &self.b,
+                2 => &self.c,
+                _ => {
+                    unreachable!()
+                }
+            }
+        }
+    }
+    impl Evals<Fr> for Eval {
+        type Idx = usize;
+
+        fn combine<C: Fn(Fr, Fr) -> Fr>(&self, other: &Self, f: C) -> Self {
+            let a = f(self.a, other.a);
+            let b = f(self.b, other.b);
+            let c = f(self.c, other.c);
+            Eval { a, b, c }
+        }
+    }
+    struct MulGate;
+    impl SumcheckFunction<Fr> for MulGate {
+        type Idx = usize;
+
+        type Mles = Eval;
+
+        fn function<V: super::Var, E: super::Env<V, Self::Idx>>(env: E) -> V {
+            let a = env.get(0);
+            let b = env.get(1);
+            let c = env.get(2);
+            (a.clone() * b) - c
+        }
+    }
+    struct SquareGate;
+    impl SumcheckFunction<Fr> for SquareGate {
+        type Idx = usize;
+
+        type Mles = Eval;
+
+        fn function<V: super::Var, E: super::Env<V, Self::Idx>>(env: E) -> V {
+            let a = env.get(0);
+            a.clone() * a
+        }
+    }
+
+    #[test]
+    fn sumcheck_mul() {
+        let vars = 8;
+        let domain_size = 1 << vars;
+        let prover = SumcheckProver::<Fr, MulGate>::new(vars);
+        let verifier = SumcheckVerifier::new(vars);
+        let mut rng = thread_rng();
+        let mut rand_fr = || rng.gen::<Fr>();
+        let mut rand_eval = || {
+            let a = rand_fr();
+            let b = rand_fr();
+            let c = a * b;
+            Eval { a, b, c }
+        };
+        let mle: Vec<Eval> = (0..domain_size).map(|_| rand_eval()).collect();
+
+        //this should depend on mle in a real case
+        let r = vec![rand_fr(); vars];
+        let r = MultiPoint::new(r);
+
+        let proof = prover.prove(&r, mle.clone());
+
+        let sum = Fr::from(0);
+        let c = verifier.verify(&r, proof, sum).unwrap();
+
+        let evals = EvalsExt::eval(mle, r);
+        let check = verifier.check_evals_at_r(evals, c);
+        assert!(check);
+    }
+    #[test]
+    fn sumcheck_square() {
+        let vars = 3;
+        let domain_size = 1 << vars;
+        let prover = SumcheckProver::<Fr, SquareGate>::new(vars);
+        let verifier = SumcheckVerifier::new(vars);
+        let mut rng = thread_rng();
+        let mut rand_fr = || rng.gen::<Fr>();
+        let mut sumc = Fr::from(0);
+        let mut rand_eval = || {
+            let a = rand_fr();
+            let (b, c) = (a, a);
+            sumc += a * a;
+            Eval { a, b, c }
+        };
+        let mle: Vec<Eval> = (0..domain_size).map(|_| rand_eval()).collect();
+
+        //this should depend on mle in a real case
+        let r = vec![rand_fr(); vars];
+        let r = MultiPoint::new(r);
+
+        let proof = prover.prove(&r, mle.clone());
+
+        let sum = sumc;
+        let c = verifier.verify(&r, proof, sum).unwrap();
+
+        let evals = EvalsExt::eval(mle, r);
+        let check = verifier.check_evals_at_r(evals, c);
+        assert!(check);
     }
 }
