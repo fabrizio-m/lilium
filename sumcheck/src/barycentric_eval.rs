@@ -40,6 +40,12 @@ impl<F: Field> BarycentricWeights<F> {
     pub(crate) fn evaluate(&self, evals: &[F], point: F) -> F {
         assert_eq!(self.weights.len(), evals.len());
         let terms: Vec<F> = self.neg_domain.iter().map(|neg_x| *neg_x + point).collect();
+        // for the cases where the evaluation point is part of the domain
+        for (i, term) in terms.iter().enumerate() {
+            if term.is_zero() {
+                return evals[i];
+            }
+        }
         let m = terms.iter().fold(F::one(), |acc, t| acc * t);
         let mut denominators = terms;
         for (d, w) in denominators.iter_mut().zip(&self.weights) {
@@ -78,6 +84,9 @@ mod tests {
             let evals: Vec<Fr> = (0..evals).map(|i| poly.evaluate(&Fr::from(i))).collect();
             let check_eval = weights.evaluate(&evals, point);
             assert_eq!(true_eval, check_eval);
+            let eval1 = evals[1];
+            let check_eval = weights.evaluate(&evals, Fr::from(1));
+            assert_eq!(eval1, check_eval);
         }
     }
 }
