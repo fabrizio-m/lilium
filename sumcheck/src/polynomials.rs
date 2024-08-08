@@ -19,6 +19,9 @@ impl<F: Field> MultiPoint<F> {
     pub fn vars(&self) -> usize {
         self.0.len()
     }
+    pub fn inner(self) -> Vec<F> {
+        self.0
+    }
 }
 
 /// must be some wrapper over [F], representing all the evaluations at some
@@ -66,41 +69,19 @@ where
 {
 }
 
-/*impl<F: Field> MultilinearPoly<F> {
-    fn new(extension: Vec<F>) -> Self {
-        assert!(extension.len().is_power_of_two(), "len must be power of 2");
-        MultilinearPoly(extension)
-    }
-    fn eval(&self, point: MultiPoint<F>) -> F {
-        assert_eq!(
-            self.0.len().ilog2(),
-            point.0.len() as u32,
-            "mismatch in number of variables between point and MLE"
-        );
-        self.clone().eval_rec(point)
-    }
-    ///fixes one varible, returning an mle and point with one less variables
-    fn fix_var(self, point: MultiPoint<F>) -> (Self, MultiPoint<F>) {
-        let (point, var) = point.pop();
-        let mut mle = self.0;
-        let mle_half_len = mle.len() / 2;
-        let one_minus_var = F::one() - var;
-        let (left, right) = mle.split_at_mut(mle_half_len);
+pub struct SingleEval<F>(pub F);
+impl<F> Index<()> for SingleEval<F> {
+    type Output = F;
 
-        for (left, right) in left.iter_mut().zip(right) {
-            *left = one_minus_var * (*left) + var * right;
-        }
-        mle.truncate(mle_half_len);
-        (Self(mle), point)
-    }
-    fn eval_rec(self, point: MultiPoint<F>) -> F {
-        if point.vars() == 1 {
-            let (eval, _) = self.fix_var(point);
-            eval.0[0]
-        } else {
-            let (mle, point) = self.fix_var(point);
-            mle.eval_rec(point)
-        }
+    fn index(&self, _index: ()) -> &Self::Output {
+        &self.0
     }
 }
-*/
+
+impl<F: Field> Evals<F> for SingleEval<F> {
+    type Idx = ();
+
+    fn combine<C: Fn(F, F) -> F>(&self, other: &Self, f: C) -> Self {
+        SingleEval(f(self.0, other.0))
+    }
+}
