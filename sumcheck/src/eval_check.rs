@@ -12,7 +12,7 @@ use crate::{
 use ark_ff::Field;
 use std::marker::PhantomData;
 
-impl<F: Field> Var for F {}
+impl<F: Field> Var<F> for F {}
 pub struct EvalCheckEnv<F: Field, I, E: Evals<F, Idx = I>> {
     evals: E,
     _phantom: PhantomData<(F, I)>,
@@ -27,7 +27,7 @@ impl<F: Field, I, E: Evals<F, Idx = I>> EvalCheckEnv<F, I, E> {
     }
 }
 
-impl<F, I, E> Env<F, I> for EvalCheckEnv<F, I, E>
+impl<F, I, E> Env<F, F, I> for EvalCheckEnv<F, I, E>
 where
     F: Field,
     E: Evals<F, Idx = I>,

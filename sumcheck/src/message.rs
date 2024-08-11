@@ -94,7 +94,7 @@ impl<F: Field> Mul<&Self> for Message<F> {
         self.bin_op(rhs, |a: F, b: F| a * b)
     }
 }
-impl<F: Field> Var for Message<F> {}
+impl<F: Field> Var<F> for Message<F> {}
 impl<F: Field> AddAssign for Message<F> {
     fn add_assign(&mut self, rhs: Self) {
         *self = rhs + &*self;
@@ -118,7 +118,9 @@ impl<'a, I: Copy, F: Field, E: Evals<F, Idx = I>> MessageEnv<'a, I, F, E> {
     }
 }
 
-impl<'a, I: Copy, F: Field, E: Evals<F, Idx = I>> Env<Message<F>, I> for MessageEnv<'a, I, F, E> {
+impl<'a, I: Copy, F: Field, E: Evals<F, Idx = I>> Env<F, Message<F>, I>
+    for MessageEnv<'a, I, F, E>
+{
     fn get(&self, i: I) -> Message<F> {
         let e0 = self.evals_left[i];
         let e1 = self.evals_right[i];

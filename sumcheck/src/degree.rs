@@ -1,5 +1,7 @@
 //! An environment to measure degree of functions
 
+use ark_ff::Field;
+
 use crate::sumcheck::{Env, Var};
 use std::{
     cmp::max,
@@ -59,7 +61,7 @@ impl Mul<&Self> for Degree {
     }
 }
 
-impl Var for Degree {}
+impl<F: Field> Var<F> for Degree {}
 
 pub(crate) struct DegreeEnv<I>(PhantomData<I>);
 
@@ -69,7 +71,7 @@ impl<I> DegreeEnv<I> {
     }
 }
 
-impl<I> Env<Degree, I> for DegreeEnv<I> {
+impl<F: Field, I> Env<F, Degree, I> for DegreeEnv<I> {
     fn get(&self, _i: I) -> Degree {
         // TODO: this assumes every polynomial to be multilinear
         // which for now should be true in every case

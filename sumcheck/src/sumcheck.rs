@@ -12,7 +12,7 @@ use std::{
     ops::{Add, Mul, Sub},
 };
 
-pub trait Var:
+pub trait Var<F: Field>:
     Sized
     + Add<Self, Output = Self>
     + for<'a> Add<&'a Self, Output = Self>
@@ -21,17 +21,13 @@ pub trait Var:
     + Mul<Self, Output = Self>
     + for<'a> Mul<&'a Self, Output = Self>
     + Clone
-// where
-// for<'a> &'a Self: Add<&'a Self, Output = Self>,
-// for<'a> &'a Self: Sub<&'a Self, Output = Self>,
-// for<'a> &'a Self: Mul<&'a Self, Output = Self>,
 {
 }
 
 ///allows access to variables
-pub trait Env<V, I>
+pub trait Env<F: Field, V, I>
 where
-    V: Var,
+    V: Var<F>,
 {
     fn get(&self, i: I) -> V;
 }
@@ -43,7 +39,7 @@ pub trait SumcheckFunction<F: Field> {
     type Mles: Evals<F, Idx = Self::Idx>;
 
     ///computes the arbitrary degree polynomial as a function of multilinear polynomials
-    fn function<V: Var, E: Env<V, Self::Idx>>(env: E) -> V;
+    fn function<V: Var<F>, E: Env<F, V, Self::Idx>>(env: E) -> V;
 }
 
 pub struct SumcheckProver<F: Field, SF: SumcheckFunction<F>> {
@@ -212,7 +208,7 @@ mod test {
 
         type Mles = Eval;
 
-        fn function<V: super::Var, E: super::Env<V, Self::Idx>>(env: E) -> V {
+        fn function<V: super::Var<Fr>, E: super::Env<Fr, V, Self::Idx>>(env: E) -> V {
             let a = env.get(0);
             let b = env.get(1);
             let c = env.get(2);
@@ -225,7 +221,7 @@ mod test {
 
         type Mles = Eval;
 
-        fn function<V: super::Var, E: super::Env<V, Self::Idx>>(env: E) -> V {
+        fn function<V: super::Var<Fr>, E: super::Env<Fr, V, Self::Idx>>(env: E) -> V {
             let a = env.get(0);
             a.clone() * a
         }
