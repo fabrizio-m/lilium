@@ -60,6 +60,27 @@ impl Mul<&Self> for Degree {
         self * *rhs
     }
 }
+impl<F: Field> Add<F> for Degree {
+    type Output = Degree;
+
+    fn add(self, _rhs: F) -> Self::Output {
+        self
+    }
+}
+impl<F: Field> Sub<F> for Degree {
+    type Output = Degree;
+
+    fn sub(self, _rhs: F) -> Self::Output {
+        self
+    }
+}
+impl<F: Field> Mul<F> for Degree {
+    type Output = Degree;
+
+    fn mul(self, _rhs: F) -> Self::Output {
+        self
+    }
+}
 
 impl<F: Field> Var<F> for Degree {}
 

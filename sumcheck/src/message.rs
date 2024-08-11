@@ -94,6 +94,36 @@ impl<F: Field> Mul<&Self> for Message<F> {
         self.bin_op(rhs, |a: F, b: F| a * b)
     }
 }
+impl<F: Field> Add<F> for Message<F> {
+    type Output = Self;
+
+    fn add(mut self, rhs: F) -> Self::Output {
+        for e in self.0.iter_mut() {
+            *e += rhs
+        }
+        self
+    }
+}
+impl<F: Field> Sub<F> for Message<F> {
+    type Output = Self;
+
+    fn sub(mut self, rhs: F) -> Self::Output {
+        for e in self.0.iter_mut() {
+            *e -= rhs
+        }
+        self
+    }
+}
+impl<F: Field> Mul<F> for Message<F> {
+    type Output = Self;
+
+    fn mul(mut self, rhs: F) -> Self::Output {
+        for e in self.0.iter_mut() {
+            *e *= rhs
+        }
+        self
+    }
+}
 impl<F: Field> Var<F> for Message<F> {}
 impl<F: Field> AddAssign for Message<F> {
     fn add_assign(&mut self, rhs: Self) {

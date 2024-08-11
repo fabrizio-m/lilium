@@ -20,6 +20,9 @@ pub trait Var<F: Field>:
     + for<'a> Sub<&'a Self, Output = Self>
     + Mul<Self, Output = Self>
     + for<'a> Mul<&'a Self, Output = Self>
+    + Add<F, Output = Self>
+    + Sub<F, Output = Self>
+    + Mul<F, Output = Self>
     + Clone
 {
 }
