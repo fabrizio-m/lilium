@@ -45,6 +45,11 @@ pub trait SumcheckFunction<F: Field> {
     fn function<V: Var<F>, E: Env<F, V, Self::Idx>>(env: E) -> V;
 }
 
+/// Should check sumcheck were the sum is zero
+pub struct ZeroSumcheck<V>(pub V);
+/// Should check that the polynomial evaluates to 0 over the domain
+pub struct ZeroCheck<V>(pub V);
+
 pub struct SumcheckProver<F: Field, SF: SumcheckFunction<F>> {
     _phantom: PhantomData<(F, SF)>,
     vars: usize,
