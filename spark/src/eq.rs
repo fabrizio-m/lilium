@@ -68,7 +68,7 @@ fn eval_eq<F: Field>(dest: &mut [F], mut vars: Vec<F>, zero: F) {
         let var = vars.pop().unwrap();
         let (left, right) = dest.split_at_mut(half_len);
         eval_eq(left, vars, zero);
-        for (l, mut r) in left.iter().zip(right.iter_mut()) {
+        for (l, r) in left.iter().zip(right.iter_mut()) {
             *r = var * l;
         }
     }
