@@ -6,7 +6,7 @@ use sumcheck::{
     utils::{ZeroCheck, ZeroSumcheck},
 };
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub enum LookupIdx {
     /// Claimed fraction for left side
     Frac1,
@@ -15,7 +15,8 @@ pub enum LookupIdx {
     /// Counts of how many times a table element appears in the lookups
     Counts,
 }
-struct LookupEval<F: Field> {
+#[derive(Clone, Copy, Debug)]
+pub struct LookupEval<F: Field> {
     frac1: F,
     frac2: F,
     counts: F,
