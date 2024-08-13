@@ -6,6 +6,7 @@ pub mod eval_check;
 pub(crate) mod message;
 pub mod polynomials;
 pub mod sumcheck;
+pub mod utils;
 
 #[derive(Debug, Clone, Copy)]
 pub enum SumcheckError {
