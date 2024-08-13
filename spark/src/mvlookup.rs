@@ -7,36 +7,42 @@ use sumcheck::{
 };
 
 #[derive(Clone, Copy)]
-enum ShapeIdx {
-    Frac,
-    Num,
-    Den,
+pub enum LookupIdx {
+    /// Claimed fraction for left side
+    Frac1,
+    /// Claimed fraction for right side
+    Frac2,
+    /// Counts of how many times a table element appears in the lookups
+    Counts,
 }
-struct ShapeEval<F: Field> {
-    numerator: F,
-    denominator: F,
+struct LookupEval<F: Field> {
+    frac1: F,
+    frac2: F,
+    counts: F,
 }
 
-impl<F: Field> Index<ShapeIdx> for ShapeEval<F> {
+impl<F: Field> Index<LookupIdx> for LookupEval<F> {
     type Output = F;
 
-    fn index(&self, index: ShapeIdx) -> &Self::Output {
+    fn index(&self, index: LookupIdx) -> &Self::Output {
         match index {
-            ShapeIdx::Num => &self.numerator,
-            ShapeIdx::Den => &self.denominator,
-            _ => todo!(),
+            LookupIdx::Frac1 => &self.frac1,
+            LookupIdx::Frac2 => &self.frac2,
+            LookupIdx::Counts => &self.counts,
         }
     }
 }
-impl<F: Field> Evals<F> for ShapeEval<F> {
-    type Idx = ShapeIdx;
+impl<F: Field> Evals<F> for LookupEval<F> {
+    type Idx = LookupIdx;
 
     fn combine<C: Fn(F, F) -> F>(&self, other: &Self, f: C) -> Self {
-        let numerator = f(self.numerator, other.numerator);
-        let denominator = f(self.denominator, other.denominator);
-        ShapeEval {
-            numerator,
-            denominator,
+        let frac1 = f(self.frac1, other.frac1);
+        let frac2 = f(self.frac2, other.frac2);
+        let counts = f(self.counts, other.counts);
+        LookupEval {
+            frac1,
+            frac2,
+            counts,
         }
     }
 }
@@ -70,6 +76,8 @@ where
     )
 }
 
+/// Lookups where [counts] states how many times each element in the table
+/// appears in the lookups
 pub fn lookup<F, V>(
     lookups: V,
     table: V,
