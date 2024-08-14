@@ -27,12 +27,18 @@ pub trait Var<F: Field>:
 {
 }
 
-///allows access to variables
+/// allows access to variables
 pub trait Env<F: Field, V, I>
 where
     V: Var<F>,
 {
     fn get(&self, i: I) -> V;
+}
+// implement also for references
+impl<F: Field, V: Var<F>, I, E: Env<F, V, I>> Env<F, V, I> for &E {
+    fn get(&self, i: I) -> V {
+        (*self).get(i)
+    }
 }
 
 /// Defines a polynomial used in sumcheck as a function of multilinear

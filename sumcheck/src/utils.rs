@@ -8,10 +8,10 @@ pub struct ZeroCheck<V>(pub V);
 
 /// Converts zero check into sumcheck, where zeq is used to
 /// basically evaluate the polynomial in a random point
-pub fn zero_check_to_sumcheck<F, V>(zero_check: V, zeq: V) -> V
+pub fn zero_check_to_sumcheck<F, V>(zero_check: ZeroCheck<V>, zeq: &V) -> ZeroSumcheck<V>
 where
     F: Field,
     V: Var<F>,
 {
-    zero_check * zeq
+    ZeroSumcheck(zero_check.0 * zeq)
 }
