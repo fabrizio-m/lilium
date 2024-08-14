@@ -21,6 +21,9 @@ struct DimensionEval<F: Field> {
     /// the indices of this particular dimension, a multiset
     /// made of elements from the normal index
     dimension_index: F,
+    /// the lookups into eq_eval constrained by this dimension's
+    /// index
+    eq_lookups: F,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -28,6 +31,7 @@ pub enum DimensionIndex {
     Lookup(LookupIdx),
     EqEval,
     Dimension,
+    EqLookup,
 }
 
 impl<F: Field> Index<DimensionIndex> for DimensionEval<F> {
@@ -38,6 +42,7 @@ impl<F: Field> Index<DimensionIndex> for DimensionEval<F> {
             DimensionIndex::Lookup(lookup_idx) => &self.lookup[lookup_idx],
             DimensionIndex::EqEval => &self.eq_eval,
             DimensionIndex::Dimension => &self.dimension_index,
+            DimensionIndex::EqLookup => &self.eq_lookups,
         }
     }
 }
@@ -49,10 +54,12 @@ impl<F: Field> Evals<F> for DimensionEval<F> {
         let lookup = self.lookup.combine(&other.lookup, &f);
         let eq_eval = f(self.eq_eval, other.eq_eval);
         let dimension_index = f(self.dimension_index, other.dimension_index);
+        let eq_lookups = f(self.eq_lookups, other.eq_lookups);
         Self {
             lookup,
             eq_eval,
             dimension_index,
+            eq_lookups,
         }
     }
 }
