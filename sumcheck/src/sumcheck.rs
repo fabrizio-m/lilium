@@ -28,8 +28,9 @@ pub trait Var<F: Field>:
 }
 
 /// allows access to variables
-pub trait Env<F: Field, V, I>
+pub trait Env<F, V, I>
 where
+    F: Field,
     V: Var<F>,
 {
     fn get(&self, i: I) -> V;
@@ -46,9 +47,10 @@ impl<F: Field, V: Var<F>, I, E: Env<F, V, I>> Env<F, V, I> for &E {
 pub trait SumcheckFunction<F: Field> {
     type Idx: Copy;
     type Mles: Evals<F, Idx = Self::Idx>;
+    type Challs: Default;
 
     ///computes the arbitrary degree polynomial as a function of multilinear polynomials
-    fn function<V: Var<F>, E: Env<F, V, Self::Idx>>(env: E) -> V;
+    fn function<V: Var<F>, E: Env<F, V, Self::Idx>>(env: E, challs: &Self::Challs) -> V;
 }
 
 pub struct SumcheckProver<F: Field, SF: SumcheckFunction<F>> {
@@ -62,7 +64,11 @@ pub struct Proof<F: Field, SF: SumcheckFunction<F>> {
     _f: PhantomData<SF>,
 }
 
-impl<F: Field, SF: SumcheckFunction<F>> SumcheckProver<F, SF> {
+impl<F, SF> SumcheckProver<F, SF>
+where
+    F: Field,
+    SF: SumcheckFunction<F>,
+{
     pub fn new(vars: usize) -> Self {
         let degree = Self::degree();
         Self {
@@ -73,10 +79,11 @@ impl<F: Field, SF: SumcheckFunction<F>> SumcheckProver<F, SF> {
     }
     fn degree() -> usize {
         let degree_env = DegreeEnv::new();
-        let degree = SF::function(degree_env);
+        let challs = <SF::Challs as Default>::default();
+        let degree = SF::function(degree_env, &challs);
         degree.0
     }
-    fn message(&self, mle: &[SF::Mles]) -> Message<F> {
+    fn message(&self, mle: &[SF::Mles], challs: &SF::Challs) -> Message<F> {
         let half_len = mle.len() / 2;
         let (left, right) = mle.split_at(half_len);
         let degree = self.degree;
@@ -86,18 +93,23 @@ impl<F: Field, SF: SumcheckFunction<F>> SumcheckProver<F, SF> {
             // let left: &mut Eval<F, SF> = left;
             // left.combine(right, f);
             let env = MessageEnv::new(left, right, degree);
-            let m = SF::function(env);
+            let m = SF::function(env, challs);
             message += m;
         }
         message
     }
-    pub fn prove(&self, r: &MultiPoint<F>, mle: Vec<SF::Mles>) -> Proof<F, SF> {
+    pub fn prove(
+        &self,
+        r: &MultiPoint<F>,
+        mle: Vec<SF::Mles>,
+        challs: &SF::Challs,
+    ) -> Proof<F, SF> {
         assert_eq!(self.vars, r.vars());
         let point = r.clone();
         let mut messages = Vec::with_capacity(self.vars);
 
         let _ = (0..self.vars).fold((mle, point), |(mle, point), _| {
-            let m = self.message(&mle);
+            let m = self.message(&mle, challs);
             messages.push(m);
             let (point, var) = point.pop();
             (EvalsExt::fix_var(mle, var), point)
@@ -119,14 +131,14 @@ pub struct SumcheckVerifier<F: Field, SF: SumcheckFunction<F>> {
 impl<F: Field, SF: SumcheckFunction<F>> SumcheckVerifier<F, SF> {
     fn degree() -> u32 {
         let degree_env = DegreeEnv::new();
-        let degree = SF::function(degree_env);
+        let challs = <SF::Challs as Default>::default();
+        let degree = SF::function(degree_env, &challs);
         degree.0 as u32
     }
     pub fn new(vars: usize) -> Self {
         let degree = Self::degree();
         let weights = BarycentricWeights::compute(degree);
-        let degree_env = DegreeEnv::new();
-        let degree = SF::function(degree_env).0;
+        let degree = degree as usize;
         Self {
             vars,
             weights,
@@ -164,9 +176,9 @@ impl<F: Field, SF: SumcheckFunction<F>> SumcheckVerifier<F, SF> {
     }
     // Will check that c = P(r) from the evaluations of the
     // multilinear polynomials that compose it
-    pub fn check_evals_at_r(&self, evals: SF::Mles, c: F) -> bool {
+    pub fn check_evals_at_r(&self, evals: SF::Mles, c: F, challs: &SF::Challs) -> bool {
         let env = EvalCheckEnv::new(evals);
-        let eval = SF::function(env);
+        let eval = SF::function(env, challs);
         eval == c
     }
 }
@@ -175,7 +187,7 @@ impl<F: Field, SF: SumcheckFunction<F>> SumcheckVerifier<F, SF> {
 mod test {
     use crate::{
         polynomials::{Evals, EvalsExt, MultiPoint},
-        sumcheck::{SumcheckFunction, SumcheckProver, SumcheckVerifier},
+        sumcheck::{Env, SumcheckFunction, SumcheckProver, SumcheckVerifier, Var},
     };
     use ark_vesta::Fr;
     use rand::{thread_rng, Rng};
@@ -214,10 +226,10 @@ mod test {
     struct MulGate;
     impl SumcheckFunction<Fr> for MulGate {
         type Idx = usize;
-
         type Mles = Eval;
+        type Challs = ();
 
-        fn function<V: super::Var<Fr>, E: super::Env<Fr, V, Self::Idx>>(env: E) -> V {
+        fn function<V: Var<Fr>, E: Env<Fr, V, Self::Idx>>(env: E, _challs: &()) -> V {
             let a = env.get(0);
             let b = env.get(1);
             let c = env.get(2);
@@ -227,10 +239,10 @@ mod test {
     struct SquareGate;
     impl SumcheckFunction<Fr> for SquareGate {
         type Idx = usize;
-
         type Mles = Eval;
+        type Challs = ();
 
-        fn function<V: super::Var<Fr>, E: super::Env<Fr, V, Self::Idx>>(env: E) -> V {
+        fn function<V: Var<Fr>, E: Env<Fr, V, Self::Idx>>(env: E, _challs: &()) -> V {
             let a = env.get(0);
             a.clone() * a
         }
@@ -256,13 +268,13 @@ mod test {
         let r = vec![rand_fr(); vars];
         let r = MultiPoint::new(r);
 
-        let proof = prover.prove(&r, mle.clone());
+        let proof = prover.prove(&r, mle.clone(), &());
 
         let sum = Fr::from(0);
         let c = verifier.verify(&r, proof, sum).unwrap();
 
         let evals = EvalsExt::eval(mle, r);
-        let check = verifier.check_evals_at_r(evals, c);
+        let check = verifier.check_evals_at_r(evals, c, &());
         assert!(check);
     }
     #[test]
@@ -286,13 +298,13 @@ mod test {
         let r = vec![rand_fr(); vars];
         let r = MultiPoint::new(r);
 
-        let proof = prover.prove(&r, mle.clone());
+        let proof = prover.prove(&r, mle.clone(), &());
 
         let sum = sumc;
         let c = verifier.verify(&r, proof, sum).unwrap();
 
         let evals = EvalsExt::eval(mle, r);
-        let check = verifier.check_evals_at_r(evals, c);
+        let check = verifier.check_evals_at_r(evals, c, &());
         assert!(check);
     }
 }

@@ -12,10 +12,10 @@ struct SparkEvalCheck<const D: usize>;
 
 impl<F: Field, const D: usize> SumcheckFunction<F> for SparkEvalCheck<D> {
     type Idx = SparkIndex;
-
     type Mles = SparkEval<F, D>;
+    type Challs = ();
 
-    fn function<V, E>(env: E) -> V
+    fn function<V, E>(env: E, _challs: &()) -> V
     where
         V: Var<F>,
         E: Env<F, V, Self::Idx>,
