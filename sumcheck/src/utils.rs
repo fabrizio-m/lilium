@@ -1,4 +1,4 @@
-use crate::sumcheck::Var;
+use crate::sumcheck::{Env, Var};
 use ark_ff::Field;
 
 /// Should check sumcheck were the sum is zero
@@ -6,12 +6,21 @@ pub struct ZeroSumcheck<V>(pub V);
 /// Should check that the polynomial evaluates to 0 over the domain
 pub struct ZeroCheck<V>(pub V);
 
-/// Converts zero check into sumcheck, where zeq is used to
-/// basically evaluate the polynomial in a random point
-pub fn zero_check_to_sumcheck<F, V>(zero_check: ZeroCheck<V>, zeq: &V) -> ZeroSumcheck<V>
-where
-    F: Field,
-    V: Var<F>,
-{
-    ZeroSumcheck(zero_check.0 * zeq)
+/// To be implemented on evals that can provide the necessary polynomial
+/// for zero check
+pub trait ZeroCheckAvailable: Sized {
+    /// Provides the index to eq(x,b), for some random b, multiplying
+    /// a polynomial f by it and checking the sum is 0 is equivalent
+    /// to checking that f is the zero polynomial
+    fn zerocheck_eq() -> Self;
+    fn zero_check<F, V, E>(env: &E, zero_check: ZeroCheck<V>) -> ZeroSumcheck<V>
+    where
+        F: Field,
+        V: Var<F>,
+        E: Env<F, V, Self>,
+    {
+        let idx = Self::zerocheck_eq();
+        let eq = env.get(idx);
+        ZeroSumcheck(zero_check.0 * eq)
+    }
 }

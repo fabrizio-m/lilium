@@ -1,7 +1,7 @@
 use crate::mvlookup::{LookupEval, LookupIdx};
 use ark_ff::Field;
 use std::ops::Index;
-use sumcheck::polynomials::Evals;
+use sumcheck::{polynomials::Evals, utils::ZeroCheckAvailable};
 
 /// one of the evaluations nm variate sparse polynomial
 /// with at most 2^m non-zero evaluations.
@@ -11,6 +11,7 @@ pub struct SparkEval<F: Field, const D: usize> {
     /// 0..n
     normal_index: F,
     val: F,
+    zero_eq: F,
 }
 /// Evals corresponding to a particular dimension
 #[derive(Clone, Copy, Debug)]
@@ -67,7 +68,13 @@ impl<F: Field> Evals<F> for DimensionEval<F> {
 pub enum SparkIndex {
     Dimension(usize, DimensionIndex),
     NormalIndex,
+    ZeroEq,
     Val,
+}
+impl ZeroCheckAvailable for SparkIndex {
+    fn zerocheck_eq() -> Self {
+        Self::ZeroEq
+    }
 }
 
 impl<F: Field, const D: usize> Index<SparkIndex> for SparkEval<F, D> {
@@ -78,6 +85,7 @@ impl<F: Field, const D: usize> Index<SparkIndex> for SparkEval<F, D> {
             SparkIndex::Dimension(i, dim) => &self.dimensions[i][dim],
             SparkIndex::NormalIndex => &self.normal_index,
             SparkIndex::Val => &self.val,
+            SparkIndex::ZeroEq => &self.zero_eq,
         }
     }
 }
@@ -93,28 +101,12 @@ impl<F: Field, const D: usize> Evals<F> for SparkEval<F, D> {
         }
         let normal_index = f(self.normal_index, other.normal_index);
         let val = f(self.val, other.val);
+        let zero_eq = f(self.zero_eq, other.zero_eq);
         Self {
             dimensions,
             normal_index,
             val,
+            zero_eq,
         }
     }
 }
-/*
-struct SparkFunction<const D: usize>;
-impl<F: Field, const D: usize> SumcheckFunction<F> for SparkFunction<D> {
-    type Idx = EvalIndex;
-
-    type Mles = SparkEval<F, D>;
-
-    fn function<V: Var<F>, E: Env<F, V, Self::Idx>>(env: E) -> V {
-        let val = env.get(EvalIndex::Val);
-        let mut product = val;
-        for i in 0..D {
-            let dim = env.get(EvalIndex::Dimension(i));
-            product = dim * product;
-        }
-        product
-    }
-}
-*/
