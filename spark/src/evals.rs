@@ -1,7 +1,10 @@
 use crate::mvlookup::{LookupEval, LookupIdx};
 use ark_ff::Field;
 use std::ops::Index;
-use sumcheck::{polynomials::Evals, utils::ZeroCheckAvailable};
+use sumcheck::{
+    polynomials::Evals,
+    utils::{ZeroAvailable, ZeroCheckAvailable},
+};
 
 /// one of the evaluations nm variate sparse polynomial
 /// with at most 2^m non-zero evaluations.
@@ -12,6 +15,8 @@ pub struct SparkEval<F: Field, const D: usize> {
     normal_index: F,
     val: F,
     zero_eq: F,
+    /// 0
+    zero: F,
 }
 /// Evals corresponding to a particular dimension
 #[derive(Clone, Copy, Debug)]
@@ -70,10 +75,16 @@ pub enum SparkIndex {
     NormalIndex,
     ZeroEq,
     Val,
+    Zero,
 }
 impl ZeroCheckAvailable for SparkIndex {
     fn zerocheck_eq() -> Self {
         Self::ZeroEq
+    }
+}
+impl ZeroAvailable for SparkIndex {
+    fn zero() -> Self {
+        Self::Zero
     }
 }
 
@@ -86,6 +97,7 @@ impl<F: Field, const D: usize> Index<SparkIndex> for SparkEval<F, D> {
             SparkIndex::NormalIndex => &self.normal_index,
             SparkIndex::Val => &self.val,
             SparkIndex::ZeroEq => &self.zero_eq,
+            SparkIndex::Zero => &self.zero,
         }
     }
 }
@@ -102,11 +114,14 @@ impl<F: Field, const D: usize> Evals<F> for SparkEval<F, D> {
         let normal_index = f(self.normal_index, other.normal_index);
         let val = f(self.val, other.val);
         let zero_eq = f(self.zero_eq, other.zero_eq);
+        // F::zero() should give the same result
+        let zero = f(self.zero, other.zero);
         Self {
             dimensions,
             normal_index,
             val,
             zero_eq,
+            zero,
         }
     }
 }
