@@ -24,3 +24,11 @@ pub trait ZeroCheckAvailable: Sized {
         ZeroSumcheck(zero_check.0 * eq)
     }
 }
+
+/// To be implemented on evals that can provide a zero polynomial,
+/// useful when needing an identity.
+pub trait ZeroAvailable: Sized {
+    /// Provides the index to the zero polynomial, which evaluates
+    /// to zero at any point
+    fn zero() -> Self;
+}
