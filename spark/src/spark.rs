@@ -1,12 +1,12 @@
 use crate::{
-    challenges::{CompressionChallenge, LookupChallenge, SparkChallenges},
+    challenges::{CombinationChallenge, CompressionChallenge, LookupChallenge, SparkChallenges},
     evals::{DimensionIndex, SparkEval, SparkIndex},
     mvlookup::{self, LookupIdx},
 };
 use ark_ff::Field;
 use sumcheck::{
     sumcheck::{Env, SumcheckFunction, Var},
-    utils::ZeroCheckAvailable,
+    utils::{ZeroAvailable, ZeroCheckAvailable},
 };
 
 struct SparkEvalCheck<const D: usize>;
@@ -24,11 +24,19 @@ impl<F: Field, const D: usize> SumcheckFunction<F> for SparkEvalCheck<D> {
         let normal_index = env.get(SparkIndex::NormalIndex);
         let val = env.get(SparkIndex::Val);
         let mut eval = val;
+        let mut all_checks = env.get(SparkIndex::zero());
+        let combination_challenge = *challs.combination_challenge();
         for i in 0..D {
             let (dim, checks) = dimension(&env, i, normal_index.clone(), challs);
+
+            for check in checks {
+                // TODO: should be handled without unwrapping
+                all_checks += &check.0;
+                all_checks *= combination_challenge;
+            }
             eval = dim * eval;
         }
-        eval
+        all_checks * combination_challenge + eval
     }
 }
 
