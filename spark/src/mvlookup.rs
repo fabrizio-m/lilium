@@ -6,6 +6,8 @@ use sumcheck::{
     utils::{ZeroCheck, ZeroSumcheck},
 };
 
+use crate::challenges::LookupChallenge;
+
 #[derive(Clone, Copy, Debug)]
 pub enum LookupIdx {
     /// Claimed fraction for left side
@@ -79,21 +81,22 @@ where
 
 /// Lookups where [counts] states how many times each element in the table
 /// appears in the lookups
-pub fn lookup<F, V>(
+pub fn lookup<F, V, C>(
     lookups: V,
     table: V,
     counts: V,
     fracs: (V, V),
-    chall: F,
+    challenges: &C,
 ) -> ([ZeroCheck<V>; 2], ZeroSumcheck<V>)
 where
     F: Field,
     V: Var<F>,
+    C: LookupChallenge<F>,
 {
     let (frac1, frac2) = fracs;
-    // let left = shape_dynamic_count(set, counts, frac1, chall);
-    let left = shape_fixed_count(lookups, frac1, chall);
-    let right = shape_dynamic_count(table, counts, frac2, chall);
+    let chall = challenges.lookup_challenge();
+    let left = shape_fixed_count(lookups, frac1, *chall);
+    let right = shape_dynamic_count(table, counts, frac2, *chall);
     let equality = left.clone() - right.clone();
     let zero_checks = [left, right].map(ZeroCheck);
     (zero_checks, ZeroSumcheck(equality))

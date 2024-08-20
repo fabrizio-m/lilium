@@ -15,8 +15,18 @@ pub trait CompressionChallenge<F: Field> {
     fn compression_challenge(&self) -> &F;
 }
 
+pub trait LookupChallenge<F: Field> {
+    fn lookup_challenge(&self) -> &F;
+}
+
 impl<F: Field> CompressionChallenge<F> for SparkChallenges<F> {
     fn compression_challenge(&self) -> &F {
         &self.compression_challenge
+    }
+}
+
+impl<F: Field> LookupChallenge<F> for SparkChallenges<F> {
+    fn lookup_challenge(&self) -> &F {
+        &self.lookup_challenge
     }
 }

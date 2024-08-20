@@ -1,5 +1,5 @@
 use crate::{
-    challenges::{CompressionChallenge, SparkChallenges},
+    challenges::{CompressionChallenge, LookupChallenge, SparkChallenges},
     evals::{DimensionIndex, SparkEval, SparkIndex},
     mvlookup::{self, LookupIdx},
 };
@@ -42,7 +42,7 @@ where
     F: Field,
     V: Var<F>,
     E: Env<F, V, SparkIndex>,
-    C: CompressionChallenge<F>,
+    C: CompressionChallenge<F> + LookupChallenge<F>,
 {
     let idx = |x| SparkIndex::Dimension(i, x);
     let dimension_index = idx(DimensionIndex::Dimension);
@@ -64,18 +64,13 @@ where
     let dimension_lookups = env.get(dimension_lookups);
     let lookups = collapse_columns(dimension_index, dimension_lookups.clone(), challenges);
 
-    let lookup_challenge = lookup_challenge();
-    let ([c1, c2], c3) = mvlookup::lookup(lookups, table, counts, fracs, lookup_challenge);
+    let ([c1, c2], c3) = mvlookup::lookup(lookups, table, counts, fracs, challenges);
     let checks = [
         SparkIndex::zero_check(&env, c1),
         SparkIndex::zero_check(&env, c2),
         c3,
     ];
     (dimension_lookups, checks)
-}
-
-fn lookup_challenge<F>() -> F {
-    todo!()
 }
 
 fn collapse_columns<F, V, C>(a: V, b: V, challenges: &C) -> V
