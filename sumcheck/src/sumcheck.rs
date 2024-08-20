@@ -9,7 +9,7 @@ use crate::{
 use ark_ff::Field;
 use std::{
     marker::PhantomData,
-    ops::{Add, Mul, Sub},
+    ops::{Add, AddAssign, Mul, MulAssign, Sub},
 };
 
 pub trait Var<F: Field>:
@@ -23,6 +23,8 @@ pub trait Var<F: Field>:
     + Add<F, Output = Self>
     + Sub<F, Output = Self>
     + Mul<F, Output = Self>
+    + for<'a> AddAssign<&'a Self>
+    + MulAssign<F>
     + Clone
 {
 }

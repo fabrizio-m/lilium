@@ -6,7 +6,7 @@ use crate::{
 use ark_ff::Field;
 use std::{
     marker::PhantomData,
-    ops::{Add, AddAssign, Mul, Sub},
+    ops::{Add, AddAssign, Mul, MulAssign, Sub},
 };
 
 #[derive(Clone, Debug)]
@@ -124,6 +124,21 @@ impl<F: Field> Mul<F> for Message<F> {
         self
     }
 }
+impl<F: Field> MulAssign<F> for Message<F> {
+    fn mul_assign(&mut self, rhs: F) {
+        for e in self.0.iter_mut() {
+            *e *= rhs
+        }
+    }
+}
+impl<F: Field> AddAssign<&Self> for Message<F> {
+    fn add_assign(&mut self, rhs: &Self) {
+        for (l, r) in self.0.iter_mut().zip(rhs.0.iter()) {
+            *l += r;
+        }
+    }
+}
+
 impl<F: Field> Var<F> for Message<F> {}
 impl<F: Field> AddAssign for Message<F> {
     fn add_assign(&mut self, rhs: Self) {

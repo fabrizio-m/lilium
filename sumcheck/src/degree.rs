@@ -6,7 +6,7 @@ use crate::sumcheck::{Env, Var};
 use std::{
     cmp::max,
     marker::PhantomData,
-    ops::{Add, Mul, Sub},
+    ops::{Add, AddAssign, Mul, MulAssign, Sub},
 };
 
 #[derive(Clone, Copy)]
@@ -79,6 +79,18 @@ impl<F: Field> Mul<F> for Degree {
 
     fn mul(self, _rhs: F) -> Self::Output {
         self
+    }
+}
+
+impl AddAssign<&Self> for Degree {
+    fn add_assign(&mut self, rhs: &Self) {
+        let max = std::cmp::max(self.0, rhs.0);
+        self.0 = max;
+    }
+}
+impl<F: Field> MulAssign<F> for Degree {
+    fn mul_assign(&mut self, _rhs: F) {
+        // nothing to do, as it won't change degree
     }
 }
 
