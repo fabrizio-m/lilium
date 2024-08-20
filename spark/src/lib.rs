@@ -1,3 +1,4 @@
+pub mod challenges;
 pub mod eq;
 pub mod evals;
 pub mod mvlookup;

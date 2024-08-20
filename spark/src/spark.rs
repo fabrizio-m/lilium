@@ -1,4 +1,5 @@
 use crate::{
+    challenges::{CompressionChallenge, SparkChallenges},
     evals::{DimensionIndex, SparkEval, SparkIndex},
     mvlookup::{self, LookupIdx},
 };
@@ -10,23 +11,12 @@ use sumcheck::{
 
 struct SparkEvalCheck<const D: usize>;
 
-/// Challenges used in spark
-#[derive(Debug, Default)]
-struct SparkChallenges<F: Field> {
-    /// The shift used in the denominator in lookups/multiset check
-    lookup_challenge: F,
-    /// used to combine multiple sucheck statements into one
-    combination_challenge: F,
-    /// Used to compress several polynomials into 1
-    compression_challenge: F,
-}
-
 impl<F: Field, const D: usize> SumcheckFunction<F> for SparkEvalCheck<D> {
     type Idx = SparkIndex;
     type Mles = SparkEval<F, D>;
     type Challs = SparkChallenges<F>;
 
-    fn function<V, E>(env: E, _challs: &SparkChallenges<F>) -> V
+    fn function<V, E>(env: E, challs: &SparkChallenges<F>) -> V
     where
         V: Var<F>,
         E: Env<F, V, Self::Idx>,
@@ -35,22 +25,24 @@ impl<F: Field, const D: usize> SumcheckFunction<F> for SparkEvalCheck<D> {
         let val = env.get(SparkIndex::Val);
         let mut eval = val;
         for i in 0..D {
-            let (dim, checks) = dimension(&env, i, normal_index.clone());
+            let (dim, checks) = dimension(&env, i, normal_index.clone(), challs);
             eval = dim * eval;
         }
         eval
     }
 }
 
-fn dimension<F, V, E>(
+fn dimension<F, V, E, C>(
     env: E,
     i: usize,
     normal_index: V,
+    challenges: &C,
 ) -> (V, [sumcheck::utils::ZeroSumcheck<V>; 3])
 where
     F: Field,
     V: Var<F>,
     E: Env<F, V, SparkIndex>,
+    C: CompressionChallenge<F>,
 {
     let idx = |x| SparkIndex::Dimension(i, x);
     let dimension_index = idx(DimensionIndex::Dimension);
@@ -66,16 +58,11 @@ where
     let fracs = (env.get(frac1), env.get(frac2));
 
     let eq_evals = env.get(eq_eval);
-    let compression_challenge = compression_challenge();
 
-    let table = collapse_columns(normal_index, eq_evals, compression_challenge);
+    let table = collapse_columns(normal_index, eq_evals, challenges);
     let dimension_index = env.get(dimension_index);
     let dimension_lookups = env.get(dimension_lookups);
-    let lookups = collapse_columns(
-        dimension_index,
-        dimension_lookups.clone(),
-        compression_challenge,
-    );
+    let lookups = collapse_columns(dimension_index, dimension_lookups.clone(), challenges);
 
     let lookup_challenge = lookup_challenge();
     let ([c1, c2], c3) = mvlookup::lookup(lookups, table, counts, fracs, lookup_challenge);
@@ -91,14 +78,12 @@ fn lookup_challenge<F>() -> F {
     todo!()
 }
 
-fn compression_challenge<F>() -> F {
-    todo!()
-}
-
-fn collapse_columns<F, V>(a: V, b: V, challenge: F) -> V
+fn collapse_columns<F, V, C>(a: V, b: V, challenges: &C) -> V
 where
     F: Field,
     V: Var<F>,
+    C: CompressionChallenge<F>,
 {
-    a + b * challenge
+    let challenge = challenges.compression_challenge();
+    a + b * *challenge
 }
