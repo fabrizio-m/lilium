@@ -33,7 +33,7 @@ pub struct WitnessGenerator<F: Field, const IO: usize> {
     witness: Vec<Fi<F>>,
     check: bool,
 }
-pub struct Witness<F: Field>(Vec<F>);
+pub struct Witness<F: Field>(pub Vec<F>);
 
 impl<F: Field, const MAX_IO: usize> ConstraintSystem for WitnessGenerator<F, MAX_IO> {
     ///should check
