@@ -101,3 +101,30 @@ where
     let zero_checks = [left, right].map(ZeroCheck);
     (zero_checks, ZeroSumcheck(equality))
 }
+
+impl<F: Field> LookupEval<F> {
+    pub fn evals(lookups: &[F], table: &[F], counts: &[F], challenge: F) -> Vec<Self> {
+        assert_eq!(lookups.len(), table.len());
+        assert_eq!(lookups.len(), counts.len());
+        let mut left_den: Vec<F> = lookups.iter().map(|x| *x + challenge).collect();
+        ark_ff::fields::batch_inversion(&mut left_den);
+        let frac1 = left_den;
+        let mut right_den: Vec<F> = table.iter().map(|x| *x + challenge).collect();
+        ark_ff::fields::batch_inversion(&mut right_den);
+
+        counts
+            .iter()
+            .zip(frac1)
+            .zip(right_den)
+            .map(|x| {
+                let ((counts, frac1), right_den) = x;
+                let frac2 = right_den * counts;
+                LookupEval {
+                    frac1,
+                    counts: *counts,
+                    frac2,
+                }
+            })
+            .collect()
+    }
+}

@@ -1,8 +1,13 @@
-use crate::mvlookup::{LookupEval, LookupIdx};
+use crate::{
+    challenges::{LookupChallenge, SparkChallenges},
+    eq,
+    mvlookup::{LookupEval, LookupIdx},
+    structure::{DimensionStructure, SparkStructure},
+};
 use ark_ff::Field;
 use std::ops::Index;
 use sumcheck::{
-    polynomials::Evals,
+    polynomials::{Evals, MultiPoint},
     utils::{ZeroAvailable, ZeroCheckAvailable},
 };
 
@@ -18,9 +23,10 @@ pub struct SparkEval<F: Field, const D: usize> {
     /// 0
     zero: F,
 }
+
 /// Evals corresponding to a particular dimension
 #[derive(Clone, Copy, Debug)]
-struct DimensionEval<F: Field> {
+pub struct DimensionEval<F: Field> {
     lookup: LookupEval<F>,
     /// eq(x,r) for the r corresponding to this dimension
     eq_eval: F,
@@ -123,5 +129,72 @@ impl<F: Field, const D: usize> Evals<F> for SparkEval<F, D> {
             zero_eq,
             zero,
         }
+    }
+}
+impl<F: Field> DimensionEval<F> {
+    fn evals(point: MultiPoint<F>, structure: &DimensionStructure<F>, challenge: F) -> Vec<Self> {
+        let eq_eval = eq::eq(point);
+        let eq_lookups: Vec<F> = structure.lookups.iter().map(|i| eq_eval[*i]).collect();
+
+        let lookup = LookupEval::evals(&eq_lookups, &eq_eval, &structure.counts_field, challenge);
+
+        let evals: Vec<Self> = eq_eval
+            .into_iter()
+            .zip(eq_lookups)
+            .zip(lookup)
+            .zip(&structure.lookups_field)
+            .map(|x| {
+                let x = x;
+                let (((eq_eval, eq_lookups), lookup), dimension_index) = x;
+                Self {
+                    lookup,
+                    eq_eval,
+                    dimension_index: *dimension_index,
+                    eq_lookups,
+                }
+            })
+            .collect();
+        evals
+    }
+}
+
+impl<F: Field, const D: usize> SparkEval<F, D> {
+    pub fn evals(
+        structure: &SparkStructure<F, D>,
+        points: [MultiPoint<F>; D],
+        challenges: SparkChallenges<F>,
+        zero_check_point: MultiPoint<F>,
+    ) -> Vec<Self> {
+        let challenge = *challenges.lookup_challenge();
+        let mut points = points.into_iter();
+        let dimensions = structure.dimensions.each_ref().map(|struc| {
+            let point = points.next().unwrap();
+            let evals = DimensionEval::evals(point, struc, challenge);
+            evals
+        });
+
+        let zero_eq = eq::eq(zero_check_point);
+
+        let mut d = dimensions.map(|x| x.into_iter());
+
+        let evals = structure
+            .normal_index
+            .iter()
+            .zip(&structure.val)
+            .zip(zero_eq.into_iter())
+            .map(|x| {
+                let ((normal_index, val), zero_eq) = x;
+                let dimensions = (&mut d).each_mut().map(|x| x.next().unwrap());
+                SparkEval {
+                    normal_index: *normal_index,
+                    val: *val,
+                    zero_eq,
+                    zero: F::zero(),
+                    dimensions,
+                }
+            })
+            .collect();
+
+        evals
     }
 }
