@@ -70,6 +70,7 @@ where
 }
 
 pub struct SingleEval<F>(pub F);
+
 impl<F> Index<()> for SingleEval<F> {
     type Output = F;
 
@@ -83,6 +84,11 @@ impl<F: Field> Evals<F> for SingleEval<F> {
 
     fn combine<C: Fn(F, F) -> F>(&self, other: &Self, f: C) -> Self {
         SingleEval(f(self.0, other.0))
+    }
+}
+impl<F: Clone> SingleEval<F> {
+    pub fn from_field_elements(evals: &[F]) -> Vec<Self> {
+        evals.iter().cloned().map(SingleEval).collect()
     }
 }
 

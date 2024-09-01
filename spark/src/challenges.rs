@@ -1,7 +1,7 @@
 use ark_ff::Field;
 
 /// Challenges used in spark
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone, Copy)]
 pub struct SparkChallenges<F: Field> {
     /// The shift used in the denominator in lookups/multiset check
     lookup_challenge: F,

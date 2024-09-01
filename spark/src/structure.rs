@@ -24,3 +24,17 @@ pub struct SparkStructure<F: Field, const D: usize> {
     /// the evaluations over the domain
     pub val: Vec<F>,
 }
+
+impl<F: Field> DimensionStructure<F> {
+    pub fn new(counts: Vec<usize>, lookups: Vec<usize>) -> Self {
+        let counts_field = counts.iter().map(|x| *x as u64).map(F::from).collect();
+        let lookups_field = lookups.iter().map(|x| *x as u64).map(F::from).collect();
+        let _counts = counts;
+        Self {
+            _counts,
+            lookups,
+            counts_field,
+            lookups_field,
+        }
+    }
+}

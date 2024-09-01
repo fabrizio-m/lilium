@@ -14,6 +14,7 @@ use sumcheck::{
 /// one of the evaluations nm variate sparse polynomial
 /// with at most 2^m non-zero evaluations.
 /// A common example would D = 2 for a sparse matrix
+#[derive(Clone, Debug)]
 pub struct SparkEval<F: Field, const D: usize> {
     dimensions: [DimensionEval<F>; D],
     /// 0..n

@@ -61,6 +61,7 @@ pub struct SumcheckProver<F: Field, SF: SumcheckFunction<F>> {
     degree: usize,
 }
 
+#[derive(Clone, Debug)]
 pub struct Proof<F: Field, SF: SumcheckFunction<F>> {
     messages: Vec<Message<F>>,
     _f: PhantomData<SF>,
