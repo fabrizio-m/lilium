@@ -9,7 +9,7 @@ use sumcheck::{
     utils::{ZeroAvailable, ZeroCheckAvailable},
 };
 
-struct SparkEvalCheck<const D: usize>;
+pub struct SparkEvalCheck<const D: usize>;
 
 impl<F: Field, const D: usize> SumcheckFunction<F> for SparkEvalCheck<D> {
     type Idx = SparkIndex;

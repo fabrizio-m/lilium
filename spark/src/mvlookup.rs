@@ -128,3 +128,125 @@ impl<F: Field> LookupEval<F> {
             .collect()
     }
 }
+
+#[cfg(test)]
+mod test {
+    const VARS: usize = 8;
+    const EVALS: usize = 1 << VARS;
+    use crate::{
+        challenges::{CombinationChallenge, SparkChallenges},
+        mvlookup::LookupEval,
+    };
+    use ark_ff::Field;
+    use rand::{rngs::StdRng, Rng, SeedableRng};
+    use sumcheck::{
+        polynomials::{simple_eval::SimpleEval, EvalsExt, MultiPoint},
+        sumcheck::{Env, SumcheckFunction, SumcheckProver, SumcheckVerifier, Var},
+        utils::ZeroCheckAvailable,
+    };
+
+    struct RangeCheck;
+
+    // 0: zero_check
+    // 1: lookups
+    // 2: table
+    // 3: counts
+    // 4: fracs_1
+    // 5: fracs_2
+    type Evals<F> = SimpleEval<F, 6>;
+
+    impl<F: Field> SumcheckFunction<F> for RangeCheck {
+        type Idx = usize;
+
+        type Mles = Evals<F>;
+
+        // reusing them as we need the same here
+        type Challs = SparkChallenges<F>;
+
+        fn function<V: Var<F>, E: Env<F, V, Self::Idx>>(env: E, challs: &Self::Challs) -> V {
+            // let zero_check = env.get(0);
+            let lookups = env.get(1);
+            let table = env.get(2);
+            let counts = env.get(3);
+            let fracs_1 = env.get(4);
+            let fracs_2 = env.get(5);
+            let fracs = (fracs_1, fracs_2);
+            let ([c1, c2], c3) = super::lookup(lookups, table, counts, fracs, challs);
+            let c1 = ZeroCheckAvailable::zero_check(&env, c1);
+            let c2 = ZeroCheckAvailable::zero_check(&env, c2);
+
+            let comb_chall = challs.combination_challenge();
+            let checks = c1.0;
+            let checks = (checks * *comb_chall) + c2.0;
+            let checks = (checks * *comb_chall) + c3.0;
+            checks
+        }
+    }
+
+    fn lookups<R: Rng>(rng: &mut R) -> Vec<u32> {
+        let mut lookup = || rng.gen::<u32>() % (EVALS as u32);
+        vec![lookup(); EVALS]
+    }
+
+    fn rangecheck_test<F: Field>() {
+        let mut rng = StdRng::seed_from_u64(4);
+        let table: Vec<u32> = (0..(EVALS as u32)).collect();
+        let lookups = lookups(&mut rng);
+        let mut counts = vec![0_u32; EVALS];
+        for lookup in lookups.clone() {
+            counts[lookup as usize] += 1;
+        }
+        let [table, lookups, counts] =
+            [table, lookups, counts].map(|x| x.into_iter().map(F::from).collect::<Vec<F>>());
+
+        let lookup_challenge = F::rand(&mut rng);
+        let combination_challenge = F::rand(&mut rng);
+        let compression_challenge = F::rand(&mut rng);
+        let challenge = SparkChallenges::new(
+            lookup_challenge,
+            combination_challenge,
+            compression_challenge,
+        );
+        let mut elem = || F::rand(&mut rng);
+        let zero_check_point = vec![elem(); VARS];
+        let zero_check_point = MultiPoint::new(zero_check_point);
+
+        let lookup_evals = LookupEval::evals(&lookups, &table, &counts, lookup_challenge);
+        let mut evals = vec![];
+        let zero_eq = crate::eq::eq(zero_check_point);
+
+        for i in 0..EVALS {
+            let lookup = lookups[i];
+            let table = table[i];
+            // let counts = counts[i];
+            let LookupEval {
+                frac1,
+                frac2,
+                counts,
+            } = lookup_evals[i];
+            let zero_check = zero_eq[i];
+            let eval = [zero_check, lookup, table, counts, frac1, frac2];
+            evals.push(SimpleEval::new(eval));
+        }
+
+        let prover = SumcheckProver::<F, RangeCheck>::new(VARS);
+
+        let r = vec![elem(); VARS];
+        let r = MultiPoint::new(r);
+
+        let proof = prover.prove(&r, evals.clone(), &challenge);
+
+        let verifier = SumcheckVerifier::<F, RangeCheck>::new(VARS);
+
+        let c = verifier.verify(&r, proof, F::zero()).unwrap();
+
+        let evals = EvalsExt::eval(evals, r);
+        let verifies = verifier.check_evals_at_r(evals, c, &challenge);
+        assert!(verifies);
+    }
+    #[test]
+    fn rangecheck() {
+        use ark_vesta::Fq;
+        rangecheck_test::<Fq>();
+    }
+}

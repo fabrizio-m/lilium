@@ -39,3 +39,13 @@ impl<F: Field> CombinationChallenge<F> for SparkChallenges<F> {
         &self.combination_challenge
     }
 }
+
+impl<F: Field> SparkChallenges<F> {
+    pub fn new(lookup_challenge: F, combination_challenge: F, compression_challenge: F) -> Self {
+        Self {
+            lookup_challenge,
+            combination_challenge,
+            compression_challenge,
+        }
+    }
+}
