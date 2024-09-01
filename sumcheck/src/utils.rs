@@ -2,6 +2,7 @@ use crate::sumcheck::{Env, Var};
 use ark_ff::Field;
 
 /// Should check sumcheck were the sum is zero
+#[derive(Clone, Debug)]
 pub struct ZeroSumcheck<V>(pub V);
 /// Should check that the polynomial evaluates to 0 over the domain
 pub struct ZeroCheck<V>(pub V);
