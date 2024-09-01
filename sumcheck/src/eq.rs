@@ -21,9 +21,9 @@
 //! for 0x and modify the other copy into the 1x evaluations with 2 multiplications.
 //! And so on we continue until having all the evaluations.
 
+use crate::polynomials::MultiPoint;
 use ark_ff::Field;
 use std::ops::Mul;
-use sumcheck::polynomials::MultiPoint;
 
 // computing a gray code as example, ultimately not used as
 // there was a simpler and better way.
@@ -97,9 +97,9 @@ pub fn eq<F: Field>(vars: MultiPoint<F>) -> Vec<F> {
 
 #[test]
 fn test_eq() {
+    use crate::polynomials::{EvalsExt, SingleEval};
     use ark_vesta::Fr;
     use rand::{thread_rng, Rng};
-    use sumcheck::polynomials::{EvalsExt, SingleEval};
 
     // let point = MultiPoint::r
     let mut rng = thread_rng();

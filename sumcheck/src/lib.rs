@@ -2,6 +2,7 @@
 
 pub(crate) mod barycentric_eval;
 pub(crate) mod degree;
+pub mod eq;
 pub mod eval_check;
 pub(crate) mod message;
 pub mod polynomials;
