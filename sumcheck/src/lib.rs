@@ -6,6 +6,8 @@ pub mod eval_check;
 pub(crate) mod message;
 pub mod polynomials;
 pub mod sumcheck;
+#[cfg(test)]
+mod tests;
 pub mod utils;
 
 #[derive(Debug, Clone, Copy)]
