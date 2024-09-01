@@ -213,7 +213,7 @@ mod test {
 
         let lookup_evals = LookupEval::evals(&lookups, &table, &counts, lookup_challenge);
         let mut evals = vec![];
-        let zero_eq = crate::eq::eq(zero_check_point);
+        let zero_eq = sumcheck::eq::eq(zero_check_point);
 
         for i in 0..EVALS {
             let lookup = lookups[i];

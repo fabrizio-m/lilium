@@ -1,12 +1,12 @@
 use crate::{
     challenges::{LookupChallenge, SparkChallenges},
-    eq,
     mvlookup::{LookupEval, LookupIdx},
     structure::{DimensionStructure, SparkStructure},
 };
 use ark_ff::Field;
 use std::ops::Index;
 use sumcheck::{
+    eq,
     polynomials::{Evals, MultiPoint},
     utils::{ZeroAvailable, ZeroCheckAvailable},
 };
