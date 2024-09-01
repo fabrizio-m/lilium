@@ -37,4 +37,13 @@ impl<F: Field> DimensionStructure<F> {
             lookups_field,
         }
     }
+    // TODO: optimize for cache localily
+    /// builds lookups from the table using the index in the structure
+    pub fn lookups(&self, table: &[F]) -> Vec<F> {
+        let mut lookups = Vec::with_capacity(table.len());
+        for lookup in self.lookups.iter() {
+            lookups.push(table[*lookup]);
+        }
+        lookups
+    }
 }

@@ -1,5 +1,5 @@
 use crate::{
-    challenges::{LookupChallenge, SparkChallenges},
+    challenges::{CompressionChallenge, LookupChallenge, SparkChallenges},
     mvlookup::{LookupEval, LookupIdx},
     structure::{DimensionStructure, SparkStructure},
 };
@@ -133,11 +133,27 @@ impl<F: Field, const D: usize> Evals<F> for SparkEval<F, D> {
     }
 }
 impl<F: Field> DimensionEval<F> {
-    fn evals(point: MultiPoint<F>, structure: &DimensionStructure<F>, challenge: F) -> Vec<Self> {
+    fn evals(
+        point: MultiPoint<F>,
+        structure: &DimensionStructure<F>,
+        normal_index: &[F],
+
+        challenges: &SparkChallenges<F>,
+    ) -> Vec<Self> {
         let eq_eval = eq::eq(point);
         let eq_lookups: Vec<F> = structure.lookups.iter().map(|i| eq_eval[*i]).collect();
+        // let lookups = structure.dimen
+        let compression_chall = *challenges.compression_challenge();
+        let table: Vec<F> = eq_eval
+            .iter()
+            .zip(normal_index.iter())
+            .map(|(eq, idx)| *idx + compression_chall * eq)
+            .collect();
+        let lookups = structure.lookups(&table);
 
-        let lookup = LookupEval::evals(&eq_lookups, &eq_eval, &structure.counts_field, challenge);
+        let lookup_challenge = challenges.lookup_challenge();
+        let lookup =
+            LookupEval::evals(&lookups, &table, &structure.counts_field, *lookup_challenge);
 
         let evals: Vec<Self> = eq_eval
             .into_iter()
@@ -166,11 +182,11 @@ impl<F: Field, const D: usize> SparkEval<F, D> {
         challenges: SparkChallenges<F>,
         zero_check_point: MultiPoint<F>,
     ) -> Vec<Self> {
-        let challenge = *challenges.lookup_challenge();
         let mut points = points.into_iter();
         let dimensions = structure.dimensions.each_ref().map(|struc| {
+            let normal_index = &structure.normal_index;
             let point = points.next().unwrap();
-            let evals = DimensionEval::evals(point, struc, challenge);
+            let evals = DimensionEval::evals(point, struc, &normal_index, &challenges);
             evals
         });
 
