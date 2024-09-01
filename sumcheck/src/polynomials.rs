@@ -85,3 +85,43 @@ impl<F: Field> Evals<F> for SingleEval<F> {
         SingleEval(f(self.0, other.0))
     }
 }
+
+pub mod simple_eval {
+    use super::Evals;
+    use crate::utils::ZeroCheckAvailable;
+    use ark_ff::Field;
+    use std::ops::Index;
+
+    #[derive(Clone, Debug)]
+    pub struct SimpleEval<F, const N: usize>([F; N]);
+
+    impl<F, const N: usize> SimpleEval<F, N> {
+        pub fn new(inner: [F; N]) -> Self {
+            Self(inner)
+        }
+    }
+    impl ZeroCheckAvailable for usize {
+        fn zerocheck_eq() -> Self {
+            0
+        }
+    }
+
+    impl<F: Field, const N: usize> Index<usize> for SimpleEval<F, N> {
+        type Output = F;
+
+        fn index(&self, index: usize) -> &Self::Output {
+            &self.0[index]
+        }
+    }
+    impl<F: Field, const N: usize> Evals<F> for SimpleEval<F, N> {
+        type Idx = usize;
+
+        fn combine<C: Fn(F, F) -> F>(&self, other: &Self, f: C) -> Self {
+            let mut res = self.0.clone();
+            for i in 0..N {
+                res[i] = f(res[i], other.0[i]);
+            }
+            Self(res)
+        }
+    }
+}
