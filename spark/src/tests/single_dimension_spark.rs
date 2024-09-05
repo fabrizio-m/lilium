@@ -29,7 +29,6 @@ fn test<F: Field>() {
     let r = vec![elem(); VARS];
     let r = MultiPoint::new(r);
 
-    // let structure = SparkStructure
     let counts = vec![1; len];
     let lookups = successors(Some(0), |x| Some(x + 1)).take(len).collect();
     let dimension = DimensionStructure::new(counts, lookups);
