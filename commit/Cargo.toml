@@ -5,4 +5,5 @@ edition = "2021"
 
 [dependencies]
 ark-ff = "0.4"
+ark-ec = "0.4"
 sumcheck = { path = "../sumcheck"} 

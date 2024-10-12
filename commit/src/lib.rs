@@ -2,7 +2,9 @@ use ark_ff::Field;
 use std::ops::{Add, Mul};
 use sumcheck::polynomials::MultiPoint;
 
-trait CommmitmentScheme<F: Field> {
+pub mod ipa;
+
+pub trait CommmitmentScheme<F: Field> {
     type Commitment: for<'a> Add<&'a Self::Commitment, Output = Self::Commitment>
         + Mul<F, Output = Self::Commitment>;
     type OpenProof;
