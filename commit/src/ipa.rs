@@ -145,8 +145,6 @@ where
             round
         } else {
             let (round, (l, r)) = Self::round(round, sponge, u);
-            sponge.absorb_g(l);
-            sponge.absorb_g(r);
             messages.push((l, r));
             Self::reduce(round, sponge, u, messages)
         }
@@ -179,5 +177,69 @@ where
         let Round { a, .. } = last_round;
         debug_assert_eq!(a.len(), 1);
         Proof { messages, a: a[0] }
+    }
+    pub fn verify<S: Sponge<F, G>>(
+        &self,
+        sponge: &mut S,
+        commitment: G,
+        b: Vec<F>,
+        inner_product: F,
+        proof: Proof<F, G>,
+    ) -> bool {
+        let Proof { messages, a } = proof;
+        sponge.absorb_g(commitment);
+        sponge.absorb_f(inner_product);
+        let u = sponge.squeeze_g();
+        let mut challenges = vec![];
+        let commitment: G = messages.into_iter().fold(commitment, |acc, msg| {
+            let (cl, cr) = msg;
+            sponge.absorb_g(cl);
+            sponge.absorb_g(cr);
+            let chall = sponge.squeeze_f();
+            challenges.push(chall);
+            //TODO: batch inverses
+            acc + cl * chall.square() + cr * chall.inverse().unwrap().square()
+        });
+        let mut challs_inv = challenges.clone();
+        ark_ff::fields::batch_inversion(&mut challs_inv);
+
+        let s = challenge_combinations(&challenges, &challs_inv);
+        let folded_b = compute_inner_product(&s, &b);
+        let folded_g = G::msm_unchecked(&self.vector_basis, &s);
+        // TODO: zk opening not revealing a
+        // Checking that C = aG + abU
+        let open = (u * folded_b + folded_g) * a;
+        commitment == open
+    }
+}
+fn compute_inner_product<F: Field>(a: &[F], b: &[F]) -> F {
+    debug_assert_eq!(a.len(), b.len());
+    a.iter()
+        .zip(b.iter())
+        .fold(F::zero(), |acc, (a, b)| acc + *a * b)
+}
+
+/// Computes the vector of 2^n combinations of n challenges and their inverses
+fn challenge_combinations<F: Field>(challs: &[F], challs_inv: &[F]) -> Vec<F> {
+    assert_eq!(challs.len(), challs_inv.len());
+    let zero: F = challs_inv.iter().cloned().sum();
+    let flips: Vec<F> = challs.iter().map(|x| x.square()).collect();
+    let mut combinations = vec![F::zero(); 1 << challs.len()];
+    combine_rec(&flips, zero, &mut combinations);
+    combinations
+}
+
+fn combine_rec<F: Field>(flips: &[F], zero: F, vec: &mut [F]) {
+    assert!(vec.len().is_power_of_two());
+    let half_len = vec.len() / 2;
+    if flips.len() == 0 {
+        vec[0] = zero;
+    } else {
+        let (low, high) = vec.split_at_mut(half_len);
+        combine_rec(&flips[1..], zero, low);
+        let flip = flips[0];
+        for (l, r) in low.iter().zip(high.iter_mut()) {
+            *r = flip * l;
+        }
     }
 }
