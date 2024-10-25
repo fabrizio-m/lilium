@@ -1,5 +1,8 @@
+use std::marker::PhantomData;
+
 use ark_ec::{Group, VariableBaseMSM};
-use ark_ff::Field;
+use ark_ff::{Field, PrimeField};
+use rand::{rngs::StdRng, SeedableRng};
 
 pub trait Sponge<F, G> {
     fn absorb_g(&mut self, x: G);
@@ -211,6 +214,18 @@ where
         let open = (u * folded_b + folded_g) * a;
         commitment == open
     }
+    /// Creates SRS from seed for length 2^k for provided k
+    fn init(len_log: usize, seed: Option<u64>) -> Self {
+        let seed = seed.unwrap_or(0);
+        let mut rng = StdRng::seed_from_u64(seed);
+        let mut point = || G::rand(&mut rng);
+        let basis: Vec<G> = std::iter::repeat(())
+            .map(|_| point())
+            .take(1 << len_log)
+            .collect();
+        let vector_basis = G::batch_convert_to_mul_base(&basis);
+        Self { vector_basis }
+    }
 }
 fn compute_inner_product<F: Field>(a: &[F], b: &[F]) -> F {
     debug_assert_eq!(a.len(), b.len());
@@ -241,5 +256,40 @@ fn combine_rec<F: Field>(flips: &[F], zero: F, vec: &mut [F]) {
         for (l, r) in low.iter().zip(high.iter_mut()) {
             *r = flip * l;
         }
+    }
+}
+
+struct SimpleSponge<F> {
+    hasher: blake3::Hasher,
+    _f: PhantomData<F>,
+}
+impl<F: PrimeField, G: Group> Sponge<F, G> for SimpleSponge<F> {
+    fn absorb_g(&mut self, x: G) {
+        let mut bytes = vec![];
+        x.serialize_uncompressed(&mut bytes).unwrap();
+        self.hasher.update(&bytes);
+    }
+
+    fn absorb_f(&mut self, x: F) {
+        let mut bytes = vec![];
+        x.serialize_uncompressed(&mut bytes).unwrap();
+        self.hasher.update(&bytes);
+    }
+
+    fn squeeze_f(&mut self) -> F {
+        let hash = self.hasher.finalize();
+        // reabsorbing hash to work like a sponge
+        self.hasher.update(hash.as_bytes());
+        F::from_le_bytes_mod_order(hash.as_bytes())
+    }
+
+    fn squeeze_g(&mut self) -> G {
+        let hash = self.hasher.finalize();
+        // reabsorbing hash to work like a sponge
+        self.hasher.update(hash.as_bytes());
+        // just creating a scalar and scaling the generator
+        // endomorphism recomposition would make more sense for real use cases
+        let scalar = <G::ScalarField>::from_le_bytes_mod_order(hash.as_bytes());
+        G::generator() * scalar
     }
 }

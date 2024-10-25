@@ -11,5 +11,5 @@ ark-poly = "0.4"
 sumcheck = { path = "../sumcheck"} 
 
 [dev-dependencies]
-rand = "0.8.5"
+rand = "0.8"
 ark-vesta = "0.4"
