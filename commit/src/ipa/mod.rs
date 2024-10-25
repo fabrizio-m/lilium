@@ -1,15 +1,12 @@
-use std::marker::PhantomData;
-
 use ark_ec::{Group, VariableBaseMSM};
-use ark_ff::{Field, PrimeField};
+use ark_ff::Field;
 use rand::{rngs::StdRng, SeedableRng};
+use sponge::Sponge;
+use vector_utils::{challenge_combinations, compute_inner_product, fold_basis, fold_vec};
 
-pub trait Sponge<F, G> {
-    fn absorb_g(&mut self, x: G);
-    fn absorb_f(&mut self, x: F);
-    fn squeeze_f(&mut self) -> F;
-    fn squeeze_g(&mut self) -> G;
-}
+mod sponge;
+mod tests;
+mod vector_utils;
 
 /// computes the 2 crossed commitments between the 2 vector
 /// a_low X b_high * G + a_low X g_high
@@ -40,34 +37,6 @@ where
     let commit_l = product_base * inner_product_l + commit_l;
     let commit_r = product_base * inner_product_r + commit_r;
     [commit_l, commit_r]
-}
-
-fn fold_vec<F: Field>(mut vec: Vec<F>, challs: [F; 2]) -> Vec<F> {
-    assert!(vec.len().is_power_of_two());
-    let half_len = vec.len() / 2;
-    let [chall_l, chall_r] = challs;
-    let (vec_l, vec_r) = vec.split_at_mut(half_len);
-    for (l, r) in vec_l.iter_mut().zip(vec_r.iter()) {
-        *l = *l * chall_l + *r * chall_r;
-    }
-    vec.truncate(half_len);
-    vec
-}
-
-fn fold_basis<G>(mut vec: Vec<G>, challs: [G::ScalarField; 2]) -> Vec<G>
-where
-    G: Group,
-{
-    assert!(vec.len().is_power_of_two());
-    let half_len = vec.len() / 2;
-    let [chall_l, chall_r] = challs;
-    let (basis_l, basis_r) = vec.split_at_mut(half_len);
-    for (l, r) in basis_l.iter_mut().zip(basis_r.iter()) {
-        //TODO: use wnaf
-        *l = *l * chall_l + *r * chall_r;
-    }
-    vec.truncate(half_len);
-    vec
 }
 
 pub struct IpaScheme<F, G>
@@ -215,7 +184,7 @@ where
         commitment == open
     }
     /// Creates SRS from seed for length 2^k for provided k
-    fn init(len_log: usize, seed: Option<u64>) -> Self {
+    pub fn init(len_log: usize, seed: Option<u64>) -> Self {
         let seed = seed.unwrap_or(0);
         let mut rng = StdRng::seed_from_u64(seed);
         let mut point = || G::rand(&mut rng);
@@ -225,71 +194,5 @@ where
             .collect();
         let vector_basis = G::batch_convert_to_mul_base(&basis);
         Self { vector_basis }
-    }
-}
-fn compute_inner_product<F: Field>(a: &[F], b: &[F]) -> F {
-    debug_assert_eq!(a.len(), b.len());
-    a.iter()
-        .zip(b.iter())
-        .fold(F::zero(), |acc, (a, b)| acc + *a * b)
-}
-
-/// Computes the vector of 2^n combinations of n challenges and their inverses
-fn challenge_combinations<F: Field>(challs: &[F], challs_inv: &[F]) -> Vec<F> {
-    assert_eq!(challs.len(), challs_inv.len());
-    let zero: F = challs_inv.iter().cloned().sum();
-    let flips: Vec<F> = challs.iter().map(|x| x.square()).collect();
-    let mut combinations = vec![F::zero(); 1 << challs.len()];
-    combine_rec(&flips, zero, &mut combinations);
-    combinations
-}
-
-fn combine_rec<F: Field>(flips: &[F], zero: F, vec: &mut [F]) {
-    assert!(vec.len().is_power_of_two());
-    let half_len = vec.len() / 2;
-    if flips.len() == 0 {
-        vec[0] = zero;
-    } else {
-        let (low, high) = vec.split_at_mut(half_len);
-        combine_rec(&flips[1..], zero, low);
-        let flip = flips[0];
-        for (l, r) in low.iter().zip(high.iter_mut()) {
-            *r = flip * l;
-        }
-    }
-}
-
-struct SimpleSponge<F> {
-    hasher: blake3::Hasher,
-    _f: PhantomData<F>,
-}
-impl<F: PrimeField, G: Group> Sponge<F, G> for SimpleSponge<F> {
-    fn absorb_g(&mut self, x: G) {
-        let mut bytes = vec![];
-        x.serialize_uncompressed(&mut bytes).unwrap();
-        self.hasher.update(&bytes);
-    }
-
-    fn absorb_f(&mut self, x: F) {
-        let mut bytes = vec![];
-        x.serialize_uncompressed(&mut bytes).unwrap();
-        self.hasher.update(&bytes);
-    }
-
-    fn squeeze_f(&mut self) -> F {
-        let hash = self.hasher.finalize();
-        // reabsorbing hash to work like a sponge
-        self.hasher.update(hash.as_bytes());
-        F::from_le_bytes_mod_order(hash.as_bytes())
-    }
-
-    fn squeeze_g(&mut self) -> G {
-        let hash = self.hasher.finalize();
-        // reabsorbing hash to work like a sponge
-        self.hasher.update(hash.as_bytes());
-        // just creating a scalar and scaling the generator
-        // endomorphism recomposition would make more sense for real use cases
-        let scalar = <G::ScalarField>::from_le_bytes_mod_order(hash.as_bytes());
-        G::generator() * scalar
     }
 }
