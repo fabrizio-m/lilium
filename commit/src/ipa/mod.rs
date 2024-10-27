@@ -1,10 +1,11 @@
-use ark_ec::{Group, VariableBaseMSM};
+use ark_ec::VariableBaseMSM;
 use ark_ff::Field;
 use rand::{rngs::StdRng, SeedableRng};
 use sponge::Sponge;
 use vector_utils::{challenge_combinations, compute_inner_product, fold_basis, fold_vec};
 
 mod sponge;
+#[cfg(test)]
 mod tests;
 mod vector_utils;
 
@@ -73,7 +74,6 @@ impl<F, G> IpaScheme<F, G>
 where
     F: Field,
     G: VariableBaseMSM<ScalarField = F>,
-    G::MulBase: Group<ScalarField = F>,
 {
     pub fn new(vector_basis: Vec<G::MulBase>) -> Self {
         Self { vector_basis }
@@ -97,7 +97,7 @@ where
         let chall_inv = chall.inverse().unwrap();
         let a = fold_vec(a, [chall, chall_inv]);
         let b = fold_vec(b, [chall_inv, chall]);
-        let basis = fold_basis(basis, [chall, chall_inv]);
+        let basis = fold_basis::<G>(basis, [chall, chall_inv]);
         let commitment = commitment + cl * chall.square() + cr * chall_inv.square();
         let round = Round {
             a,

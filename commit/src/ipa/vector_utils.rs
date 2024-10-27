@@ -1,4 +1,4 @@
-use ark_ec::Group;
+use ark_ec::ScalarMul;
 use ark_ff::Field;
 
 pub fn fold_vec<F: Field>(mut vec: Vec<F>, challs: [F; 2]) -> Vec<F> {
@@ -13,20 +13,24 @@ pub fn fold_vec<F: Field>(mut vec: Vec<F>, challs: [F; 2]) -> Vec<F> {
     vec
 }
 
-pub fn fold_basis<G>(mut vec: Vec<G>, challs: [G::ScalarField; 2]) -> Vec<G>
+pub fn fold_basis<G>(vec: Vec<G::MulBase>, challs: [G::ScalarField; 2]) -> Vec<G::MulBase>
 where
-    G: Group,
+    G: ScalarMul,
 {
     assert!(vec.len().is_power_of_two());
     let half_len = vec.len() / 2;
     let [chall_l, chall_r] = challs;
-    let (basis_l, basis_r) = vec.split_at_mut(half_len);
-    for (l, r) in basis_l.iter_mut().zip(basis_r.iter()) {
+    let (basis_l, basis_r) = vec.split_at(half_len);
+
+    let basis: Vec<G> = basis_l
+        .iter()
+        .zip(basis_r.iter())
         //TODO: use wnaf
-        *l = *l * chall_l + *r * chall_r;
-    }
-    vec.truncate(half_len);
-    vec
+        .map(|(l, r)| *l * chall_l + *r * chall_r)
+        .collect();
+
+    //TODO: Not sure if this as good as it could be, check later
+    G::batch_convert_to_mul_base(&basis)
 }
 
 pub fn compute_inner_product<F: Field>(a: &[F], b: &[F]) -> F {
