@@ -9,6 +9,7 @@ pub trait Sponge<F, G> {
     fn squeeze_g(&mut self) -> G;
 }
 
+#[derive(Default)]
 pub struct SimpleSponge<F> {
     hasher: blake3::Hasher,
     _f: PhantomData<F>,

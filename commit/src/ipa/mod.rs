@@ -78,6 +78,10 @@ where
     pub fn new(vector_basis: Vec<G::MulBase>) -> Self {
         Self { vector_basis }
     }
+    pub fn commit(&self, a: &[F]) -> G {
+        assert_eq!(a.len(), self.vector_basis.len());
+        G::msm_unchecked(&self.vector_basis, a)
+    }
 
     pub fn round<S: Sponge<F, G>>(
         round: Round<F, G>,
@@ -97,7 +101,7 @@ where
         let chall_inv = chall.inverse().unwrap();
         let a = fold_vec(a, [chall, chall_inv]);
         let b = fold_vec(b, [chall_inv, chall]);
-        let basis = fold_basis::<G>(basis, [chall, chall_inv]);
+        let basis = fold_basis::<G>(basis, [chall_inv, chall]);
         let commitment = commitment + cl * chall.square() + cr * chall_inv.square();
         let round = Round {
             a,
@@ -162,6 +166,8 @@ where
         sponge.absorb_g(commitment);
         sponge.absorb_f(inner_product);
         let u = sponge.squeeze_g();
+        // scaling commitment to prevent shifting
+        let commitment: G = commitment + u * inner_product;
         let mut challenges = vec![];
         let commitment: G = messages.into_iter().fold(commitment, |acc, msg| {
             let (cl, cr) = msg;

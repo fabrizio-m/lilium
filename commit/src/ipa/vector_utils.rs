@@ -43,7 +43,7 @@ pub fn compute_inner_product<F: Field>(a: &[F], b: &[F]) -> F {
 /// Computes the vector of 2^n combinations of n challenges and their inverses
 pub fn challenge_combinations<F: Field>(challs: &[F], challs_inv: &[F]) -> Vec<F> {
     assert_eq!(challs.len(), challs_inv.len());
-    let zero: F = challs_inv.iter().cloned().sum();
+    let zero: F = challs_inv.iter().cloned().product();
     let flips: Vec<F> = challs.iter().map(|x| x.square()).collect();
     let mut combinations = vec![F::zero(); 1 << challs.len()];
     combine_rec(&flips, zero, &mut combinations);
