@@ -1,8 +1,6 @@
-use crate::ipa::sponge::SimpleSponge;
-use crate::ipa::{self, IpaScheme};
+use crate::ipa::{self, sponge::SimpleSponge, IpaScheme};
 use ark_ff::{UniformRand, Zero};
-use ark_vesta::Fr;
-use ark_vesta::Projective;
+use ark_vesta::{Fr, Projective};
 use rand::thread_rng;
 
 type Scheme = IpaScheme<Fr, Projective>;
@@ -11,6 +9,7 @@ type Proof = ipa::Proof<Fr, Projective>;
 const LEN_LOG: usize = 4;
 const LEN: usize = 1 << LEN_LOG;
 
+// proving an inner prover between 2 random vector4
 #[test]
 fn random_product() {
     let scheme: Scheme = Scheme::init(LEN_LOG, None);

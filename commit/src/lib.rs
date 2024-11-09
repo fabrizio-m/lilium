@@ -18,5 +18,11 @@ pub trait CommmitmentScheme<F: Field> {
         point: &MultiPoint<F>,
         eval: F,
     ) -> Self::OpenProof;
-    fn verify(&self, commitment: Self::Commitment, point: &MultiPoint<F>, eval: F) -> bool;
+    fn verify(
+        &self,
+        commitment: Self::Commitment,
+        point: &MultiPoint<F>,
+        eval: F,
+        proof: Self::OpenProof,
+    ) -> bool;
 }

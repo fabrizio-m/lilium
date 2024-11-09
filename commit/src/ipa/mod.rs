@@ -4,6 +4,7 @@ use rand::{rngs::StdRng, SeedableRng};
 use sponge::Sponge;
 use vector_utils::{challenge_combinations, compute_inner_product, fold_basis, fold_vec};
 
+mod poly_comm;
 mod sponge;
 #[cfg(test)]
 mod tests;
