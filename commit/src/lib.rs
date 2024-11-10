@@ -16,7 +16,7 @@ pub trait CommmitmentScheme<F: Field> {
         evals: &[F],
         commitment: Self::Commitment,
         point: &MultiPoint<F>,
-        eval: F,
+        eval: Option<F>,
     ) -> Self::OpenProof;
     fn verify(
         &self,

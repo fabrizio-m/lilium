@@ -71,6 +71,12 @@ where
 
 pub struct SingleEval<F>(pub F);
 
+impl<F> SingleEval<F> {
+    pub fn from_vec(mle: Vec<F>) -> Vec<Self> {
+        mle.into_iter().map(Self).collect()
+    }
+}
+
 impl<F> Index<()> for SingleEval<F> {
     type Output = F;
 
