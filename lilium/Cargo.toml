@@ -4,3 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+
+ark-ff = "0.4"
+ccs = { path = "../ccs"}
+sumcheck = { path = "../sumcheck"}
