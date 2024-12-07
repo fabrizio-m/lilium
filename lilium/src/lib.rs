@@ -9,6 +9,8 @@ use sumcheck::{
     sumcheck::{Env, SumcheckFunction, Var},
 };
 
+pub mod multivariate;
+
 pub struct Prover<F: Field, const IO: usize = 0> {
     _phantom: PhantomData<F>,
 }
