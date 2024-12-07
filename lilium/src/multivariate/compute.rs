@@ -109,8 +109,8 @@ impl<F: Field, V: Eq + Ord> Neg for MvPoly<F, V> {
     type Output = Self;
 
     fn neg(mut self) -> Self::Output {
-        for (_, mut constant) in self.terms.iter_mut() {
-            constant = -constant;
+        for (_, constant) in self.terms.iter_mut() {
+            *constant = -(*constant);
         }
         self
     }
