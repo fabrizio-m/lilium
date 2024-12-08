@@ -3,19 +3,24 @@ use ark_ff::Field;
 use std::{collections::BTreeMap, iter::Iterator};
 
 /// A representation of a multivariate polynomial optimized for evaluation,
-/// as such it doesn't support any operation
+/// as such it doesn't support any operation.
+/// Essentiall Horner's rule with memory optimizations
 #[derive(Debug, Clone)]
 pub struct MvEvaluator<F: Field, V> {
     pub operations: Vec<Op<V>>,
     pub operands: Vec<(F, V)>,
 }
 
-/// Whether to take from operands or from the stack of partial results
+// TODO: Explore using Pippenger instead.
+
+/// Whether to take from operands or from the stack of partial results.
 #[derive(Debug, Clone)]
 pub enum OperandOrStack {
     Operand,
     Stack,
 }
+// TODO: Add operations to optimize sum and scaling of degree 1 terms
+// which will apear in the intended use case.
 #[derive(Debug, Clone)]
 pub enum Op<V> {
     /// Pop 1 from stack and 1 from either stack or operands, add and push
