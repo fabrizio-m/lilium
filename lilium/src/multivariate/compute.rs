@@ -21,7 +21,6 @@ impl<F: Field, V: Eq + Ord> Default for MvPoly<F, V> {
 #[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Debug)]
 pub struct MvPolyTerm<V: Eq + Ord> {
     // (var, power)
-    // pub vars: Vec<(V, usize)>,
     pub vars: BTreeMap<V, usize>,
 }
 
