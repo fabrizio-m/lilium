@@ -1,4 +1,4 @@
-use crate::{constraint_system::cs_prototype::GateRegistry, structure::Exp};
+use crate::structure::Exp;
 use std::ops;
 
 pub trait ConstraintSystem {
@@ -24,9 +24,6 @@ pub trait Gate<const IO: usize, const I: usize, const O: usize>: Sized + 'static
     fn gate<V: Var>(i: [V; I]) -> [V; O];
     ///the output should be zero when the constraint is satisfied
     fn check<V: Var>(i: [V; I], o: [V; O]) -> V;
-    fn register(registry: &mut GateRegistry) {
-        registry.register_gate::<Self, IO, I, O>();
-    }
 }
 
 fn eval_gate_constraint<G, const IO: usize, const I: usize, const O: usize>() -> Exp<usize>
@@ -67,26 +64,18 @@ pub mod cs_prototype {
                 next_selector: 0,
             }
         }
-        pub fn register_gate<G, const IO: usize, const I: usize, const O: usize>(&mut self)
+        pub fn selector<G, const IO: usize, const I: usize, const O: usize>(&mut self) -> usize
         where
-            G: Gate<IO, I, O>,
+            G: Any + Gate<IO, I, O>,
         {
             let id = TypeId::of::<G>();
-            if self.gate_registry.contains_key(&id) {
-                panic!("already registered")
-            } else {
-                //this will reserve 0 for equality
+            let entry = self.gate_registry.entry(id);
+            let entry = entry.or_insert_with(|| {
                 self.next_selector += 1;
                 let exp = eval_gate_constraint::<G, IO, I, O>();
-                self.gate_registry.insert(id, (self.next_selector, exp));
-            }
-        }
-        pub fn selector<T: Any>(&self) -> usize {
-            let id = TypeId::of::<T>();
-            self.gate_registry
-                .get(&id)
-                .expect("use of unregistered gate")
-                .0
+                (self.next_selector, exp)
+            });
+            entry.0
         }
     }
 

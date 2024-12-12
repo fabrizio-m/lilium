@@ -1,5 +1,5 @@
 use crate::{
-    constraint_system::{cs_prototype::GateRegistry, ConstraintSystem},
+    constraint_system::ConstraintSystem,
     structure::{CcsStructure, StructureBuilder},
     witness::{unwrap_output, Witness, WitnessGenerator},
 };
@@ -11,7 +11,6 @@ pub trait Circuit<F: Field, const IN: usize = 0, const OUT: usize = 0, const PRI
     ///() if you don't care
     type PrivateOutput;
 
-    fn register_gates(registry: &mut GateRegistry);
     fn circuit<C: ConstraintSystem>(
         cs: &mut C,
         public_input: [C::V; IN],
@@ -28,7 +27,6 @@ pub trait BuildStructure<
 {
     fn structure<const S: usize>() -> CcsStructure<IO, S, F> {
         let (mut cs, public_input) = StructureBuilder::<IO>::with_inputs::<IN>();
-        cs.register_gates(Self::register_gates);
         let (public_out, private_out) = Self::circuit(&mut cs, public_input);
         //unnecessary for this
         let _ = private_out;
@@ -68,7 +66,7 @@ where
 mod test {
     use crate::{
         circuit::Circuit,
-        constraint_system::{cs_prototype::Add, ConstraintSystem, Gate},
+        constraint_system::{cs_prototype::Add, ConstraintSystem},
     };
     use ark_ff::Field;
 
@@ -77,10 +75,6 @@ mod test {
         type PrivateInput = ();
 
         type PrivateOutput = ();
-        ///register the gates to be used in the circuit
-        fn register_gates(registry: &mut crate::constraint_system::cs_prototype::GateRegistry) {
-            Add::register(registry);
-        }
 
         fn circuit<C: ConstraintSystem>(
             cs: &mut C,
@@ -104,10 +98,6 @@ mod test {
         type PrivateInput = ();
 
         type PrivateOutput = ();
-
-        fn register_gates(registry: &mut crate::constraint_system::cs_prototype::GateRegistry) {
-            MyCircuit::register_gates(registry);
-        }
 
         fn circuit<C: ConstraintSystem>(
             cs: &mut C,

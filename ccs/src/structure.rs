@@ -121,11 +121,6 @@ impl<const MAX_IO: usize> StructureBuilder<MAX_IO> {
         self.vars.push(v);
         v
     }
-    /// allows `f` to access the internal [GateRegistry]
-    pub(crate) fn register_gates<F: FnOnce(&mut GateRegistry)>(&mut self, f: F) {
-        let registry = &mut self.registry;
-        f(registry);
-    }
     pub fn with_inputs<const I: usize>() -> (Self, [usize; I]) {
         let mut new = Self::new();
         let inputs = [(); I].map(|_| new.var());
@@ -205,7 +200,7 @@ impl<const MAX_IO: usize> ConstraintSystem for StructureBuilder<MAX_IO> {
         for i in 0..I {
             io[i] = inputs[i];
         }
-        let selector = self.registry.selector::<G>();
+        let selector = self.registry.selector::<G, IO, I, O>();
         let output = [(); O].map(|_| self.var());
         for i in 0..O {
             io[i + I] = output[i];
