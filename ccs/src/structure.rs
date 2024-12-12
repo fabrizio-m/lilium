@@ -192,14 +192,7 @@ impl<const MAX_IO: usize> StructureBuilder<MAX_IO> {
     }
 }
 impl<const MAX_IO: usize> ConstraintSystem for StructureBuilder<MAX_IO> {
-    ///TODO;
-    const S: usize = 5;
-
     type V = usize;
-
-    fn make_gates() -> Vec<u8> {
-        todo!()
-    }
 
     fn execute<G, const IO: usize, const I: usize, const O: usize>(
         &mut self,

@@ -36,14 +36,7 @@ pub struct WitnessGenerator<F: Field, const IO: usize> {
 pub struct Witness<F: Field>(pub Vec<F>);
 
 impl<F: Field, const MAX_IO: usize> ConstraintSystem for WitnessGenerator<F, MAX_IO> {
-    ///should check
-    const S: usize = 0;
-
     type V = Fi<F>;
-
-    fn make_gates() -> Vec<u8> {
-        todo!()
-    }
 
     fn execute<G, const IO: usize, const I: usize, const O: usize>(
         &mut self,

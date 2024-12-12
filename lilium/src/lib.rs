@@ -106,7 +106,7 @@ impl<F: Field> SumcheckFunction<F> for CsFunction<F> {
 
     type Challs = ();
 
-    fn function<V: Var<F>, E: Env<F, V, Self::Idx>>(en: E, challs: &Self::Challs) -> V {
+    fn function<V: Var<F>, E: Env<F, V, Self::Idx>>(env: E, challs: &Self::Challs) -> V {
         todo!()
     }
 }

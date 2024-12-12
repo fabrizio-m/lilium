@@ -2,11 +2,7 @@ use crate::{constraint_system::cs_prototype::GateRegistry, structure::Exp};
 use std::ops;
 
 pub trait ConstraintSystem {
-    ///number of selectors, log of the number of gates
-    const S: usize;
     type V: Var;
-
-    fn make_gates() -> Vec<u8>;
 
     fn execute<G, const IO: usize, const I: usize, const O: usize>(
         &mut self,
