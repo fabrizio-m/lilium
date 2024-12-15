@@ -1,12 +1,9 @@
 use crate::{
-    challenges::SparkChallenges,
-    evals::SparkEval,
-    spark::SparkEvalCheck,
-    structure::{DimensionStructure, SparkStructure},
+    challenges::SparkChallenges, evals::SparkEval, spark::SparkEvalCheck, structure::SparkStructure,
 };
 use ark_ff::Field;
 use rand::{rngs::StdRng, Rng, SeedableRng};
-use std::{collections::BTreeMap, iter::successors};
+use std::collections::BTreeMap;
 use sumcheck::{
     polynomials::{EvalsExt, MultiPoint, SingleEval},
     sumcheck::{SumcheckProver, SumcheckVerifier},
@@ -48,36 +45,15 @@ fn dense_poly<F: Field>(samples: &[(usize, F)]) -> Vec<SingleEval<F>> {
 /// Creates the structure representing this sparse polynomial, the structure
 /// being mostly a collection of smaller dense polynomials.
 fn sparse_poly<F: Field>(samples: &[(usize, F)]) -> SparkStructure<F, 2> {
-    let len = 1 << HALF_VARS;
-    let mut lookup_low = Vec::with_capacity(len);
-    let mut lookup_high = Vec::with_capacity(len);
-    let mut counts_low = vec![0; len];
-    let mut counts_high = vec![0; len];
-    let mut evals = Vec::with_capacity(len);
-    for (i, eval) in samples {
-        let i_low = i & ((1 << HALF_VARS) - 1);
-        let i_high = i >> HALF_VARS;
-        evals.push(*eval);
-
-        lookup_low.push(i_low);
-        lookup_high.push(i_high);
-        counts_low[i_low] += 1;
-        counts_high[i_high] += 1;
-    }
-    let dim_low = DimensionStructure::new(counts_low, lookup_low);
-    let dim_high = DimensionStructure::new(counts_high, lookup_high);
-
-    let normal_index = successors(Some(0_u32), |x| Some(x + 1))
-        .map(F::from)
-        .take(len)
+    let evals = samples
+        .into_iter()
+        .map(|(index, val)| {
+            let i_low = index & ((1 << HALF_VARS) - 1);
+            let i_high = index >> HALF_VARS;
+            ([i_low, i_high], *val)
+        })
         .collect();
-    let dimensions = [dim_low, dim_high];
-    let val = evals;
-    SparkStructure {
-        dimensions,
-        normal_index,
-        val,
-    }
+    SparkStructure::new(evals)
 }
 
 fn test<F: Field>() {
