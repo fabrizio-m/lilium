@@ -38,6 +38,16 @@ impl Matrix {
     fn push_row_single_value(&mut self, idx: usize) {
         self.rows.push(vec![idx])
     }
+    /// convert to sparse indexed evals as expected by spark
+    pub fn to_evals(&self) -> Vec<(usize, usize)> {
+        let mut evals = Vec::with_capacity(self.rows.len());
+        for (i, cols) in self.rows.iter().enumerate() {
+            for col in cols {
+                evals.push((i, *col));
+            }
+        }
+        evals
+    }
 }
 /// considering that each row will either be 0 or 1 just in the first element,
 /// it can be represented with just Vec<bool>
