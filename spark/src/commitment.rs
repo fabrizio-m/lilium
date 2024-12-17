@@ -16,8 +16,8 @@ pub struct DimensionCommitment<C> {
 
 impl<C, const D: usize> SparkCommitment<C, D> {
     /// Commits to each MLE using the provided function
-    pub fn from_structure<F: Field, S: Fn(Vec<F>) -> C>(
-        structure: SparkStructure<F, D>,
+    pub fn from_structure<F: Field, S: Fn(&Vec<F>) -> C>(
+        structure: &SparkStructure<F, D>,
         scheme: S,
     ) -> Self {
         let SparkStructure {
@@ -27,7 +27,7 @@ impl<C, const D: usize> SparkCommitment<C, D> {
         } = structure;
         let val = scheme(val);
         let normal_index = scheme(normal_index);
-        let dimensions = dimensions.map(|dim| {
+        let dimensions = dimensions.each_ref().map(|dim| {
             let DimensionStructure {
                 counts_field,
                 lookups_field,

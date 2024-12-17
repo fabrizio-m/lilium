@@ -27,6 +27,8 @@ pub struct SparkStructure<F: Field, const D: usize> {
     pub val: Vec<F>,
 }
 
+pub type SparkMatrix<F> = SparkStructure<F, 2>;
+
 impl<F: Field> DimensionStructure<F> {
     pub fn new(counts: Vec<usize>, lookups: Vec<usize>) -> Self {
         let counts_field = counts.iter().map(|x| *x as u64).map(F::from).collect();
