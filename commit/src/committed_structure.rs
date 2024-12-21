@@ -1,7 +1,9 @@
 use crate::CommmitmentScheme;
 use ark_ff::Field;
-use sumcheck::polynomials::{Evals, MultiPoint};
-use sumcheck::sumcheck::SumcheckFunction;
+use sumcheck::{
+    polynomials::{Evals, MultiPoint},
+    sumcheck::SumcheckFunction,
+};
 
 pub struct CommittedStructure<F, SF, CS>
 where
@@ -72,6 +74,10 @@ where
     ) -> bool {
         let mut evals = evals.flatten_vec().into_iter();
         let mut proofs = proofs.into_iter();
+        //TODO: only work with all evals being commit
+        if proofs.len() != evals.len() {
+            return false;
+        }
 
         for i in 0..evals.len() {
             let commitment = self.commitments[i].clone();
