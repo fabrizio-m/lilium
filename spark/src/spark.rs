@@ -5,7 +5,7 @@ use crate::{
 };
 use ark_ff::Field;
 use sumcheck::{
-    sumcheck::{Env, SumcheckFunction, Var},
+    sumcheck::{Env, EvalKind, SumcheckFunction, Var},
     utils::{ZeroAvailable, ZeroCheckAvailable},
 };
 
@@ -14,7 +14,7 @@ pub struct SparkEvalCheck<const D: usize>;
 
 impl<F: Field, const D: usize> SumcheckFunction<F> for SparkEvalCheck<D> {
     type Idx = SparkIndex;
-    type Mles = SparkEval<F, D>;
+    type Mles<V: Copy + std::fmt::Debug> = SparkEval<V, D>;
     type Challs = SparkChallenges<F>;
 
     fn function<V, E>(env: E, challs: &SparkChallenges<F>) -> V
@@ -38,6 +38,19 @@ impl<F: Field, const D: usize> SumcheckFunction<F> for SparkEvalCheck<D> {
             eval = dim * eval;
         }
         all_checks * combination_challenge + eval
+    }
+
+    fn eval_kinds() -> Self::Mles<EvalKind> {
+        SparkEval::<(), D>::kinds()
+    }
+
+    fn map_evals<A, B, M>(evals: Self::Mles<A>, f: M) -> Self::Mles<B>
+    where
+        A: Copy + std::fmt::Debug,
+        B: Copy + std::fmt::Debug,
+        M: Fn(A) -> B,
+    {
+        evals.map(f)
     }
 }
 

@@ -33,7 +33,7 @@ where
     E: Evals<F, Idx = I>,
 {
     fn get(&self, i: I) -> F {
-        let f = self.evals[i];
+        let f = *self.evals.index(i);
         f
     }
 }

@@ -1,6 +1,8 @@
+use std::fmt::Debug;
+
 use crate::{
     polynomials::{simple_eval::SimpleEval, EvalsExt, MultiPoint},
-    sumcheck::{Env, SumcheckFunction, SumcheckProver, SumcheckVerifier, Var},
+    sumcheck::{Env, EvalKind, SumcheckFunction, SumcheckProver, SumcheckVerifier, Var},
     utils::{ZeroCheck, ZeroCheckAvailable},
 };
 use ark_ff::Field;
@@ -21,7 +23,7 @@ type Evals<F> = SimpleEval<F, 4>;
 impl<F: Field> SumcheckFunction<F> for MulGate {
     type Idx = usize;
 
-    type Mles = Evals<F>;
+    type Mles<V: Copy + Debug> = Evals<V>;
 
     type Challs = ();
 
@@ -32,6 +34,18 @@ impl<F: Field> SumcheckFunction<F> for MulGate {
         let res = a * b - c;
         let zero_check = ZeroCheck(res);
         ZeroCheckAvailable::zero_check(&env, zero_check).0
+    }
+
+    fn map_evals<A, B, M>(evals: Self::Mles<A>, f: M) -> Self::Mles<B>
+    where
+        A: Copy + Debug,
+        B: Copy + Debug,
+        M: Fn(A) -> B,
+    {
+        evals.map(f)
+    }
+    fn eval_kinds() -> Self::Mles<EvalKind> {
+        SimpleEval::new([EvalKind::FixedSmall; 4])
     }
 }
 

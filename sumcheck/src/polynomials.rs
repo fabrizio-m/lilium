@@ -1,5 +1,4 @@
 use ark_ff::Field;
-use std::ops::Index;
 
 ///A point with `n` variables
 #[derive(Clone)]
@@ -26,10 +25,18 @@ impl<F: Field> MultiPoint<F> {
 
 /// must be some wrapper over [F], representing all the evaluations at some
 /// point of the domain
-pub trait Evals<F: Field>: Index<Self::Idx, Output = F> {
+pub trait Evals<V> {
     type Idx: Copy;
+    fn index(&self, index: Self::Idx) -> &V;
     ///should combine 2 [Self] into one by using `f` to combine each element
-    fn combine<C: Fn(F, F) -> F>(&self, other: &Self, f: C) -> Self;
+    fn combine<C: Fn(V, V) -> V>(&self, other: &Self, f: C) -> Self;
+
+    /// flatten all elements into a vec, each element should be pushed into the vec,
+    /// should also include the corresponding index.
+    fn flatten(self, vec: &mut Vec<V>);
+    /// unflatten Self from a vec, can be assumed to be the output of flatten,
+    /// it allows to implement the methods as the opposite of flatten using pop().
+    fn unflatten(vec: &mut Vec<V>) -> Self;
 }
 
 pub trait EvalsExt<F: Field>: Evals<F> + Sized {
@@ -77,19 +84,22 @@ impl<F> SingleEval<F> {
     }
 }
 
-impl<F> Index<()> for SingleEval<F> {
-    type Output = F;
-
-    fn index(&self, _index: ()) -> &Self::Output {
-        &self.0
-    }
-}
-
-impl<F: Field> Evals<F> for SingleEval<F> {
+impl<V: Copy> Evals<V> for SingleEval<V> {
     type Idx = ();
 
-    fn combine<C: Fn(F, F) -> F>(&self, other: &Self, f: C) -> Self {
+    fn combine<C: Fn(V, V) -> V>(&self, other: &Self, f: C) -> Self {
         SingleEval(f(self.0, other.0))
+    }
+
+    fn index(&self, _index: Self::Idx) -> &V {
+        &self.0
+    }
+    fn flatten(self, vec: &mut Vec<V>) {
+        vec.push(self.0);
+    }
+
+    fn unflatten(vec: &mut Vec<V>) -> Self {
+        Self(vec.pop().unwrap())
     }
 }
 impl<F: Clone> SingleEval<F> {
@@ -101,8 +111,7 @@ impl<F: Clone> SingleEval<F> {
 pub mod simple_eval {
     use super::Evals;
     use crate::utils::ZeroCheckAvailable;
-    use ark_ff::Field;
-    use std::ops::Index;
+    use std::fmt::Debug;
 
     #[derive(Clone, Debug)]
     pub struct SimpleEval<F, const N: usize>([F; N]);
@@ -111,6 +120,12 @@ pub mod simple_eval {
         pub fn new(inner: [F; N]) -> Self {
             Self(inner)
         }
+        pub fn map<V, M>(self, f: M) -> SimpleEval<V, N>
+        where
+            M: Fn(F) -> V,
+        {
+            SimpleEval(self.0.map(f))
+        }
     }
     impl ZeroCheckAvailable for usize {
         fn zerocheck_eq() -> Self {
@@ -118,22 +133,28 @@ pub mod simple_eval {
         }
     }
 
-    impl<F: Field, const N: usize> Index<usize> for SimpleEval<F, N> {
-        type Output = F;
-
-        fn index(&self, index: usize) -> &Self::Output {
-            &self.0[index]
-        }
-    }
-    impl<F: Field, const N: usize> Evals<F> for SimpleEval<F, N> {
+    impl<V: Copy + Debug, const N: usize> Evals<V> for SimpleEval<V, N> {
         type Idx = usize;
 
-        fn combine<C: Fn(F, F) -> F>(&self, other: &Self, f: C) -> Self {
+        fn index(&self, index: Self::Idx) -> &V {
+            &self.0[index]
+        }
+        fn combine<C: Fn(V, V) -> V>(&self, other: &Self, f: C) -> Self {
             let mut res = self.0.clone();
             for i in 0..N {
                 res[i] = f(res[i], other.0[i]);
             }
             Self(res)
+        }
+        fn flatten(self, vec: &mut Vec<V>) {
+            for i in 0..N {
+                vec.push(self.0[i]);
+            }
+        }
+
+        fn unflatten(vec: &mut Vec<V>) -> Self {
+            vec.reverse();
+            Self(vec.clone().try_into().unwrap())
         }
     }
 }

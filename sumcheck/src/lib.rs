@@ -4,6 +4,7 @@ pub(crate) mod barycentric_eval;
 pub(crate) mod degree;
 pub mod eq;
 pub mod eval_check;
+pub mod eval_impls;
 pub(crate) mod message;
 pub mod polynomials;
 pub mod sumcheck;

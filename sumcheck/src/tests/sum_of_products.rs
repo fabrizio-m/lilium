@@ -1,6 +1,8 @@
+use std::fmt::Debug;
+
 use crate::{
     polynomials::{simple_eval::SimpleEval, EvalsExt, MultiPoint},
-    sumcheck::{Env, SumcheckFunction, SumcheckProver, SumcheckVerifier, Var},
+    sumcheck::{Env, EvalKind, SumcheckFunction, SumcheckProver, SumcheckVerifier, Var},
 };
 use ark_ff::Field;
 use rand::{rngs::StdRng, SeedableRng};
@@ -13,7 +15,7 @@ struct SumOfProducts;
 impl<F: Field> SumcheckFunction<F> for SumOfProducts {
     type Idx = usize;
 
-    type Mles = SimpleEval<F, 2>;
+    type Mles<V: Copy + Debug> = SimpleEval<V, 2>;
 
     type Challs = ();
 
@@ -21,6 +23,19 @@ impl<F: Field> SumcheckFunction<F> for SumOfProducts {
         let a = env.get(0);
         let b = env.get(1);
         a * b
+    }
+
+    fn map_evals<A, B, M>(evals: Self::Mles<A>, f: M) -> Self::Mles<B>
+    where
+        A: Copy + Debug,
+        B: Copy + Debug,
+        M: Fn(A) -> B,
+    {
+        evals.map(f)
+    }
+
+    fn eval_kinds() -> Self::Mles<EvalKind> {
+        SimpleEval::new([EvalKind::FixedSmall; 2])
     }
 }
 

@@ -8,6 +8,7 @@ use crate::{
 };
 use ark_ff::Field;
 use std::{
+    fmt::Debug,
     marker::PhantomData,
     ops::{Add, AddAssign, Mul, MulAssign, Sub},
 };
@@ -44,13 +45,33 @@ impl<F: Field, V: Var<F>, I, E: Env<F, V, I>> Env<F, V, I> for &E {
     }
 }
 
+#[derive(Clone, Copy, Debug)]
+/// Describes how a given mle should be evaluated at a point
+pub enum EvalKind {
+    /// To be evaluated through opening a commitment
+    Committed,
+    /// Small representation that can be just evaluated by the verifier
+    FixedSmall,
+    /// Some MLE that can't be directly evaluated, the evaluation is
+    /// provided as a claim to be verified later through other means.
+    /// The specific use of this is for matrix evalation with spark.
+    Virtual,
+}
+
 /// Defines a polynomial used in sumcheck as a function of multilinear
 /// polynomials
 pub trait SumcheckFunction<F: Field> {
     type Idx: Copy;
-    type Mles: Evals<F, Idx = Self::Idx>;
+    type Mles<V: Copy + Debug>: Evals<V, Idx = Self::Idx>;
     type Challs: Default;
 
+    /// Provides a description of how each mle should be evaluated
+    fn eval_kinds() -> Self::Mles<EvalKind>;
+    fn map_evals<A, B, M>(evals: Self::Mles<A>, f: M) -> Self::Mles<B>
+    where
+        A: Copy + Debug,
+        B: Copy + Debug,
+        M: Fn(A) -> B;
     ///computes the arbitrary degree polynomial as a function of multilinear polynomials
     fn function<V: Var<F>, E: Env<F, V, Self::Idx>>(env: E, challs: &Self::Challs) -> V;
 }
@@ -86,7 +107,7 @@ where
         let degree = SF::function(degree_env, &challs);
         degree.0
     }
-    fn message(&self, mle: &[SF::Mles], challs: &SF::Challs) -> Message<F> {
+    fn message(&self, mle: &[SF::Mles<F>], challs: &SF::Challs) -> Message<F> {
         let half_len = mle.len() / 2;
         let (left, right) = mle.split_at(half_len);
         let degree = self.degree;
@@ -104,7 +125,7 @@ where
     pub fn prove(
         &self,
         r: &MultiPoint<F>,
-        mle: Vec<SF::Mles>,
+        mle: Vec<SF::Mles<F>>,
         challs: &SF::Challs,
     ) -> Proof<F, SF> {
         assert_eq!(self.vars, r.vars());
@@ -179,7 +200,7 @@ impl<F: Field, SF: SumcheckFunction<F>> SumcheckVerifier<F, SF> {
     }
     // Will check that c = P(r) from the evaluations of the
     // multilinear polynomials that compose it
-    pub fn check_evals_at_r(&self, evals: SF::Mles, c: F, challs: &SF::Challs) -> bool {
+    pub fn check_evals_at_r(&self, evals: SF::Mles<F>, c: F, challs: &SF::Challs) -> bool {
         let env = EvalCheckEnv::new(evals);
         let eval = SF::function(env, challs);
         eval == c
@@ -194,18 +215,28 @@ mod test {
     };
     use ark_vesta::Fr;
     use rand::{thread_rng, Rng};
-    use std::ops::Index;
+    use std::fmt::Debug;
+
+    use super::EvalKind;
 
     #[derive(Clone, Copy)]
-    struct Eval {
-        a: Fr,
-        b: Fr,
-        c: Fr,
+    struct Eval<V = Fr> {
+        a: V,
+        b: V,
+        c: V,
     }
-    impl Index<usize> for Eval {
-        type Output = Fr;
 
-        fn index(&self, index: usize) -> &Self::Output {
+    impl<V: Copy> Evals<V> for Eval<V> {
+        type Idx = usize;
+
+        fn combine<C: Fn(V, V) -> V>(&self, other: &Self, f: C) -> Self {
+            let a = f(self.a, other.a);
+            let b = f(self.b, other.b);
+            let c = f(self.c, other.c);
+            Eval { a, b, c }
+        }
+
+        fn index(&self, index: Self::Idx) -> &V {
             match index {
                 0 => &self.a,
                 1 => &self.b,
@@ -215,21 +246,38 @@ mod test {
                 }
             }
         }
-    }
-    impl Evals<Fr> for Eval {
-        type Idx = usize;
 
-        fn combine<C: Fn(Fr, Fr) -> Fr>(&self, other: &Self, f: C) -> Self {
-            let a = f(self.a, other.a);
-            let b = f(self.b, other.b);
-            let c = f(self.c, other.c);
-            Eval { a, b, c }
+        fn flatten(self, vec: &mut Vec<V>) {
+            let Self { a, b, c } = self;
+            vec.push(a);
+            vec.push(b);
+            vec.push(c);
         }
+
+        fn unflatten(vec: &mut Vec<V>) -> Self {
+            let c = vec.pop().unwrap();
+            let b = vec.pop().unwrap();
+            let a = vec.pop().unwrap();
+            Self { a, b, c }
+        }
+    }
+
+    fn map_evals<A, B, M>(evals: Eval<A>, f: M) -> Eval<B>
+    where
+        A: Copy,
+        B: Copy,
+        M: Fn(A) -> B,
+    {
+        let Eval { a, b, c } = evals;
+        let a = f(a);
+        let b = f(b);
+        let c = f(c);
+        Eval { a, b, c }
     }
     struct MulGate;
     impl SumcheckFunction<Fr> for MulGate {
         type Idx = usize;
-        type Mles = Eval;
+        type Mles<V: Copy + Debug> = Eval<V>;
         type Challs = ();
 
         fn function<V: Var<Fr>, E: Env<Fr, V, Self::Idx>>(env: E, _challs: &()) -> V {
@@ -238,16 +286,49 @@ mod test {
             let c = env.get(2);
             (a.clone() * b) - c
         }
+
+        fn map_evals<A, B, M>(evals: Self::Mles<A>, f: M) -> Self::Mles<B>
+        where
+            A: Copy + Debug,
+            B: Copy + Debug,
+            M: Fn(A) -> B,
+        {
+            map_evals(evals, f)
+        }
+
+        fn eval_kinds() -> Self::Mles<EvalKind> {
+            Eval {
+                a: EvalKind::FixedSmall,
+                b: EvalKind::FixedSmall,
+                c: EvalKind::FixedSmall,
+            }
+        }
     }
     struct SquareGate;
     impl SumcheckFunction<Fr> for SquareGate {
         type Idx = usize;
-        type Mles = Eval;
+        type Mles<V: Copy + Debug> = Eval<V>;
         type Challs = ();
 
         fn function<V: Var<Fr>, E: Env<Fr, V, Self::Idx>>(env: E, _challs: &()) -> V {
             let a = env.get(0);
             a.clone() * a
+        }
+
+        fn map_evals<A, B, M>(evals: Self::Mles<A>, f: M) -> Self::Mles<B>
+        where
+            A: Copy + Debug,
+            B: Copy + Debug,
+            M: Fn(A) -> B,
+        {
+            map_evals(evals, f)
+        }
+        fn eval_kinds() -> Self::Mles<EvalKind> {
+            Eval {
+                a: EvalKind::FixedSmall,
+                b: EvalKind::FixedSmall,
+                c: EvalKind::FixedSmall,
+            }
         }
     }
 

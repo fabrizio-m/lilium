@@ -167,9 +167,9 @@ impl<'a, I: Copy, F: Field, E: Evals<F, Idx = I>> Env<F, Message<F>, I>
     for MessageEnv<'a, I, F, E>
 {
     fn get(&self, i: I) -> Message<F> {
-        let e0 = self.evals_left[i];
-        let e1 = self.evals_right[i];
-        let message = Message::new_degree_n(e0, e1, self.degree);
+        let e0 = self.evals_left.index(i);
+        let e1 = self.evals_right.index(i);
+        let message = Message::new_degree_n(*e0, *e1, self.degree);
         message
     }
 }

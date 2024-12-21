@@ -4,10 +4,10 @@ use crate::{
     structure::{DimensionStructure, SparkStructure},
 };
 use ark_ff::Field;
-use std::ops::Index;
 use sumcheck::{
     eq,
     polynomials::{Evals, MultiPoint},
+    sumcheck::EvalKind,
     utils::{ZeroAvailable, ZeroCheckAvailable},
 };
 
@@ -15,28 +15,28 @@ use sumcheck::{
 /// with at most 2^m non-zero evaluations.
 /// A common example would D = 2 for a sparse matrix
 #[derive(Clone, Debug)]
-pub struct SparkEval<F: Field, const D: usize> {
-    dimensions: [DimensionEval<F>; D],
+pub struct SparkEval<V, const D: usize> {
+    dimensions: [DimensionEval<V>; D],
     /// 0..n
-    normal_index: F,
-    val: F,
-    zero_eq: F,
+    normal_index: V,
+    val: V,
+    zero_eq: V,
     /// 0
-    zero: F,
+    zero: V,
 }
 
 /// Evals corresponding to a particular dimension
 #[derive(Clone, Copy, Debug)]
-pub struct DimensionEval<F: Field> {
-    lookup: LookupEval<F>,
+pub struct DimensionEval<V> {
+    lookup: LookupEval<V>,
     /// eq(x,r) for the r corresponding to this dimension
-    eq_eval: F,
+    eq_eval: V,
     /// the indices of this particular dimension, a multiset
     /// made of elements from the normal index
-    dimension_index: F,
+    dimension_index: V,
     /// the lookups into eq_eval constrained by this dimension's
     /// index
-    eq_lookups: F,
+    eq_lookups: V,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -47,27 +47,49 @@ pub enum DimensionIndex {
     EqLookup,
 }
 
-impl<F: Field> Index<DimensionIndex> for DimensionEval<F> {
-    type Output = F;
+impl<V: Copy> Evals<V> for DimensionEval<V> {
+    type Idx = DimensionIndex;
 
-    fn index(&self, index: DimensionIndex) -> &Self::Output {
+    fn combine<C: Fn(V, V) -> V>(&self, other: &Self, f: C) -> Self {
+        let lookup = self.lookup.combine(&other.lookup, &f);
+        let eq_eval = f(self.eq_eval, other.eq_eval);
+        let dimension_index = f(self.dimension_index, other.dimension_index);
+        let eq_lookups = f(self.eq_lookups, other.eq_lookups);
+        Self {
+            lookup,
+            eq_eval,
+            dimension_index,
+            eq_lookups,
+        }
+    }
+
+    fn index(&self, index: Self::Idx) -> &V {
         match index {
-            DimensionIndex::Lookup(lookup_idx) => &self.lookup[lookup_idx],
+            DimensionIndex::Lookup(lookup_idx) => &self.lookup.index(lookup_idx),
             DimensionIndex::EqEval => &self.eq_eval,
             DimensionIndex::Dimension => &self.dimension_index,
             DimensionIndex::EqLookup => &self.eq_lookups,
         }
     }
-}
 
-impl<F: Field> Evals<F> for DimensionEval<F> {
-    type Idx = DimensionIndex;
+    fn flatten(self, vec: &mut Vec<V>) {
+        let Self {
+            lookup,
+            eq_eval,
+            dimension_index,
+            eq_lookups,
+        } = self;
+        lookup.flatten(vec);
+        vec.push(eq_eval);
+        vec.push(dimension_index);
+        vec.push(eq_lookups);
+    }
 
-    fn combine<C: Fn(F, F) -> F>(&self, other: &Self, f: C) -> Self {
-        let lookup = self.lookup.combine(&other.lookup, &f);
-        let eq_eval = f(self.eq_eval, other.eq_eval);
-        let dimension_index = f(self.dimension_index, other.dimension_index);
-        let eq_lookups = f(self.eq_lookups, other.eq_lookups);
+    fn unflatten(vec: &mut Vec<V>) -> Self {
+        let eq_lookups = vec.pop().unwrap();
+        let dimension_index = vec.pop().unwrap();
+        let eq_eval = vec.pop().unwrap();
+        let lookup = LookupEval::unflatten(vec);
         Self {
             lookup,
             eq_eval,
@@ -95,23 +117,10 @@ impl ZeroAvailable for SparkIndex {
     }
 }
 
-impl<F: Field, const D: usize> Index<SparkIndex> for SparkEval<F, D> {
-    type Output = F;
-
-    fn index(&self, index: SparkIndex) -> &Self::Output {
-        match index {
-            SparkIndex::Dimension(i, dim) => &self.dimensions[i][dim],
-            SparkIndex::NormalIndex => &self.normal_index,
-            SparkIndex::Val => &self.val,
-            SparkIndex::ZeroEq => &self.zero_eq,
-            SparkIndex::Zero => &self.zero,
-        }
-    }
-}
-impl<F: Field, const D: usize> Evals<F> for SparkEval<F, D> {
+impl<V: Copy, const D: usize> Evals<V> for SparkEval<V, D> {
     type Idx = SparkIndex;
 
-    fn combine<C: Fn(F, F) -> F>(&self, other: &Self, f: C) -> Self {
+    fn combine<C: Fn(V, V) -> V>(&self, other: &Self, f: C) -> Self {
         let mut dimensions = self.dimensions.clone();
         for i in 0..D {
             let dim = dimensions[i];
@@ -131,13 +140,76 @@ impl<F: Field, const D: usize> Evals<F> for SparkEval<F, D> {
             zero,
         }
     }
+
+    fn index(&self, index: Self::Idx) -> &V {
+        match index {
+            SparkIndex::Dimension(i, dim) => &self.dimensions[i].index(dim),
+            SparkIndex::NormalIndex => &self.normal_index,
+            SparkIndex::Val => &self.val,
+            SparkIndex::ZeroEq => &self.zero_eq,
+            SparkIndex::Zero => &self.zero,
+        }
+    }
+
+    fn flatten(self, vec: &mut Vec<V>) {
+        let Self {
+            dimensions,
+            normal_index,
+            val,
+            zero_eq,
+            zero,
+        } = self;
+        dimensions.flatten(vec);
+        vec.extend([normal_index, val, zero_eq, zero]);
+    }
+
+    fn unflatten(vec: &mut Vec<V>) -> Self {
+        let [zero, zero_eq, val, normal_index] = [(); 4].map(|_| vec.pop().unwrap());
+        let dimensions = Evals::unflatten(vec);
+        Self {
+            dimensions,
+            normal_index,
+            val,
+            zero_eq,
+            zero,
+        }
+    }
+}
+impl<V> DimensionEval<V> {
+    pub fn kind() -> DimensionEval<EvalKind> {
+        DimensionEval {
+            lookup: LookupEval::<()>::kind(),
+            eq_eval: EvalKind::FixedSmall,
+            dimension_index: EvalKind::Committed,
+            eq_lookups: EvalKind::Committed,
+        }
+    }
+
+    fn map<B, M>(self, f: M) -> DimensionEval<B>
+    where
+        B: Copy + std::fmt::Debug,
+        M: Fn(V) -> B,
+    {
+        let DimensionEval {
+            lookup,
+            eq_eval,
+            dimension_index,
+            eq_lookups,
+        } = self;
+        let lookup = lookup.map(&f);
+        DimensionEval {
+            lookup,
+            eq_eval: f(eq_eval),
+            dimension_index: f(dimension_index),
+            eq_lookups: f(eq_lookups),
+        }
+    }
 }
 impl<F: Field> DimensionEval<F> {
     fn evals(
         point: MultiPoint<F>,
         structure: &DimensionStructure<F>,
         normal_index: &[F],
-
         challenges: &SparkChallenges<F>,
     ) -> Vec<Self> {
         let eq_eval = eq::eq(point);
@@ -175,6 +247,41 @@ impl<F: Field> DimensionEval<F> {
     }
 }
 
+impl<V, const D: usize> SparkEval<V, D> {
+    pub fn kinds() -> SparkEval<EvalKind, D> {
+        let dimensions = [DimensionEval::<()>::kind(); D];
+        SparkEval {
+            dimensions,
+            //TODO: maybe it can be made small
+            normal_index: EvalKind::Committed,
+            val: EvalKind::Committed,
+            zero_eq: EvalKind::FixedSmall,
+            zero: EvalKind::FixedSmall,
+        }
+    }
+
+    pub fn map<B, M>(self, f: M) -> SparkEval<B, D>
+    where
+        B: Copy + std::fmt::Debug,
+        M: Fn(V) -> B,
+    {
+        let Self {
+            dimensions,
+            normal_index,
+            val,
+            zero_eq,
+            zero,
+        } = self;
+        let dimensions = dimensions.map(|x| x.map(&f));
+        SparkEval {
+            dimensions,
+            normal_index: f(normal_index),
+            val: f(val),
+            zero_eq: f(zero_eq),
+            zero: f(zero),
+        }
+    }
+}
 impl<F: Field, const D: usize> SparkEval<F, D> {
     pub fn evals(
         structure: &SparkStructure<F, D>,

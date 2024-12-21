@@ -1,8 +1,7 @@
 use ark_ff::Field;
-use std::ops::Index;
 use sumcheck::{
     polynomials::Evals,
-    sumcheck::Var,
+    sumcheck::{EvalKind, Var},
     utils::{ZeroCheck, ZeroSumcheck},
 };
 
@@ -18,31 +17,50 @@ pub enum LookupIdx {
     Counts,
 }
 #[derive(Clone, Copy, Debug)]
-pub struct LookupEval<F: Field> {
-    frac1: F,
-    frac2: F,
-    counts: F,
+pub struct LookupEval<V> {
+    frac1: V,
+    frac2: V,
+    counts: V,
 }
 
-impl<F: Field> Index<LookupIdx> for LookupEval<F> {
-    type Output = F;
+impl<V: Copy> Evals<V> for LookupEval<V> {
+    type Idx = LookupIdx;
 
-    fn index(&self, index: LookupIdx) -> &Self::Output {
+    fn combine<C: Fn(V, V) -> V>(&self, other: &Self, f: C) -> Self {
+        let frac1 = f(self.frac1, other.frac1);
+        let frac2 = f(self.frac2, other.frac2);
+        let counts = f(self.counts, other.counts);
+        LookupEval {
+            frac1,
+            frac2,
+            counts,
+        }
+    }
+
+    fn index(&self, index: Self::Idx) -> &V {
         match index {
             LookupIdx::Frac1 => &self.frac1,
             LookupIdx::Frac2 => &self.frac2,
             LookupIdx::Counts => &self.counts,
         }
     }
-}
-impl<F: Field> Evals<F> for LookupEval<F> {
-    type Idx = LookupIdx;
 
-    fn combine<C: Fn(F, F) -> F>(&self, other: &Self, f: C) -> Self {
-        let frac1 = f(self.frac1, other.frac1);
-        let frac2 = f(self.frac2, other.frac2);
-        let counts = f(self.counts, other.counts);
-        LookupEval {
+    fn flatten(self, vec: &mut Vec<V>) {
+        let Self {
+            frac1,
+            frac2,
+            counts,
+        } = self;
+        vec.push(frac1);
+        vec.push(frac2);
+        vec.push(counts);
+    }
+
+    fn unflatten(vec: &mut Vec<V>) -> Self {
+        let counts = vec.pop().unwrap();
+        let frac2 = vec.pop().unwrap();
+        let frac1 = vec.pop().unwrap();
+        Self {
             frac1,
             frac2,
             counts,
@@ -102,6 +120,36 @@ where
     (zero_checks, ZeroSumcheck(equality))
 }
 
+impl<V> LookupEval<V> {
+    pub fn kind() -> LookupEval<EvalKind> {
+        let [frac1, frac2, counts] = [EvalKind::Committed; 3];
+        LookupEval {
+            frac1,
+            frac2,
+            counts,
+        }
+    }
+
+    pub fn map<B, M>(self, f: M) -> LookupEval<B>
+    where
+        B: Copy + std::fmt::Debug,
+        M: Fn(V) -> B,
+    {
+        let Self {
+            frac1,
+            frac2,
+            counts,
+        } = self;
+        let frac1 = f(frac1);
+        let frac2 = f(frac2);
+        let counts = f(counts);
+        LookupEval {
+            frac1,
+            frac2,
+            counts,
+        }
+    }
+}
 impl<F: Field> LookupEval<F> {
     pub fn evals(lookups: &[F], table: &[F], counts: &[F], challenge: F) -> Vec<Self> {
         assert_eq!(lookups.len(), table.len());
@@ -141,7 +189,7 @@ mod test {
     use rand::{rngs::StdRng, Rng, SeedableRng};
     use sumcheck::{
         polynomials::{simple_eval::SimpleEval, EvalsExt, MultiPoint},
-        sumcheck::{Env, SumcheckFunction, SumcheckProver, SumcheckVerifier, Var},
+        sumcheck::{Env, EvalKind, SumcheckFunction, SumcheckProver, SumcheckVerifier, Var},
         utils::ZeroCheckAvailable,
     };
 
@@ -158,7 +206,7 @@ mod test {
     impl<F: Field> SumcheckFunction<F> for RangeCheck {
         type Idx = usize;
 
-        type Mles = Evals<F>;
+        type Mles<V: Copy + std::fmt::Debug> = Evals<V>;
 
         // reusing them as we need the same here
         type Challs = SparkChallenges<F>;
@@ -180,6 +228,19 @@ mod test {
             let checks = (checks * *comb_chall) + c2.0;
             let checks = (checks * *comb_chall) + c3.0;
             checks
+        }
+
+        fn eval_kinds() -> Self::Mles<EvalKind> {
+            Evals::new([EvalKind::FixedSmall; 6])
+        }
+
+        fn map_evals<A, B, M>(evals: Self::Mles<A>, f: M) -> Self::Mles<B>
+        where
+            A: Copy + std::fmt::Debug,
+            B: Copy + std::fmt::Debug,
+            M: Fn(A) -> B,
+        {
+            Evals::map(evals, f)
         }
     }
 
