@@ -2,7 +2,7 @@ use ark_ff::Field;
 use std::ops::{Add, Mul};
 use sumcheck::polynomials::MultiPoint;
 
-mod committed_structure;
+pub mod committed_structure;
 pub mod ipa;
 
 pub trait CommmitmentScheme<F: Field> {
