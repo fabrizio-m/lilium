@@ -3,7 +3,7 @@ use crate::CommmitmentScheme;
 use ark_ff::UniformRand;
 use ark_vesta::{Fr, Projective};
 use rand::thread_rng;
-use sumcheck::polynomials::{EvalsExt, MultiPoint, SingleEval};
+use sumcheck::polynomials::MultiPoint;
 
 type Scheme = IpaCommitmentScheme<Fr, Projective>;
 
@@ -25,12 +25,7 @@ fn polynomial_commitment() {
     let point: Vec<Fr> = vec![elem(); LEN_LOG];
     let point = MultiPoint::new(point);
 
-    let eval: Fr = {
-        let mle = SingleEval::from_vec(mle.clone());
-        EvalsExt::eval(mle, point.clone()).0
-    };
-
-    let open = scheme.open(&mle, commit, &point, Some(eval));
+    let (eval, open) = scheme.open(&mle, commit, &point, None);
 
     let verify = scheme.verify(commit, &point, eval, open);
     assert!(verify);
@@ -52,12 +47,7 @@ fn polynomial_commitment_fail() {
     let point: Vec<Fr> = vec![elem(); LEN_LOG];
     let point = MultiPoint::new(point);
 
-    let eval: Fr = {
-        let mle = SingleEval::from_vec(mle.clone());
-        EvalsExt::eval(mle, point.clone()).0
-    };
-
-    let open = scheme.open(&mle, commit, &point, Some(eval));
+    let (eval, open) = scheme.open(&mle, commit, &point, None);
     let eval = eval * eval;
 
     let verify = scheme.verify(commit, &point, eval, open);

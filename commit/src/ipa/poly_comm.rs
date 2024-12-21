@@ -35,7 +35,7 @@ where
         commitment: Self::Commitment,
         point: &sumcheck::polynomials::MultiPoint<F>,
         eval: Option<F>,
-    ) -> Self::OpenProof {
+    ) -> (F, Self::OpenProof) {
         let a = evals;
         let b = eq(point.clone());
         //TODO: maybe acept sponge as argument
@@ -47,11 +47,12 @@ where
                 .fold(F::zero(), |acc, (a, b)| acc + *a * b);
             Some(x)
         });
+        let eval = inner_product.unwrap();
         let vectors = [a.to_vec(), b];
         let open = self
             .0
             .prove(vectors, inner_product, commitment, &mut sponge);
-        open
+        (eval, open)
     }
 
     fn verify(
