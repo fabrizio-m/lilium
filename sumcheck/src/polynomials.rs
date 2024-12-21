@@ -25,7 +25,7 @@ impl<F: Field> MultiPoint<F> {
 
 /// must be some wrapper over [F], representing all the evaluations at some
 /// point of the domain
-pub trait Evals<V> {
+pub trait Evals<V>: Sized {
     type Idx: Copy;
     fn index(&self, index: Self::Idx) -> &V;
     ///should combine 2 [Self] into one by using `f` to combine each element
@@ -37,6 +37,15 @@ pub trait Evals<V> {
     /// unflatten Self from a vec, can be assumed to be the output of flatten,
     /// it allows to implement the methods as the opposite of flatten using pop().
     fn unflatten(vec: &mut Vec<V>) -> Self;
+    fn flatten_vec(self) -> Vec<V> {
+        let mut vec = vec![];
+        self.flatten(&mut vec);
+        vec
+    }
+    fn unflatten_vec(vec: Vec<V>) -> Self {
+        let mut vec = vec;
+        Self::unflatten(&mut vec)
+    }
 }
 
 pub trait EvalsExt<F: Field>: Evals<F> + Sized {
