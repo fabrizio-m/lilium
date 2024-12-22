@@ -27,6 +27,7 @@ pub trait BuildStructure<
 {
     fn structure<const S: usize>() -> CcsStructure<IO, S, F> {
         let (mut cs, public_input) = StructureBuilder::<IO>::with_inputs::<IN>();
+        cs.reserve_outputs::<OUT>();
         let (public_out, private_out) = Self::circuit(&mut cs, public_input);
         //unnecessary for this
         let _ = private_out;

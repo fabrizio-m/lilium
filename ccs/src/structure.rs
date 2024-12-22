@@ -30,6 +30,10 @@ pub struct Matrix {
 }
 
 impl Matrix {
+    /// number of rows
+    pub fn len(&self) -> usize {
+        self.rows.len()
+    }
     fn with_capacity(capacity: usize) -> Self {
         Matrix {
             rows: Vec::with_capacity(capacity),
@@ -95,6 +99,8 @@ pub struct CcsStructure<const IO: usize, const S: usize, F: Field> {
     pub input_len: usize,
     ///with each multiset representing a term, and with corresponding constant coefficient
     pub multisets: Vec<(F, MultiSet<MatrixIndex>)>,
+    /// public_io + witness + 1
+    pub trace_len: usize,
 }
 
 #[derive(Debug)]
@@ -135,6 +141,12 @@ impl<const MAX_IO: usize> StructureBuilder<MAX_IO> {
         let mut new = Self::new();
         let inputs = [(); I].map(|_| new.var());
         (new, inputs)
+    }
+    /// reserve space for the public output
+    pub fn reserve_outputs<const O: usize>(&mut self) {
+        for _ in 0..O {
+            let _ = self.var();
+        }
     }
     pub fn link_outputs<const I: usize, const O: usize>(&mut self, outputs: [usize; O]) {
         for i in 0..O {
@@ -188,11 +200,14 @@ impl<const MAX_IO: usize> StructureBuilder<MAX_IO> {
         }
 
         let multisets = registry.multisets(0);
+        let trace_len = self.vars.len();
+        assert_eq!(trace_len, self.next);
         CcsStructure {
             input_len: public_io_len,
             io_matrices,
             selector_matrices,
             multisets,
+            trace_len,
         }
     }
 }
