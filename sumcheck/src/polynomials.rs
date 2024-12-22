@@ -25,7 +25,7 @@ impl<F: Field> MultiPoint<F> {
 
 /// must be some wrapper over [F], representing all the evaluations at some
 /// point of the domain
-pub trait Evals<V>: Sized {
+pub trait Evals<V>: Sized + Clone {
     type Idx: Copy;
     fn index(&self, index: Self::Idx) -> &V;
     ///should combine 2 [Self] into one by using `f` to combine each element
@@ -85,6 +85,7 @@ where
 {
 }
 
+#[derive(Clone)]
 pub struct SingleEval<F>(pub F);
 
 impl<F> SingleEval<F> {
