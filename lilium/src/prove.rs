@@ -25,8 +25,8 @@ impl<
         &self,
         instance: BatchMatrixEvalInstance<F, IO>,
     ) -> MatrixEvalProof<F, CS, IO> {
-        //TODO: vars
-        let prover = SumcheckProver::<F, SparkEvalCheck<2>>::new(8);
+        let vars = self.ccs_structure.vars();
+        let prover = SumcheckProver::<F, SparkEvalCheck<2>>::new(vars);
         let mut proofs = Vec::with_capacity(IO);
         //TODO
         let challenges = SparkChallenges::new(F::one(), F::one(), F::one());

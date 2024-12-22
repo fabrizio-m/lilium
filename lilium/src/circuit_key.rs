@@ -43,8 +43,7 @@ impl<
 {
     pub fn new() -> Self {
         let ccs_structure = C::structure();
-        // TODO
-        let vars = 4;
+        let vars = ccs_structure.vars();
         let spark_structure = ccs_structure.io_matrices.clone().map(|matrix: Matrix| {
             let evals = matrix
                 .to_evals()
