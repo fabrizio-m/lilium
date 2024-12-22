@@ -1,21 +1,16 @@
 use ark_ff::Field;
-use ccs::{
-    circuit::{BuildStructure, Circuit},
-    structure::CcsStructure,
-};
-use std::{marker::PhantomData, ops::Index};
-use sumcheck::{
-    polynomials::Evals,
-    sumcheck::{Env, SumcheckFunction, Var},
-};
+use std::marker::PhantomData;
 
+pub mod circuit_key;
+mod instance;
 pub mod multivariate;
+mod prove;
 
 pub struct Prover<F: Field, const IO: usize = 0> {
     _phantom: PhantomData<F>,
 }
 
-impl<F: Field, const IO: usize> Prover<F, IO> {
+/*impl<F: Field, const IO: usize> Prover<F, IO> {
     /// Generates key for given circuit
     pub fn circuit_key<
         C: Circuit<F, IN, OUT, PRIV_OUT>,
@@ -29,20 +24,6 @@ impl<F: Field, const IO: usize> Prover<F, IO> {
             structure,
         }
     }
-}
-
-/// key to create and verify proofs for a given circuit
-pub struct CircuitKey<
-    F: Field,
-    C: Circuit<F, IN, OUT, PRIV_OUT>,
-    const IN: usize = 0,
-    const OUT: usize = 0,
-    const PRIV_OUT: usize = 0,
-    const IO: usize = 0,
-    const S: usize = 0,
-> {
-    _phantom: PhantomData<(F, C)>,
-    structure: CcsStructure<IO, S, F>,
 }
 
 /// Sumcheck function to represent a constraint system
@@ -75,7 +56,6 @@ impl<F: Field> Index<CsIdx> for CsMle<F> {
         }
     }
 }
-
 /// Implement Evals
 impl<F: Field> Evals<F> for CsMle<F> {
     type Idx = CsIdx;
@@ -110,3 +90,18 @@ impl<F: Field> SumcheckFunction<F> for CsFunction<F> {
         todo!()
     }
 }
+
+impl<F: Field, const IO: usize> Prover<F, IO> {
+    fn prove<
+        C: Circuit<F, IN, OUT, PRIV_OUT>,
+        const IN: usize,
+        const OUT: usize,
+        const PRIV_OUT: usize,
+        const S: usize,
+    >(
+        key: &CircuitKey<F, C, IN, OUT, PRIV_OUT, IO, S>,
+    ) {
+        // let sumcheck_prover = SumcheckProver::new(8);
+    }
+}
+*/
