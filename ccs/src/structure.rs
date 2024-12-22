@@ -103,6 +103,14 @@ pub struct CcsStructure<const IO: usize, const S: usize, F: Field> {
     pub trace_len: usize,
 }
 
+impl<const IO: usize, const S: usize, F: Field> CcsStructure<IO, S, F> {
+    /// vars needed to fir the trace
+    pub fn vars(&self) -> usize {
+        let len_padded = self.trace_len.next_power_of_two();
+        len_padded.ilog2() as usize
+    }
+}
+
 #[derive(Debug)]
 struct Constraint<T, const IO: usize> {
     ///it probably better to just fill unused space with zeros than to have a bunch of [Vec]s
