@@ -21,6 +21,17 @@ impl<F: Field> MultiPoint<F> {
     pub fn inner(self) -> Vec<F> {
         self.0
     }
+    /// eval self as eq poly with point
+    pub fn eval_as_eq(&self, point: &Self) -> F {
+        assert_eq!(self.0.len(), point.0.len());
+        self.0
+            .iter()
+            .zip(point.0.iter())
+            .fold(F::one(), |acc, (a, b)| {
+                let var = *a * b + (F::one() - a) * (F::one() - b);
+                acc * var
+            })
+    }
 }
 
 /// must be some wrapper over [F], representing all the evaluations at some
