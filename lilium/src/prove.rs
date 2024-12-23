@@ -4,9 +4,12 @@ use crate::{
 };
 use ark_ff::Field;
 use ccs::circuit::Circuit;
-use commit::CommmitmentScheme;
+use commit::{committed_structure::CommittedStructure, CommmitmentScheme};
 use spark::{challenges::SparkChallenges, evals::SparkEval, spark::SparkEvalCheck};
-use sumcheck::{polynomials::MultiPoint, sumcheck::SumcheckProver};
+use sumcheck::{
+    polynomials::MultiPoint,
+    sumcheck::{SumcheckProver, SumcheckVerifier},
+};
 
 type SparkProof<F> = sumcheck::sumcheck::Proof<F, SparkEvalCheck<2>>;
 
@@ -58,6 +61,62 @@ impl<
             spark_proofs,
             open_proofs,
         }
+    }
+    fn verify_matrix_evals(
+        &self,
+        instance: BatchMatrixEvalInstance<F, IO>,
+        proof: MatrixEvalProof<F, CS, IO>,
+    ) -> bool {
+        let vars = self.ccs_structure.vars();
+        let mut eval_instances = instance.matrices.into_iter();
+        let MatrixEvalProof {
+            spark_proofs,
+            open_proofs,
+        } = proof;
+        let mut spark_proofs = spark_proofs.into_iter();
+        let mut open_proofs = open_proofs.into_iter();
+        //TODO
+        let r = MultiPoint::new(vec![F::one(); 8]);
+        //TODO
+        let zero_check_point = MultiPoint::new(vec![F::one(); 8]);
+        //TODO
+        let challenges = SparkChallenges::new(F::one(), F::one(), F::one());
+
+        let verifier = SumcheckVerifier::<F, SparkEvalCheck<2>>::new(vars);
+        let mut eval_checks = vec![];
+        // verifiying sumcheck
+        for _ in 0..IO {
+            let MatrixEvalInstance { point, eval } = eval_instances.next().unwrap();
+            let proof = spark_proofs.next().unwrap();
+            let verifies = verifier.verify(&r, proof, eval);
+            match verifies {
+                Ok(check) => eval_checks.push((check, point)),
+                Err(_) => return false,
+            }
+        }
+        // verifiying commitment openings
+        let scheme = &self.committment_scheme;
+        let mut eval_checks = eval_checks.into_iter();
+        let mut spark_commitments = self.spark_commitments.iter();
+        let zero_eq_eval = zero_check_point.eval_as_eq(&r);
+        for _ in 0..IO {
+            let (check, spark_point) = eval_checks.next().unwrap();
+            let (open_proof, evals) = open_proofs.next().unwrap();
+            let spark_commitment: &CommittedStructure<_, _, _> = spark_commitments.next().unwrap();
+            let spark_point_evals: [F; 2] = spark_point.map(|x| x.eval_as_eq(&r));
+            let small_evals =
+                SparkEval::<Option<F>, 2>::small_evals(zero_eq_eval, spark_point_evals);
+            let evals = evals.merge_small_evals(small_evals);
+            let verifies = spark_commitment.verify(scheme, &r, open_proof, evals.clone());
+            if !verifies {
+                return false;
+            }
+            let verifies = verifier.check_evals_at_r(evals, check, &challenges);
+            if !verifies {
+                return false;
+            }
+        }
+        true
     }
 }
 struct MatrixEvalProof<F, CS, const IO: usize>
