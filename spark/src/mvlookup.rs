@@ -16,7 +16,7 @@ pub enum LookupIdx {
     /// Counts of how many times a table element appears in the lookups
     Counts,
 }
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Default)]
 pub struct LookupEval<V> {
     frac1: V,
     frac2: V,

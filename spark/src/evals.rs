@@ -184,6 +184,15 @@ impl<V> DimensionEval<V> {
             eq_lookups: EvalKind::Committed,
         }
     }
+    /// compute the small evals
+    pub fn small_evals<F: Field>(eq_eval: F) -> DimensionEval<Option<F>> {
+        DimensionEval {
+            lookup: LookupEval::default(),
+            eq_eval: Some(eq_eval),
+            dimension_index: None,
+            eq_lookups: None,
+        }
+    }
 
     fn map<B, M>(self, f: M) -> DimensionEval<B>
     where
@@ -247,6 +256,20 @@ impl<F: Field> DimensionEval<F> {
     }
 }
 
+impl<V: Copy, const D: usize> SparkEval<Option<V>, D> {
+    /// merge 2 partial evals into one, there should be exactly 1 Some
+    /// for each field
+    pub fn merge_small_evals(self, other: Self) -> SparkEval<V, D> {
+        let a = self.flatten_vec();
+        let b = other.flatten_vec();
+        let merge = a.into_iter().zip(b).map(|x| match x {
+            (Some(_), Some(_)) => panic!("present on both sides of merge"),
+            (None, None) => panic!("no value to merge"),
+            (None, Some(x)) | (Some(x), None) => x,
+        });
+        SparkEval::unflatten_vec(merge.collect())
+    }
+}
 impl<V, const D: usize> SparkEval<V, D> {
     pub fn kinds() -> SparkEval<EvalKind, D> {
         let dimensions = [DimensionEval::<()>::kind(); D];
@@ -257,6 +280,17 @@ impl<V, const D: usize> SparkEval<V, D> {
             val: EvalKind::Committed,
             zero_eq: EvalKind::FixedSmall,
             zero: EvalKind::FixedSmall,
+        }
+    }
+    /// compute the small evals
+    pub fn small_evals<F: Field>(zero_eq_eval: F, eq_evals: [F; D]) -> SparkEval<Option<F>, D> {
+        let dimensions = eq_evals.map(DimensionEval::<V>::small_evals);
+        SparkEval {
+            dimensions,
+            normal_index: None,
+            val: None,
+            zero_eq: Some(zero_eq_eval),
+            zero: Some(F::zero()),
         }
     }
 
