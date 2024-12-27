@@ -1,7 +1,7 @@
 //! Traits for state machines, as I have few of them around.
 
 // A transducer, a Mealy  machine
-trait FiniteAutomata {
+pub trait FiniteAutomata {
     type State;
     /// Use () for machines without inputs
     type Input;
