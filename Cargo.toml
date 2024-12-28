@@ -1,7 +1,11 @@
 [workspace]
 
-members = [
-    "ccs", "commit", "lilium", "spark",
+members = [ "automata",
+    "ccs",
+    "commit",
+    "lilium",
+    "spark",
+    "sponge",
     "sumcheck"
     ]
 resolver = "2"
