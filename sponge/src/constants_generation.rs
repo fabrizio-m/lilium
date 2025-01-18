@@ -1,6 +1,7 @@
 use crate::grain::Grain;
+use ark_ff::{BigInteger, PrimeField};
 use automata::FiniteAutomata;
-use std::{cmp::Ordering, u16, u64};
+use std::{cmp::Ordering, marker::PhantomData, u16, u64};
 
 pub enum Field {
     Prime,
@@ -248,5 +249,42 @@ fn constant_generator() {
             let compare = parse_field(&compare);
             assert_eq!(compare, field);
         }
+    }
+}
+
+pub struct ConstantGenerator<F: PrimeField> {
+    machine: FieldMachine,
+    _f: PhantomData<F>,
+}
+
+impl<F: PrimeField> ConstantGenerator<F> {
+    pub fn new(t: u16, full_rounds: u16, partial_rounds: u16) -> Self {
+        let field = Field::Prime;
+        let n = F::MODULUS_BIT_SIZE;
+        let n: u16 = n.try_into().unwrap();
+
+        let encoding = PoseidonEncoding {
+            field,
+            //TODO:support the negative one
+            sbox: Sbox::Positive,
+            n,
+            t,
+            full_rounds,
+            partial_rounds,
+        };
+        let bits = (F::MODULUS).to_bits_be();
+        assert_eq!(bits.len(), n as usize);
+        let init = (encoding, bits);
+        let machine = FieldMachine::init(init);
+        Self {
+            machine,
+            _f: PhantomData,
+        }
+    }
+    pub fn constant(&mut self) -> F {
+        let bits = self.machine.transition_mut(());
+        //shouldn't fail
+        let constant = F::from_bigint(F::BigInt::from_bits_be(&bits)).unwrap();
+        constant
     }
 }
