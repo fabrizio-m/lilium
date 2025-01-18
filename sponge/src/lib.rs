@@ -1,4 +1,4 @@
-pub mod constants_generation;
+mod constants_generation;
 mod grain;
 pub mod permutation;
 pub mod poseidon2;

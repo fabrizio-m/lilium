@@ -5,10 +5,14 @@ use std::{cmp::Ordering, marker::PhantomData, u16, u64};
 
 pub enum Field {
     Prime,
+    //TODO: support
+    #[allow(unused)]
     Extension,
 }
 pub enum Sbox {
     Positive,
+    //TODO: support
+    #[allow(unused)]
     Negative,
 }
 pub struct PoseidonEncoding {
@@ -181,6 +185,7 @@ impl FiniteAutomata for FieldMachine {
 }
 
 /// parse hex string into bits
+#[cfg(test)]
 pub fn parse_field(string: &str) -> Vec<bool> {
     string
         .chars()
@@ -205,6 +210,7 @@ fn print_nibble(nibble: &[bool]) {
     }
     print!("{:x}", byte)
 }
+#[allow(unused)]
 pub fn print_integer_big_endian(int: &[bool]) {
     let partial_bit_len = int.len() % 4;
     let partial_bit: Vec<bool> = std::iter::repeat(false)
