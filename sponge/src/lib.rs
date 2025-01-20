@@ -13,4 +13,6 @@ pub enum Error {
     UnexpectedAbsorb,
     /// attempt to squeeze when absorb was expected
     UnexpectedSqueeze,
+    /// unexpected pattern on finish
+    FinishMismatch,
 }

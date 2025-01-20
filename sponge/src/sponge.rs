@@ -37,6 +37,39 @@ impl SpongeBuilder {
         pattern.push(Pattern::Squeeze(elements));
         Self { pattern }
     }
+    fn pack_pattern(pattern: Vec<Pattern>) -> Vec<Pattern> {
+        let mut packed_pattern = Vec::with_capacity(pattern.len());
+        for pattern in pattern.into_iter() {
+            match pattern {
+                Pattern::Absorb(n) | Pattern::Squeeze(n) => {
+                    if n == 0 {
+                        continue;
+                    }
+                }
+            }
+            let top = packed_pattern.pop();
+            match (top, pattern) {
+                (None, p @ Pattern::Absorb(_)) | (None, p @ Pattern::Squeeze(_)) => {
+                    packed_pattern.push(p);
+                }
+                (Some(Pattern::Absorb(n1)), Pattern::Absorb(n2)) => {
+                    packed_pattern.push(Pattern::Absorb(n1 + n2));
+                }
+                (Some(p1 @ Pattern::Squeeze(_)), p2 @ Pattern::Absorb(_)) => {
+                    packed_pattern.push(p1);
+                    packed_pattern.push(p2);
+                }
+                (Some(Pattern::Squeeze(n1)), Pattern::Squeeze(n2)) => {
+                    packed_pattern.push(Pattern::Squeeze(n1 + n2));
+                }
+                (Some(p1 @ Pattern::Absorb(_)), p2 @ Pattern::Squeeze(_)) => {
+                    packed_pattern.push(p1);
+                    packed_pattern.push(p2);
+                }
+            }
+        }
+        packed_pattern
+    }
     fn encode_iv<F: Field>(pattern: &[Pattern]) -> Vec<F> {
         let base_field_bits = <F::BasePrimeField as PrimeField>::MODULUS_BIT_SIZE;
         let bits = base_field_bits + F::extension_degree() as u32;
@@ -100,6 +133,7 @@ impl SpongeBuilder {
     ) -> Sponge<F, P, R, C, T> {
         let Self { pattern } = self;
         let permutation = P::new();
+        let pattern = Self::pack_pattern(pattern);
         let elems = Self::encode_iv(&pattern);
         let state = Self::iv::<F, P, R, C, T>(&elems, &permutation);
         Sponge {
@@ -188,13 +222,13 @@ where
         self.running_pattern.push(to_push);
         Ok(())
     }
-    pub fn finish(mut self) -> Result<(), ()> {
+    pub fn finish(mut self) -> Result<(), Error> {
         if self.pattern == self.running_pattern {
             Ok(())
         } else {
             // so that it doesn't pannic when dropped
             self.running_pattern = self.pattern.clone();
-            Err(())
+            Err(Error::FinishMismatch)
         }
     }
     /// checks the patterns are compatible
@@ -216,5 +250,35 @@ where
             (Pattern::Absorb(_), Pattern::Squeeze(_)) => Err(Error::UnexpectedAbsorb),
             (Pattern::Squeeze(_), Pattern::Absorb(_)) => Err(Error::UnexpectedSqueeze),
         }
+    }
+}
+
+/// High level duplex abstraction
+pub trait Duplex<F: Field> {
+    fn from_builder(builder: SpongeBuilder) -> Self;
+    fn absorb(&mut self, elem: F) -> Result<(), Error>;
+    fn squeeze(&mut self) -> Result<F, Error>;
+    fn finish(self) -> Result<(), Error>;
+}
+
+impl<F, P, const R: usize, const C: usize, const T: usize> Duplex<F> for Sponge<F, P, R, C, T>
+where
+    F: Field,
+    P: Permutation<F, T>,
+{
+    fn from_builder(builder: SpongeBuilder) -> Self {
+        builder.sponge()
+    }
+
+    fn absorb(&mut self, elem: F) -> Result<(), Error> {
+        Sponge::absorb(self, elem)
+    }
+
+    fn squeeze(&mut self) -> Result<F, Error> {
+        Sponge::squeeze(self)
+    }
+
+    fn finish(self) -> Result<(), Error> {
+        Sponge::finish(self)
     }
 }
