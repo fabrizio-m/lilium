@@ -4,6 +4,7 @@ pub mod permutation;
 pub mod poseidon2;
 pub mod sponge;
 
+#[derive(Debug)]
 pub enum Error {
     /// attempted to squeeze an element before any previous absorb
     SqueezeBeforeAbsorb,

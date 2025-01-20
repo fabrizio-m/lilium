@@ -1,3 +1,5 @@
+use std::marker::PhantomData;
+
 use crate::{permutation::Permutation, Error};
 use ark_ff::{Field, PrimeField};
 
@@ -19,6 +21,19 @@ pub struct Sponge<F: Field, P: Permutation<F, T>, const R: usize, const C: usize
     squeeze_pos: usize,
     /// disables check on each absorb/squeeze
     disable_check: bool,
+}
+
+/// Initial state to instanciate sponges with
+pub struct SpongeInitializer<
+    F: Field,
+    P: Permutation<F, T>,
+    const R: usize,
+    const C: usize,
+    const T: usize,
+> {
+    pattern: Vec<Pattern>,
+    state: [F; T],
+    _permutation: PhantomData<P>,
 }
 
 impl SpongeBuilder {
@@ -130,20 +145,16 @@ impl SpongeBuilder {
         const T: usize,
     >(
         self,
-    ) -> Sponge<F, P, R, C, T> {
+    ) -> SpongeInitializer<F, P, R, C, T> {
         let Self { pattern } = self;
         let permutation = P::new();
         let pattern = Self::pack_pattern(pattern);
         let elems = Self::encode_iv(&pattern);
         let state = Self::iv::<F, P, R, C, T>(&elems, &permutation);
-        Sponge {
+        SpongeInitializer {
             pattern,
-            running_pattern: vec![],
             state,
-            permutation,
-            absorb_pos: 0,
-            squeeze_pos: 0,
-            disable_check: false,
+            _permutation: PhantomData,
         }
     }
 }
@@ -255,7 +266,12 @@ where
 
 /// High level duplex abstraction
 pub trait Duplex<F: Field> {
-    fn from_builder(builder: SpongeBuilder) -> Self;
+    /// Intermediate type holding any expensive initialization
+    type Initializer;
+    /// Initializes a sponge for a given io pattern
+    fn from_builder(builder: SpongeBuilder) -> Self::Initializer;
+    /// Instanciates a sponge from the initializer
+    fn instanciate(init: &Self::Initializer) -> Self;
     fn absorb(&mut self, elem: F) -> Result<(), Error>;
     fn squeeze(&mut self) -> Result<F, Error>;
     fn finish(self) -> Result<(), Error>;
@@ -266,8 +282,25 @@ where
     F: Field,
     P: Permutation<F, T>,
 {
-    fn from_builder(builder: SpongeBuilder) -> Self {
+    type Initializer = SpongeInitializer<F, P, R, C, T>;
+    fn from_builder(builder: SpongeBuilder) -> Self::Initializer {
         builder.sponge()
+    }
+
+    fn instanciate(init: &Self::Initializer) -> Self {
+        let pattern = init.pattern.clone();
+        //TODO: avoiding this may prove desirable in the future
+        let permutation = P::new();
+        let state = init.state.clone();
+        Sponge {
+            pattern,
+            running_pattern: vec![],
+            permutation,
+            state,
+            absorb_pos: 0,
+            squeeze_pos: 0,
+            disable_check: false,
+        }
     }
 
     fn absorb(&mut self, elem: F) -> Result<(), Error> {
