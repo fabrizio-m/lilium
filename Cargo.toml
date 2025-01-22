@@ -3,7 +3,8 @@
 members = [ "automata",
     "ccs",
     "commit",
-    "lilium",
+    "lilium", 
+    "transcript",
     "spark",
     "sponge",
     "sumcheck"
