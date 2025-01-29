@@ -1,11 +1,13 @@
 use crate::{
     circuit_key::CircuitKey,
     instance::{BatchMatrixEvalInstance, MatrixEvalInstance},
+    Error,
 };
 use ark_ff::Field;
 use ccs::circuit::Circuit;
 use commit::{committed_structure::CommittedStructure, CommmitmentScheme};
 use spark::{challenges::SparkChallenges, evals::SparkEval, spark::SparkEvalCheck};
+use sponge::sponge::Duplex;
 use sumcheck::{
     polynomials::MultiPoint,
     sumcheck::{SumcheckProver, SumcheckVerifier},
@@ -15,6 +17,7 @@ type SparkProof<F> = sumcheck::sumcheck::Proof<F, SparkEvalCheck<2>>;
 
 impl<
         F: Field,
+        T: Duplex<F>,
         C: Circuit<F, IN, OUT, PRIV_OUT>,
         CS: CommmitmentScheme<F>,
         const IN: usize,
@@ -22,21 +25,24 @@ impl<
         const PRIV_OUT: usize,
         const IO: usize,
         const S: usize,
-    > CircuitKey<F, C, CS, IN, OUT, PRIV_OUT, IO, S>
+    > CircuitKey<F, T, C, CS, IN, OUT, PRIV_OUT, IO, S>
 {
     fn prove_matrix_evals(
         &self,
         instance: BatchMatrixEvalInstance<F, IO>,
-    ) -> MatrixEvalProof<F, CS, IO> {
+    ) -> Result<MatrixEvalProof<F, CS, IO>, Error> {
         let vars = self.ccs_structure.vars();
+        let mut transcript = self.transcript.instanciate();
         let prover = SumcheckProver::<F, SparkEvalCheck<2>>::new(vars);
         let mut proofs = Vec::with_capacity(IO);
-        //TODO
-        let challenges = SparkChallenges::new(F::one(), F::one(), F::one());
-        //TODO
-        let zero_check_point = MultiPoint::new(vec![F::one(); 8]);
-        //TODO
-        let r = MultiPoint::new(vec![F::one(); 8]);
+
+        let [c1, c2, c3] = transcript
+            .send_message(&instance)
+            .map_err(Error::TranscriptError)?;
+        let challenges = SparkChallenges::new(c1, c2, c3);
+        let zero_check_point = MultiPoint::new(transcript.point().map_err(Error::TranscriptError)?);
+        let r = MultiPoint::new(transcript.point().map_err(Error::TranscriptError)?);
+
         for i in 0..IO {
             let structure = &self.spark_structure[i];
             let instance = &instance.matrices[i];
@@ -57,17 +63,26 @@ impl<
             let open = commits.eval(scheme, &r);
             open
         });
-        MatrixEvalProof {
+        Ok(MatrixEvalProof {
             spark_proofs,
             open_proofs,
-        }
+        })
     }
     fn verify_matrix_evals(
         &self,
         instance: BatchMatrixEvalInstance<F, IO>,
         proof: MatrixEvalProof<F, CS, IO>,
-    ) -> bool {
+    ) -> Result<bool, Error> {
         let vars = self.ccs_structure.vars();
+        let mut transcript = self.transcript.instanciate();
+
+        let [c1, c2, c3] = transcript
+            .send_message(&instance)
+            .map_err(Error::TranscriptError)?;
+        let challenges = SparkChallenges::new(c1, c2, c3);
+        let zero_check_point = MultiPoint::new(transcript.point().map_err(Error::TranscriptError)?);
+        let r = MultiPoint::new(transcript.point().map_err(Error::TranscriptError)?);
+
         let mut eval_instances = instance.matrices.into_iter();
         let MatrixEvalProof {
             spark_proofs,
@@ -75,13 +90,6 @@ impl<
         } = proof;
         let mut spark_proofs = spark_proofs.into_iter();
         let mut open_proofs = open_proofs.into_iter();
-        //TODO
-        let r = MultiPoint::new(vec![F::one(); 8]);
-        //TODO
-        let zero_check_point = MultiPoint::new(vec![F::one(); 8]);
-        //TODO
-        let challenges = SparkChallenges::new(F::one(), F::one(), F::one());
-
         let verifier = SumcheckVerifier::<F, SparkEvalCheck<2>>::new(vars);
         let mut eval_checks = vec![];
         // verifiying sumcheck
@@ -91,7 +99,7 @@ impl<
             let verifies = verifier.verify(&r, proof, eval);
             match verifies {
                 Ok(check) => eval_checks.push((check, point)),
-                Err(_) => return false,
+                Err(_) => return Ok(false),
             }
         }
         // verifiying commitment openings
@@ -109,14 +117,14 @@ impl<
             let evals = evals.merge_small_evals(small_evals);
             let verifies = spark_commitment.verify(scheme, &r, open_proof, evals.clone());
             if !verifies {
-                return false;
+                return Ok(false);
             }
             let verifies = verifier.check_evals_at_r(evals, check, &challenges);
             if !verifies {
-                return false;
+                return Ok(false);
             }
         }
-        true
+        Ok(true)
     }
 }
 struct MatrixEvalProof<F, CS, const IO: usize>

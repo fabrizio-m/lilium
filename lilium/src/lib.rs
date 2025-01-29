@@ -10,6 +10,10 @@ pub struct Prover<F: Field, const IO: usize = 0> {
     _phantom: PhantomData<F>,
 }
 
+pub enum Error {
+    TranscriptError(transcript::Error),
+}
+
 /*impl<F: Field, const IO: usize> Prover<F, IO> {
     /// Generates key for given circuit
     pub fn circuit_key<

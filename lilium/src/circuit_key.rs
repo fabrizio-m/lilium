@@ -7,14 +7,17 @@ use commit::{committed_structure::CommittedStructure, CommmitmentScheme};
 use spark::{
     challenges::SparkChallenges, evals::SparkEval, spark::SparkEvalCheck, structure::SparkMatrix,
 };
+use sponge::sponge::Duplex;
 use std::marker::PhantomData;
 use sumcheck::polynomials::MultiPoint;
+use transcript::{TranscriptBuilder, TranscriptDescriptor};
 
 type SparkCommitment<F, CS> = CommittedStructure<F, SparkEvalCheck<2>, CS>;
 
 /// key to create and verify proofs for a given circuit
 pub struct CircuitKey<
     F: Field,
+    T: Duplex<F>,
     C: Circuit<F, IN, OUT, PRIV_OUT>,
     CS: CommmitmentScheme<F>,
     const IN: usize = 0,
@@ -24,6 +27,7 @@ pub struct CircuitKey<
     const S: usize = 0,
 > {
     _phantom: PhantomData<C>,
+    pub transcript: TranscriptDescriptor<F, T>,
     pub ccs_structure: CcsStructure<IO, S, F>,
     pub spark_structure: [SparkMatrix<F>; IO],
     pub spark_commitments: [SparkCommitment<F, CS>; IO],
@@ -32,6 +36,7 @@ pub struct CircuitKey<
 
 impl<
         F: Field,
+        T: Duplex<F>,
         C: Circuit<F, IN, OUT, PRIV_OUT>,
         CS: CommmitmentScheme<F>,
         const IN: usize,
@@ -39,7 +44,7 @@ impl<
         const PRIV_OUT: usize,
         const IO: usize,
         const S: usize,
-    > CircuitKey<F, C, CS, IN, OUT, PRIV_OUT, IO, S>
+    > CircuitKey<F, T, C, CS, IN, OUT, PRIV_OUT, IO, S>
 {
     pub fn new() -> Self {
         let ccs_structure = C::structure();
@@ -68,9 +73,13 @@ impl<
                 CommittedStructure::commit(&committment_scheme, mles);
             commitment
         });
+        let transcript_builder = TranscriptBuilder::new(vars);
+        //TODO: make transcript
+        let transcript = transcript_builder.finish();
 
         Self {
             _phantom: PhantomData,
+            transcript,
             ccs_structure,
             spark_structure,
             spark_commitments,

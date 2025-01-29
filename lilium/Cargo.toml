@@ -9,6 +9,8 @@ ccs = { path = "../ccs"}
 sumcheck = { path = "../sumcheck"}
 commit = { path = "../commit"}
 spark = { path = "../spark"}
+sponge = { path = "../sponge"}
+transcript = { path = "../transcript"}
 
 [dev-dependencies]
 rand = "0.8"
