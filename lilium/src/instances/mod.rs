@@ -1,7 +1,5 @@
 use ark_ff::Field;
 use commit::CommmitmentScheme;
-use sumcheck::polynomials::MultiPoint;
-use transcript::Message;
 
 pub mod matrix_eval;
 struct Instance<F: Field, C: CommmitmentScheme<F>, const I: usize> {

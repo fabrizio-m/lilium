@@ -17,36 +17,30 @@ type SparkCommitment<F, CS> = CommittedStructure<F, SparkEvalCheck<2>, CS>;
 /// key to create and verify proofs for a given circuit
 pub struct CircuitKey<
     F: Field,
-    T: Duplex<F>,
-    C: Circuit<F, IN, OUT, PRIV_OUT>,
+    D: Duplex<F>,
+    C,
     CS: CommmitmentScheme<F>,
-    const IN: usize = 0,
-    const OUT: usize = 0,
-    const PRIV_OUT: usize = 0,
     const IO: usize = 0,
     const S: usize = 0,
 > {
-    _phantom: PhantomData<C>,
-    pub transcript: TranscriptDescriptor<F, T>,
+    _circuit: PhantomData<C>,
+    pub transcript: TranscriptDescriptor<F, D>,
     pub ccs_structure: CcsStructure<IO, S, F>,
     pub spark_structure: [SparkMatrix<F>; IO],
     pub spark_commitments: [SparkCommitment<F, CS>; IO],
     pub committment_scheme: CS,
 }
 
-impl<
-        F: Field,
-        T: Duplex<F>,
-        C: Circuit<F, IN, OUT, PRIV_OUT>,
-        CS: CommmitmentScheme<F>,
-        const IN: usize,
-        const OUT: usize,
-        const PRIV_OUT: usize,
-        const IO: usize,
-        const S: usize,
-    > CircuitKey<F, T, C, CS, IN, OUT, PRIV_OUT, IO, S>
+impl<F, T, C, CS, const IO: usize, const S: usize> CircuitKey<F, T, C, CS, IO, S>
+where
+    F: Field,
+    T: Duplex<F>,
+    CS: CommmitmentScheme<F>,
 {
-    pub fn new() -> Self {
+    pub fn new<const IN: usize, const OUT: usize, const PRIV_OUT: usize>() -> Self
+    where
+        C: Circuit<F, IN, OUT, PRIV_OUT>,
+    {
         let ccs_structure = C::structure();
         let vars = ccs_structure.vars();
         let spark_structure = ccs_structure.io_matrices.clone().map(|matrix: Matrix| {
@@ -78,7 +72,7 @@ impl<
         let transcript = transcript_builder.finish();
 
         Self {
-            _phantom: PhantomData,
+            _circuit: PhantomData,
             transcript,
             ccs_structure,
             spark_structure,

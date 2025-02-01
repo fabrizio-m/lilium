@@ -4,7 +4,6 @@ use crate::{
     Error,
 };
 use ark_ff::Field;
-use ccs::circuit::Circuit;
 use commit::{committed_structure::CommittedStructure, CommmitmentScheme};
 use spark::{challenges::SparkChallenges, evals::SparkEval, spark::SparkEvalCheck};
 use sponge::sponge::Duplex;
@@ -15,17 +14,8 @@ use sumcheck::{
 
 type SparkProof<F> = sumcheck::sumcheck::Proof<F, SparkEvalCheck<2>>;
 
-impl<
-        F: Field,
-        T: Duplex<F>,
-        C: Circuit<F, IN, OUT, PRIV_OUT>,
-        CS: CommmitmentScheme<F>,
-        const IN: usize,
-        const OUT: usize,
-        const PRIV_OUT: usize,
-        const IO: usize,
-        const S: usize,
-    > CircuitKey<F, T, C, CS, IN, OUT, PRIV_OUT, IO, S>
+impl<F: Field, T: Duplex<F>, C, CS: CommmitmentScheme<F>, const IO: usize, const S: usize>
+    CircuitKey<F, T, C, CS, IO, S>
 {
     fn prove_matrix_evals(
         &self,
