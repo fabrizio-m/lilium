@@ -1,6 +1,6 @@
 use crate::{
     circuit_key::CircuitKey,
-    instance::{BatchMatrixEvalInstance, MatrixEvalInstance},
+    instances::matrix_eval::{BatchMatrixEvalInstance, MatrixEvalInstance},
     Error,
 };
 use ark_ff::Field;

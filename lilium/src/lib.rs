@@ -2,9 +2,9 @@ use ark_ff::Field;
 use std::marker::PhantomData;
 
 pub mod circuit_key;
-mod instance;
+mod instances;
 pub mod multivariate;
-mod prove;
+mod proving;
 
 pub struct Prover<F: Field, const IO: usize = 0> {
     _phantom: PhantomData<F>,
