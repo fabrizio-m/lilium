@@ -1,0 +1,91 @@
+use crate::{Error, Message, PointRound};
+use ark_ff::Field;
+use sponge::sponge::Duplex;
+use std::{
+    any::{Any, TypeId},
+    marker::PhantomData,
+    vec::IntoIter,
+};
+
+pub struct Transcript<F: Field, S: Duplex<F>> {
+    sponge: S,
+    rounds: IntoIter<(TypeId, usize)>,
+    vars: usize,
+    _f: PhantomData<F>,
+}
+
+impl<F: Field, S: Duplex<F>> Transcript<F, S> {
+    pub(crate) fn new(sponge: S, rounds: IntoIter<(TypeId, usize)>, vars: usize) -> Self {
+        Self {
+            sponge,
+            rounds,
+            vars,
+            _f: PhantomData,
+        }
+    }
+
+    pub fn send_message<T, const N: usize>(&mut self, message: &T) -> Result<[F; N], Error>
+    where
+        T: Any + Message<F>,
+    {
+        let id = message.type_id();
+        let elems = message.to_field_elements();
+        for elem in elems.into_iter() {
+            let _ = self.sponge.absorb(elem).map_err(Error::SpongeError)?;
+        }
+        let round = self.rounds.next().ok_or(Error::TranscriptFinished)?;
+        if round != (id, N) {
+            return Err(Error::UnexpectedMessage);
+        }
+        let challenges = [(); N].map(|_| self.sponge.squeeze().map_err(Error::SpongeError));
+        let challenges: Result<Vec<F>, Error> = challenges.into_iter().collect();
+        let challenges: [F; N] = challenges?.try_into().unwrap();
+        Ok(challenges)
+    }
+    /// generates a multivariate point
+    pub fn point(&mut self) -> Result<Vec<F>, Error> {
+        let round = self.rounds.next().ok_or(Error::TranscriptFinished)?;
+        let id = TypeId::of::<PointRound>();
+        if round != (id, self.vars) {
+            return Err(Error::UnexpectedMessage);
+        }
+        let challenges = (0..self.vars).map(|_| self.sponge.squeeze().map_err(Error::SpongeError));
+        challenges.into_iter().collect()
+    }
+}
+
+/// Wraps transcript and proof, ensuring no message circumvents
+/// the transcript.
+pub struct TranscriptGuard<F: Field, S: Duplex<F>, P> {
+    transcript: Transcript<F, S>,
+    proof: P,
+}
+pub struct GuardedIntance<I>(I);
+
+impl<F: Field, S: Duplex<F>, P> TranscriptGuard<F, S, P> {
+    /// Allows to extract messages from the proof, absorbing them in the
+    /// transcript automatically, also returning the corresponding challenges.
+    pub fn receive_message<M, Q, const N: usize>(&mut self, query: Q) -> Result<(M, [F; N]), Error>
+    where
+        M: Message<F> + 'static,
+        Q: Fn(&P) -> M,
+    {
+        let message = query(&self.proof);
+        let challenges: [F; N] = self.transcript.send_message(&message)?;
+        Ok((message, challenges))
+    }
+    /// unwraps the instance while absorbing it and also returning
+    /// challenges.
+    pub fn unwrap_instance<I: Message<F> + 'static, const N: usize>(
+        &mut self,
+        instance: GuardedIntance<I>,
+    ) -> Result<(I, [F; N]), Error> {
+        let GuardedIntance(instance) = instance;
+        let challenges = self.transcript.send_message(&instance)?;
+        Ok((instance, challenges))
+    }
+    /// generates a multivariate point
+    pub fn point(&mut self) -> Result<Vec<F>, Error> {
+        self.transcript.point()
+    }
+}

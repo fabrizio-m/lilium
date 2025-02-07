@@ -1,0 +1,36 @@
+use crate::{
+    transcript::{GuardedIntance, TranscriptGuard},
+    Message, TranscriptBuilder,
+};
+use ark_ff::Field;
+use sponge::sponge::Duplex;
+
+pub trait Protocol<F: Field> {
+    type Key;
+    type Instance: Message<F>;
+    type Proof;
+    type Error;
+
+    fn transcript_pattern(builder: TranscriptBuilder<F>) -> TranscriptBuilder<F>;
+    fn prove(instance: Self::Instance) -> Self::Proof;
+    fn verify<S: Duplex<F>>(
+        key: &Self::Key,
+        instance: GuardedIntance<Self::Instance>,
+        transcript: &mut TranscriptGuard<F, S, Self::Proof>,
+    ) -> Result<(), Self::Error>;
+}
+
+pub trait Reduction<F: Field> {
+    type A: Message<F>;
+    type B;
+    type Key;
+    type Proof;
+    type Error;
+
+    fn transcript_pattern(builder: TranscriptBuilder<F>) -> TranscriptBuilder<F>;
+    fn verify_reduction<S: Duplex<F>>(
+        key: &Self::Key,
+        instance: GuardedIntance<Self::A>,
+        transcript: &mut TranscriptGuard<F, S, Self::Proof>,
+    ) -> Result<Self::B, Self::Error>;
+}
