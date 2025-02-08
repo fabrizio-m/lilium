@@ -53,7 +53,7 @@ fn test<F: Field>() {
         let eval = [a, b];
         evals.push(SimpleEval::new(eval));
     }
-    prove_and_verify::<F, SumOfProducts>(evals, sum);
+    prove_and_verify::<F, SumOfProducts>(evals, sum, ());
 }
 
 #[test]

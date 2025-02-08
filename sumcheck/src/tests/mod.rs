@@ -31,10 +31,10 @@ where
 }
 
 /// Creates a prove with the mle and tries to verify it.
-pub fn prove_and_verify<F, SF>(mle: Vec<SF::Mles<F>>, sum: F)
+pub fn prove_and_verify<F, SF>(mle: Vec<SF::Mles<F>>, sum: F, challs: SF::Challs)
 where
     F: Field,
-    SF: SumcheckFunction<F, Challs = ()>,
+    SF: SumcheckFunction<F>,
 {
     let vars = mle.len().ilog2() as usize;
 
@@ -42,7 +42,7 @@ where
 
     let prover = SumcheckProver::<F, SF>::new(vars);
     let mut transcript: Transcript<F, TestSponge<F>> = transcript_desc.instanciate();
-    let proof = prover.prove(&mut transcript, mle.clone(), &()).unwrap();
+    let proof = prover.prove(&mut transcript, mle.clone(), &challs).unwrap();
     transcript.finish().unwrap();
 
     let instance = GuardedIntance::new(Sum(sum));
@@ -57,5 +57,5 @@ where
     let r = MultiPoint::new(vars);
 
     let evals = EvalsExt::eval(mle, r);
-    assert!(verifier.check_evals_at_r(evals, eval, &()));
+    assert!(verifier.check_evals_at_r(evals, eval, &challs));
 }

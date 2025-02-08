@@ -69,7 +69,7 @@ fn test<F: Field>() {
     }
 
     let sum = F::zero();
-    prove_and_verify::<F, MulGate>(evals, sum);
+    prove_and_verify::<F, MulGate>(evals, sum, ());
 }
 
 #[test]

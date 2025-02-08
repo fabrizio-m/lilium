@@ -135,7 +135,7 @@ fn sumcheck_mul() {
     let mle: Vec<Eval> = (0..domain_size).map(|_| rand_eval()).collect();
 
     let sum = Fr::from(0);
-    prove_and_verify::<Fr, MulGate>(mle, sum);
+    prove_and_verify::<Fr, MulGate>(mle, sum, ());
 }
 #[test]
 fn sumcheck_square() {
@@ -151,5 +151,5 @@ fn sumcheck_square() {
         Eval { a, b, c }
     };
     let mle: Vec<Eval> = (0..domain_size).map(|_| rand_eval()).collect();
-    prove_and_verify::<Fr, SquareGate>(mle, sumc);
+    prove_and_verify::<Fr, SquareGate>(mle, sumc, ());
 }
