@@ -52,6 +52,9 @@ impl<F: Field, S: Duplex<F>> Transcript<F, S> {
         let challenges = (0..self.vars).map(|_| self.sponge.squeeze().map_err(Error::SpongeError));
         challenges.into_iter().collect()
     }
+    pub fn finish(self) -> Result<(), Error> {
+        self.sponge.finish().map_err(Error::SpongeError)
+    }
 }
 
 /// Wraps transcript and proof, ensuring no message circumvents
@@ -62,7 +65,17 @@ pub struct TranscriptGuard<F: Field, S: Duplex<F>, P> {
 }
 pub struct GuardedIntance<I>(I);
 
+impl<I> GuardedIntance<I> {
+    pub fn new(inner: I) -> Self {
+        GuardedIntance(inner)
+    }
+}
+
 impl<F: Field, S: Duplex<F>, P> TranscriptGuard<F, S, P> {
+    pub fn new(transcript: Transcript<F, S>, proof: P) -> Self {
+        Self { transcript, proof }
+    }
+
     /// Allows to extract messages from the proof, absorbing them in the
     /// transcript automatically, also returning the corresponding challenges.
     pub fn receive_message<M, Q, const N: usize>(&mut self, query: Q) -> Result<(M, [F; N]), Error>
@@ -84,8 +97,17 @@ impl<F: Field, S: Duplex<F>, P> TranscriptGuard<F, S, P> {
         let challenges = self.transcript.send_message(&instance)?;
         Ok((instance, challenges))
     }
+    /// Unwraps the instance while ignoring the transcript, caller must ensure
+    /// that not including the instance is acceptable.
+    /// Will still ultimately fail if the instance was expected in the pattern.
+    pub fn unwrap_instance_unsafe<I>(&mut self, instance: GuardedIntance<I>) -> I {
+        instance.0
+    }
     /// generates a multivariate point
     pub fn point(&mut self) -> Result<Vec<F>, Error> {
         self.transcript.point()
+    }
+    pub fn finish(self) -> Result<(), Error> {
+        self.transcript.finish()
     }
 }
