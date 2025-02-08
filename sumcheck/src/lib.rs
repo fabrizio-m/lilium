@@ -12,6 +12,7 @@ mod tests;
 pub mod utils;
 
 pub use tests::prove_and_verify;
+pub use tests::TestSponge;
 
 #[derive(Debug, Clone, Copy)]
 pub enum SumcheckError {

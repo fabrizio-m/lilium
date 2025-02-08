@@ -16,7 +16,7 @@ mod sum_of_products;
 #[cfg(test)]
 mod zero_check;
 
-type TestSponge<F> = Sponge<F, UnsafePermutation<F, 3>, 2, 1, 3>;
+pub type TestSponge<F> = Sponge<F, UnsafePermutation<F, 3>, 2, 1, 3>;
 
 pub fn sumcheck_transcript<F, SF>(vars: usize) -> TranscriptDescriptor<F, TestSponge<F>>
 where
