@@ -9,8 +9,11 @@ use transcript::{
     TranscriptDescriptor, TranscriptGuard,
 };
 
+#[cfg(test)]
 mod mul_square;
+#[cfg(test)]
 mod sum_of_products;
+#[cfg(test)]
 mod zero_check;
 
 type TestSponge<F> = Sponge<F, UnsafePermutation<F, 3>, 2, 1, 3>;
@@ -27,7 +30,8 @@ where
     transcript_descriptor
 }
 
-fn prove_and_verify<F, SF>(mle: Vec<SF::Mles<F>>, sum: F)
+/// Creates a prove with the mle and tries to verify it.
+pub fn prove_and_verify<F, SF>(mle: Vec<SF::Mles<F>>, sum: F)
 where
     F: Field,
     SF: SumcheckFunction<F, Challs = ()>,

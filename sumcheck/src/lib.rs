@@ -8,9 +8,10 @@ pub mod eval_impls;
 pub(crate) mod message;
 pub mod polynomials;
 pub mod sumcheck;
-#[cfg(test)]
 mod tests;
 pub mod utils;
+
+pub use tests::prove_and_verify;
 
 #[derive(Debug, Clone, Copy)]
 pub enum SumcheckError {
