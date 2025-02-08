@@ -9,7 +9,7 @@ use rand::{rngs::StdRng, SeedableRng};
 use std::iter::successors;
 use sumcheck::{
     polynomials::{EvalsExt, MultiPoint, SingleEval},
-    sumcheck::{SumcheckProver, SumcheckVerifier},
+    prove_and_verify,
 };
 
 const VARS: usize = 4;
@@ -25,9 +25,6 @@ fn test<F: Field>() {
     let eval_point = MultiPoint::new(eval_point);
     let poly = SingleEval::from_field_elements(&evals);
     let true_eval = EvalsExt::eval(poly, eval_point.clone());
-
-    let r = vec![elem(); VARS];
-    let r = MultiPoint::new(r);
 
     let counts = vec![1; len];
     let lookups = successors(Some(0), |x| Some(x + 1)).take(len).collect();
@@ -48,21 +45,8 @@ fn test<F: Field>() {
     let points = [eval_point];
     let mle = SparkEval::evals(&structure, points, challenges, zero_check_point);
 
-    let sum = SumcheckProver::<F, SparkEvalCheck<1>>::new(VARS);
-    let challs = &challenges;
-    let proof = sum.prove(&r, mle.clone(), challs);
-    println!("proof: {:#?}", &proof);
-
-    let verifier = SumcheckVerifier::<F, SparkEvalCheck<1>>::new(VARS);
-    match verifier.verify(&r, proof, true_eval.0) {
-        Ok(c) => {
-            let evals = EvalsExt::eval(mle, r);
-            assert!(verifier.check_evals_at_r(evals, c, challs));
-        }
-        Err(err) => {
-            panic!("{:?}", err);
-        }
-    }
+    let sum = true_eval.0;
+    prove_and_verify::<F, SparkEvalCheck<1>>(mle, sum, challenges);
 }
 
 #[test]

@@ -6,7 +6,12 @@ use rand::{rngs::StdRng, Rng, SeedableRng};
 use std::collections::BTreeMap;
 use sumcheck::{
     polynomials::{EvalsExt, MultiPoint, SingleEval},
-    sumcheck::{SumcheckProver, SumcheckVerifier},
+    sumcheck::{sumcheck_degree, SumcheckProver, SumcheckVerifier},
+    TestSponge,
+};
+use transcript::{
+    instances::PolyEvalCheck, protocols::Reduction, GuardedIntance, Transcript, TranscriptBuilder,
+    TranscriptGuard,
 };
 
 // Creating an sparse 8-variate polynomial and representing it
@@ -72,10 +77,6 @@ fn test<F: Field>() {
             .collect(),
     );
 
-    // Random point for sumcheck
-    let r = vec![elem(); HALF_VARS];
-    let r = MultiPoint::new(r);
-
     let dense_poly = dense_poly(&samples);
     // Evaluation of the dense polynomial for reference
     let true_eval = EvalsExt::eval(dense_poly, eval_point);
@@ -96,23 +97,47 @@ fn test<F: Field>() {
     let mle = SparkEval::evals(&structure, points, challenges, zero_check_point);
 
     // create a sumcheck prover using the spark function for 2 dimensions
-    let prover = SumcheckProver::<F, SparkEvalCheck<2>>::new(HALF_VARS);
+    type Prover<F> = SumcheckProver<F, SparkEvalCheck<2>>;
+    let prover = Prover::<F>::new(HALF_VARS);
     let challs = &challenges;
+
+    // creating transcript descriptor for sumcheck
+    let degree = sumcheck_degree::<F, SparkEvalCheck<2>>();
+    let transcript_builder = TranscriptBuilder::new(HALF_VARS, degree);
+    let transcript_desc =
+        SumcheckVerifier::<F, SparkEvalCheck<2>>::transcript_pattern(transcript_builder).finish();
+
+    // instanciating the transcript for the prover
+    let mut transcript: Transcript<F, TestSponge<F>> = transcript_desc.instanciate();
     // making a proof
-    let proof = prover.prove(&r, mle.clone(), challs);
+    let proof = prover.prove(&mut transcript, mle.clone(), challs).unwrap();
+    // finishing transcript as it is no longer used
+    transcript.finish().unwrap();
 
     // creating a verifier, same as the prover
-    let verifier = SumcheckVerifier::<F, SparkEvalCheck<2>>::new(HALF_VARS);
+    type Verifier<F> = SumcheckVerifier<F, SparkEvalCheck<2>>;
+    let verifier = Verifier::<F>::new(HALF_VARS);
+
+    // the instance for sumcheck is just the claimed sum
+    let instance = sumcheck::sumcheck::Sum(true_eval.0);
+    let instance = GuardedIntance::new(instance);
+
+    // instanciate and guard transcript
+    let transcript: Transcript<F, TestSponge<F>> = transcript_desc.instanciate();
+    let mut transcript = TranscriptGuard::new(transcript, proof);
+    let res = Verifier::<F>::verify_reduction(&verifier, instance, &mut transcript);
+
     // verifying the proof for the fiven sum, in this case the evaluation
     // of the committed sparse polynomial
-    match verifier.verify(&r, proof, true_eval.0) {
+    match res {
         // If verification passes, the only remaining thing is to check
         // that the sumcheck polynomial SparkEvalCheck<2> defines as a
         // combination of multilinear polynomials evaluates to c at r.
         // In a more real case here we would use polynomial commitments
-        // to get the evaluation a r. But for thise test we already have
+        // to get the evaluation a r. But for this test we already have
         // the mles and we can just evaluate them.
-        Ok(c) => {
+        Ok(PolyEvalCheck { vars, eval: c }) => {
+            let r = MultiPoint::new(vars);
             // Evaluating all the mles at the point r
             let evals = EvalsExt::eval(mle, r);
             // This method will combine the evaluations of the mle

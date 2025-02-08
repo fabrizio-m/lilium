@@ -1,11 +1,10 @@
+use crate::challenges::LookupChallenge;
 use ark_ff::Field;
 use sumcheck::{
     polynomials::Evals,
     sumcheck::{EvalKind, Var},
     utils::{ZeroCheck, ZeroSumcheck},
 };
-
-use crate::challenges::LookupChallenge;
 
 #[derive(Clone, Copy, Debug)]
 pub enum LookupIdx {
@@ -188,8 +187,9 @@ mod test {
     use ark_ff::Field;
     use rand::{rngs::StdRng, Rng, SeedableRng};
     use sumcheck::{
-        polynomials::{simple_eval::SimpleEval, EvalsExt, MultiPoint},
-        sumcheck::{Env, EvalKind, SumcheckFunction, SumcheckProver, SumcheckVerifier, Var},
+        polynomials::{simple_eval::SimpleEval, MultiPoint},
+        prove_and_verify,
+        sumcheck::{Env, EvalKind, SumcheckFunction, Var},
         utils::ZeroCheckAvailable,
     };
 
@@ -289,21 +289,8 @@ mod test {
             let eval = [zero_check, lookup, table, counts, frac1, frac2];
             evals.push(SimpleEval::new(eval));
         }
-
-        let prover = SumcheckProver::<F, RangeCheck>::new(VARS);
-
-        let r = vec![elem(); VARS];
-        let r = MultiPoint::new(r);
-
-        let proof = prover.prove(&r, evals.clone(), &challenge);
-
-        let verifier = SumcheckVerifier::<F, RangeCheck>::new(VARS);
-
-        let c = verifier.verify(&r, proof, F::zero()).unwrap();
-
-        let evals = EvalsExt::eval(evals, r);
-        let verifies = verifier.check_evals_at_r(evals, c, &challenge);
-        assert!(verifies);
+        let sum = F::zero();
+        prove_and_verify::<F, RangeCheck>(evals, sum, challenge);
     }
     #[test]
     fn rangecheck() {
