@@ -12,6 +12,16 @@ use std::{
 #[derive(Clone, Debug)]
 pub struct Message<F: Field>(Vec<F>);
 
+impl<F: Field> transcript::Message<F> for Message<F> {
+    fn len(_vars: usize, degree: usize) -> usize {
+        degree + 1
+    }
+
+    fn to_field_elements(&self) -> Vec<F> {
+        self.0.clone()
+    }
+}
+
 impl<F: Field> Message<F> {
     pub(crate) fn new_degree_n(eval_at_0: F, eval_at_1: F, degree: usize) -> Self {
         assert!(degree >= 1, "degree should be >= 0");

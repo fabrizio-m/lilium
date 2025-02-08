@@ -8,6 +8,8 @@ edition = "2021"
 [dependencies]
 ark-ff = "0.4"
 ark-poly = "0.4"
+transcript = { path = "../transcript"} 
+sponge = { path = "../sponge"} 
 
 [dev-dependencies]
 rand = "0.8.5"

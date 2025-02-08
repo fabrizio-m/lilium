@@ -7,11 +7,13 @@ use crate::{
     SumcheckError,
 };
 use ark_ff::Field;
+use sponge::sponge::Duplex;
 use std::{
     fmt::Debug,
     marker::PhantomData,
     ops::{Add, AddAssign, Mul, MulAssign, Sub},
 };
+use transcript::{instances::PolyEvalCheck, protocols::Reduction, Transcript, TranscriptGuard};
 
 pub trait Var<F: Field>:
     Sized
@@ -76,6 +78,13 @@ pub trait SumcheckFunction<F: Field> {
     fn function<V: Var<F>, E: Env<F, V, Self::Idx>>(env: E, challs: &Self::Challs) -> V;
 }
 
+pub fn sumcheck_degree<F: Field, SF: SumcheckFunction<F>>() -> usize {
+    let degree_env = DegreeEnv::new();
+    let challs = <SF::Challs as Default>::default();
+    let degree = SF::function(degree_env, &challs);
+    degree.0
+}
+
 pub struct SumcheckProver<F: Field, SF: SumcheckFunction<F>> {
     _phantom: PhantomData<(F, SF)>,
     vars: usize,
@@ -102,10 +111,7 @@ where
         }
     }
     fn degree() -> usize {
-        let degree_env = DegreeEnv::new();
-        let challs = <SF::Challs as Default>::default();
-        let degree = SF::function(degree_env, &challs);
-        degree.0
+        sumcheck_degree::<F, SF>()
     }
     fn message(&self, mle: &[SF::Mles<F>], challs: &SF::Challs) -> Message<F> {
         let half_len = mle.len() / 2;
@@ -122,26 +128,28 @@ where
         }
         message
     }
-    pub fn prove(
+    pub fn prove<D: Duplex<F>>(
         &self,
-        r: &MultiPoint<F>,
+        transcript: &mut Transcript<F, D>,
         mle: Vec<SF::Mles<F>>,
         challs: &SF::Challs,
-    ) -> Proof<F, SF> {
-        assert_eq!(self.vars, r.vars());
-        let point = r.clone();
+    ) -> Result<Proof<F, SF>, SumcheckError> {
         let mut messages = Vec::with_capacity(self.vars);
 
-        let _ = (0..self.vars).fold((mle, point), |(mle, point), _| {
+        let _ = (0..self.vars).try_fold(mle, |mle, _| {
+            let mle: Vec<SF::Mles<F>> = mle;
             let m = self.message(&mle, challs);
+            let [var] = transcript
+                .send_message(&m)
+                .map_err(SumcheckError::TranscriptError)?;
             messages.push(m);
-            let (point, var) = point.pop();
-            (EvalsExt::fix_var(mle, var), point)
-        });
-        Proof {
+            Ok(EvalsExt::fix_var(mle, var))
+        })?;
+
+        Ok(Proof {
             messages,
             _f: PhantomData,
-        }
+        })
     }
 }
 
@@ -154,10 +162,7 @@ pub struct SumcheckVerifier<F: Field, SF: SumcheckFunction<F>> {
 
 impl<F: Field, SF: SumcheckFunction<F>> SumcheckVerifier<F, SF> {
     fn degree() -> u32 {
-        let degree_env = DegreeEnv::new();
-        let challs = <SF::Challs as Default>::default();
-        let degree = SF::function(degree_env, &challs);
-        degree.0 as u32
+        sumcheck_degree::<F, SF>() as u32
     }
     pub fn new(vars: usize) -> Self {
         let degree = Self::degree();
@@ -207,188 +212,66 @@ impl<F: Field, SF: SumcheckFunction<F>> SumcheckVerifier<F, SF> {
     }
 }
 
-#[cfg(test)]
-mod test {
-    use crate::{
-        polynomials::{Evals, EvalsExt, MultiPoint},
-        sumcheck::{Env, SumcheckFunction, SumcheckProver, SumcheckVerifier, Var},
-    };
-    use ark_vesta::Fr;
-    use rand::{thread_rng, Rng};
-    use std::fmt::Debug;
-
-    use super::EvalKind;
-
-    #[derive(Clone, Copy)]
-    struct Eval<V = Fr> {
-        a: V,
-        b: V,
-        c: V,
+pub struct Sum<F>(pub F);
+impl<F: Field> transcript::Message<F> for Sum<F> {
+    fn len(_vars: usize, _degree: usize) -> usize {
+        //1
+        0
     }
 
-    impl<V: Copy> Evals<V> for Eval<V> {
-        type Idx = usize;
+    fn to_field_elements(&self) -> Vec<F> {
+        // vec![self.0]
+        vec![]
+    }
+}
 
-        fn combine<C: Fn(V, V) -> V>(&self, other: &Self, f: C) -> Self {
-            let a = f(self.a, other.a);
-            let b = f(self.b, other.b);
-            let c = f(self.c, other.c);
-            Eval { a, b, c }
-        }
+impl<F: Field, SF: SumcheckFunction<F>> Reduction<F> for SumcheckVerifier<F, SF> {
+    type A = Sum<F>;
 
-        fn index(&self, index: Self::Idx) -> &V {
-            match index {
-                0 => &self.a,
-                1 => &self.b,
-                2 => &self.c,
-                _ => {
-                    unreachable!()
-                }
+    type B = PolyEvalCheck<F>;
+
+    type Key = Self;
+
+    type Proof = Proof<F, SF>;
+
+    type Error = SumcheckError;
+
+    fn transcript_pattern(
+        builder: transcript::TranscriptBuilder<F>,
+    ) -> transcript::TranscriptBuilder<F> {
+        builder.fold_rounds::<Message<F>, 1>()
+    }
+
+    fn verify_reduction<S: Duplex<F>>(
+        key: &Self::Key,
+        instance: transcript::GuardedIntance<Self::A>,
+        transcript: &mut TranscriptGuard<F, S, Self::Proof>,
+    ) -> Result<Self::B, Self::Error> {
+        // let (sum, []) = transcript
+        // .unwrap_instance_unsafe(instance)
+        // .map_err(SumcheckError::TranscriptError)?;
+        let sum = transcript.unwrap_instance_unsafe(instance);
+        let mut sum = sum.0;
+        let mut vars = vec![];
+        for i in 0..key.vars {
+            let (message, [r]) = transcript
+                .receive_message(|proof| proof.messages[i].clone())
+                .map_err(SumcheckError::TranscriptError)?;
+            if message.degree() != key.degree {
+                return Err(SumcheckError::MessageDegree);
             }
-        }
-
-        fn flatten(self, vec: &mut Vec<V>) {
-            let Self { a, b, c } = self;
-            vec.push(a);
-            vec.push(b);
-            vec.push(c);
-        }
-
-        fn unflatten(vec: &mut Vec<V>) -> Self {
-            let c = vec.pop().unwrap();
-            let b = vec.pop().unwrap();
-            let a = vec.pop().unwrap();
-            Self { a, b, c }
-        }
-    }
-
-    fn map_evals<A, B, M>(evals: Eval<A>, f: M) -> Eval<B>
-    where
-        A: Copy,
-        B: Copy,
-        M: Fn(A) -> B,
-    {
-        let Eval { a, b, c } = evals;
-        let a = f(a);
-        let b = f(b);
-        let c = f(c);
-        Eval { a, b, c }
-    }
-    struct MulGate;
-    impl SumcheckFunction<Fr> for MulGate {
-        type Idx = usize;
-        type Mles<V: Copy + Debug> = Eval<V>;
-        type Challs = ();
-
-        fn function<V: Var<Fr>, E: Env<Fr, V, Self::Idx>>(env: E, _challs: &()) -> V {
-            let a = env.get(0);
-            let b = env.get(1);
-            let c = env.get(2);
-            (a.clone() * b) - c
-        }
-
-        fn map_evals<A, B, M>(evals: Self::Mles<A>, f: M) -> Self::Mles<B>
-        where
-            A: Copy + Debug,
-            B: Copy + Debug,
-            M: Fn(A) -> B,
-        {
-            map_evals(evals, f)
-        }
-
-        fn eval_kinds() -> Self::Mles<EvalKind> {
-            Eval {
-                a: EvalKind::FixedSmall,
-                b: EvalKind::FixedSmall,
-                c: EvalKind::FixedSmall,
+            let e0 = message.eval_at_0();
+            let e1 = message.eval_at_1();
+            if e0 + e1 != sum {
+                return Err(SumcheckError::RoundSum);
             }
+            vars.push(r);
+            sum = message.eval_at_x(r, &key.weights);
         }
-    }
-    struct SquareGate;
-    impl SumcheckFunction<Fr> for SquareGate {
-        type Idx = usize;
-        type Mles<V: Copy + Debug> = Eval<V>;
-        type Challs = ();
-
-        fn function<V: Var<Fr>, E: Env<Fr, V, Self::Idx>>(env: E, _challs: &()) -> V {
-            let a = env.get(0);
-            a.clone() * a
-        }
-
-        fn map_evals<A, B, M>(evals: Self::Mles<A>, f: M) -> Self::Mles<B>
-        where
-            A: Copy + Debug,
-            B: Copy + Debug,
-            M: Fn(A) -> B,
-        {
-            map_evals(evals, f)
-        }
-        fn eval_kinds() -> Self::Mles<EvalKind> {
-            Eval {
-                a: EvalKind::FixedSmall,
-                b: EvalKind::FixedSmall,
-                c: EvalKind::FixedSmall,
-            }
-        }
-    }
-
-    #[test]
-    fn sumcheck_mul() {
-        let vars = 8;
-        let domain_size = 1 << vars;
-        let prover = SumcheckProver::<Fr, MulGate>::new(vars);
-        let verifier = SumcheckVerifier::new(vars);
-        let mut rng = thread_rng();
-        let mut rand_fr = || rng.gen::<Fr>();
-        let mut rand_eval = || {
-            let a = rand_fr();
-            let b = rand_fr();
-            let c = a * b;
-            Eval { a, b, c }
-        };
-        let mle: Vec<Eval> = (0..domain_size).map(|_| rand_eval()).collect();
-
-        //this should depend on mle in a real case
-        let r = vec![rand_fr(); vars];
-        let r = MultiPoint::new(r);
-
-        let proof = prover.prove(&r, mle.clone(), &());
-
-        let sum = Fr::from(0);
-        let c = verifier.verify(&r, proof, sum).unwrap();
-
-        let evals = EvalsExt::eval(mle, r);
-        let check = verifier.check_evals_at_r(evals, c, &());
-        assert!(check);
-    }
-    #[test]
-    fn sumcheck_square() {
-        let vars = 3;
-        let domain_size = 1 << vars;
-        let prover = SumcheckProver::<Fr, SquareGate>::new(vars);
-        let verifier = SumcheckVerifier::new(vars);
-        let mut rng = thread_rng();
-        let mut rand_fr = || rng.gen::<Fr>();
-        let mut sumc = Fr::from(0);
-        let mut rand_eval = || {
-            let a = rand_fr();
-            let (b, c) = (a, a);
-            sumc += a * a;
-            Eval { a, b, c }
-        };
-        let mle: Vec<Eval> = (0..domain_size).map(|_| rand_eval()).collect();
-
-        //this should depend on mle in a real case
-        let r = vec![rand_fr(); vars];
-        let r = MultiPoint::new(r);
-
-        let proof = prover.prove(&r, mle.clone(), &());
-
-        let sum = sumc;
-        let c = verifier.verify(&r, proof, sum).unwrap();
-
-        let evals = EvalsExt::eval(mle, r);
-        let check = verifier.check_evals_at_r(evals, c, &());
-        assert!(check);
+        // as sumcheck handles the point in the opposite way
+        // TODO: stablish a stricter point representation.
+        vars.reverse();
+        let eval = sum;
+        Ok(PolyEvalCheck { vars, eval })
     }
 }

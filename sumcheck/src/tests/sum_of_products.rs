@@ -1,11 +1,11 @@
-use std::fmt::Debug;
-
 use crate::{
-    polynomials::{simple_eval::SimpleEval, EvalsExt, MultiPoint},
-    sumcheck::{Env, EvalKind, SumcheckFunction, SumcheckProver, SumcheckVerifier, Var},
+    polynomials::simple_eval::SimpleEval,
+    sumcheck::{Env, EvalKind, SumcheckFunction, Var},
+    tests::prove_and_verify,
 };
 use ark_ff::Field;
 use rand::{rngs::StdRng, SeedableRng};
+use std::fmt::Debug;
 
 const VARS: usize = 4;
 const EVALS: usize = 1 << VARS;
@@ -53,21 +53,7 @@ fn test<F: Field>() {
         let eval = [a, b];
         evals.push(SimpleEval::new(eval));
     }
-
-    let prover = SumcheckProver::<F, SumOfProducts>::new(VARS);
-
-    let r = vec![elem(); VARS];
-    let r = MultiPoint::new(r);
-
-    let proof = prover.prove(&r, evals.clone(), &());
-
-    let verifier = SumcheckVerifier::<F, SumOfProducts>::new(VARS);
-
-    let c = verifier.verify(&r, proof, sum).unwrap();
-
-    let evals = EvalsExt::eval(evals, r);
-    let verifies = verifier.check_evals_at_r(evals, c, &());
-    assert!(verifies);
+    prove_and_verify::<F, SumOfProducts>(evals, sum);
 }
 
 #[test]

@@ -18,4 +18,6 @@ pub enum SumcheckError {
     MessageDegree,
     /// The sum of both halves defers from the claimed sum
     RoundSum,
+    // Transcript error
+    TranscriptError(transcript::Error),
 }
