@@ -1,4 +1,4 @@
-use crate::{Message, PointRound, Transcript};
+use crate::{params::ParamResolver, Message, PointRound, Transcript};
 use ark_ff::Field;
 use sponge::sponge::{Duplex, SpongeBuilder};
 use std::{
@@ -8,20 +8,23 @@ use std::{
 
 pub struct TranscriptBuilder<F: Field> {
     rounds: Vec<(TypeId, usize)>,
+    //TODO: can likely be handled through params
     vars: usize,
-    degree: usize,
+    // degree: usize,
     sponge_builder: SpongeBuilder,
+    param_resolver: ParamResolver,
     _f: PhantomData<F>,
 }
 
 impl<F: Field> TranscriptBuilder<F> {
-    pub fn new(vars: usize, degree: usize) -> Self {
+    pub fn new(vars: usize, params: ParamResolver) -> Self {
         let sponge_builder = SpongeBuilder::new();
         Self {
             rounds: vec![],
             vars,
-            degree,
+            // degree,
             sponge_builder,
+            param_resolver: params,
             _f: PhantomData,
         }
     }
@@ -30,19 +33,21 @@ impl<F: Field> TranscriptBuilder<F> {
             mut rounds,
             sponge_builder,
             vars,
-            degree,
+            // degree,
+            param_resolver,
             ..
         } = self;
         let id = TypeId::of::<T>();
         rounds.push((id, N));
 
         let sponge_builder = sponge_builder
-            .absorb(T::len(vars, degree).try_into().unwrap())
+            .absorb(T::len(vars, &param_resolver).try_into().unwrap())
             .squeeze(N.try_into().unwrap());
 
         Self {
             rounds,
             sponge_builder,
+            param_resolver,
             ..self
         }
     }

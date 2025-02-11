@@ -6,12 +6,12 @@ use rand::{rngs::StdRng, Rng, SeedableRng};
 use std::collections::BTreeMap;
 use sumcheck::{
     polynomials::{EvalsExt, MultiPoint, SingleEval},
-    sumcheck::{sumcheck_degree, SumcheckProver, SumcheckVerifier},
+    sumcheck::{sumcheck_degree, DegreeParam, SumcheckProver, SumcheckVerifier},
     TestSponge,
 };
 use transcript::{
-    instances::PolyEvalCheck, protocols::Reduction, GuardedIntance, Transcript, TranscriptBuilder,
-    TranscriptGuard,
+    instances::PolyEvalCheck, params::ParamResolver, protocols::Reduction, GuardedIntance,
+    Transcript, TranscriptBuilder, TranscriptGuard,
 };
 
 // Creating an sparse 8-variate polynomial and representing it
@@ -103,7 +103,9 @@ fn test<F: Field>() {
 
     // creating transcript descriptor for sumcheck
     let degree = sumcheck_degree::<F, SparkEvalCheck<2>>();
-    let transcript_builder = TranscriptBuilder::new(HALF_VARS, degree);
+    let mut resolver = ParamResolver::new();
+    resolver.set::<DegreeParam>(degree);
+    let transcript_builder = TranscriptBuilder::new(HALF_VARS, resolver);
     let transcript_desc =
         SumcheckVerifier::<F, SparkEvalCheck<2>>::transcript_pattern(transcript_builder).finish();
 

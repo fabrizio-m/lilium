@@ -13,7 +13,10 @@ use std::{
     marker::PhantomData,
     ops::{Add, AddAssign, Mul, MulAssign, Sub},
 };
-use transcript::{instances::PolyEvalCheck, protocols::Reduction, Transcript, TranscriptGuard};
+use transcript::{
+    instances::PolyEvalCheck, params::ParamResolver, protocols::Reduction, Transcript,
+    TranscriptGuard,
+};
 
 pub trait Var<F: Field>:
     Sized
@@ -95,6 +98,22 @@ pub struct SumcheckProver<F: Field, SF: SumcheckFunction<F>> {
 pub struct Proof<F: Field, SF: SumcheckFunction<F>> {
     messages: Vec<Message<F>>,
     _f: PhantomData<SF>,
+}
+
+/// degree of sumcheck messages
+pub struct DegreeParam;
+
+impl<F: Field, SF: SumcheckFunction<F>> transcript::Message<F> for Proof<F, SF> {
+    fn len(vars: usize, param_resolver: &ParamResolver) -> usize {
+        vars * Message::<F>::len(vars, param_resolver)
+    }
+
+    fn to_field_elements(&self) -> Vec<F> {
+        self.messages
+            .iter()
+            .flat_map(transcript::Message::to_field_elements)
+            .collect()
+    }
 }
 
 impl<F, SF> SumcheckProver<F, SF>
@@ -214,14 +233,12 @@ impl<F: Field, SF: SumcheckFunction<F>> SumcheckVerifier<F, SF> {
 
 pub struct Sum<F>(pub F);
 impl<F: Field> transcript::Message<F> for Sum<F> {
-    fn len(_vars: usize, _degree: usize) -> usize {
-        //1
-        0
+    fn len(_vars: usize, _param_resolver: &ParamResolver) -> usize {
+        1
     }
 
     fn to_field_elements(&self) -> Vec<F> {
-        // vec![self.0]
-        vec![]
+        vec![self.0]
     }
 }
 

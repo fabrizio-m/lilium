@@ -1,19 +1,21 @@
 use crate::{
     barycentric_eval::BarycentricWeights,
     polynomials::Evals,
-    sumcheck::{Env, Var},
+    sumcheck::{DegreeParam, Env, Var},
 };
 use ark_ff::Field;
 use std::{
     marker::PhantomData,
     ops::{Add, AddAssign, Mul, MulAssign, Sub},
 };
+use transcript::params::ParamResolver;
 
 #[derive(Clone, Debug)]
 pub struct Message<F: Field>(Vec<F>);
 
 impl<F: Field> transcript::Message<F> for Message<F> {
-    fn len(_vars: usize, degree: usize) -> usize {
+    fn len(_vars: usize, param_resolver: &ParamResolver) -> usize {
+        let degree = param_resolver.get::<DegreeParam>();
         degree + 1
     }
 

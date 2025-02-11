@@ -1,12 +1,12 @@
 use crate::{
     polynomials::{EvalsExt, MultiPoint},
-    sumcheck::{Sum, SumcheckFunction, SumcheckProver, SumcheckVerifier},
+    sumcheck::{DegreeParam, Sum, SumcheckFunction, SumcheckProver, SumcheckVerifier},
 };
 use ark_ff::Field;
 use sponge::{permutation::UnsafePermutation, sponge::Sponge};
 use transcript::{
-    instances::PolyEvalCheck, protocols::Reduction, GuardedIntance, Transcript, TranscriptBuilder,
-    TranscriptDescriptor, TranscriptGuard,
+    instances::PolyEvalCheck, params::ParamResolver, protocols::Reduction, GuardedIntance,
+    Transcript, TranscriptBuilder, TranscriptDescriptor, TranscriptGuard,
 };
 
 #[cfg(test)]
@@ -24,7 +24,9 @@ where
     SF: SumcheckFunction<F>,
 {
     let degree = crate::sumcheck::sumcheck_degree::<F, SF>();
-    let transcript_builder = TranscriptBuilder::new(vars, degree);
+    let mut resolver = ParamResolver::new();
+    resolver.set::<DegreeParam>(degree);
+    let transcript_builder = TranscriptBuilder::new(vars, resolver);
     let transcript_descriptor =
         SumcheckVerifier::<F, SF>::transcript_pattern(transcript_builder).finish();
     transcript_descriptor
