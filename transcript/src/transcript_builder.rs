@@ -1,4 +1,4 @@
-use crate::{params::ParamResolver, Message, PointRound, Transcript};
+use crate::{messages::PointRound, params::ParamResolver, Message, Transcript};
 use ark_ff::Field;
 use sponge::sponge::{Duplex, SpongeBuilder};
 use std::{

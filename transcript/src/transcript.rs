@@ -1,4 +1,4 @@
-use crate::{Error, Message, PointRound};
+use crate::{messages::PointRound, Error, Message};
 use ark_ff::Field;
 use sponge::sponge::Duplex;
 use std::{
@@ -63,11 +63,12 @@ pub struct TranscriptGuard<F: Field, S: Duplex<F>, P> {
     transcript: Transcript<F, S>,
     proof: P,
 }
-pub struct GuardedIntance<I>(I);
+/// wrapper to prevent values accidentally bypassing the transcript
+pub struct MessageGuard<I>(I);
 
-impl<I> GuardedIntance<I> {
+impl<I> MessageGuard<I> {
     pub fn new(inner: I) -> Self {
-        GuardedIntance(inner)
+        MessageGuard(inner)
     }
 }
 
@@ -91,16 +92,16 @@ impl<F: Field, S: Duplex<F>, P> TranscriptGuard<F, S, P> {
     /// challenges.
     pub fn unwrap_instance<I: Message<F> + 'static, const N: usize>(
         &mut self,
-        instance: GuardedIntance<I>,
+        instance: MessageGuard<I>,
     ) -> Result<(I, [F; N]), Error> {
-        let GuardedIntance(instance) = instance;
+        let MessageGuard(instance) = instance;
         let challenges = self.transcript.send_message(&instance)?;
         Ok((instance, challenges))
     }
     /// Unwraps the instance while ignoring the transcript, caller must ensure
     /// that not including the instance is acceptable.
     /// Will still ultimately fail if the instance was expected in the pattern.
-    pub fn unwrap_instance_unsafe<I>(&mut self, instance: GuardedIntance<I>) -> I {
+    pub fn unwrap_instance_unsafe<I>(&mut self, instance: MessageGuard<I>) -> I {
         instance.0
     }
     /// generates a multivariate point

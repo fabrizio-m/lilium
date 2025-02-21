@@ -5,7 +5,7 @@ use crate::{
 use ark_ff::Field;
 use sponge::{permutation::UnsafePermutation, sponge::Sponge};
 use transcript::{
-    instances::PolyEvalCheck, params::ParamResolver, protocols::Reduction, GuardedIntance,
+    instances::PolyEvalCheck, params::ParamResolver, protocols::Reduction, MessageGuard,
     Transcript, TranscriptBuilder, TranscriptDescriptor, TranscriptGuard,
 };
 
@@ -47,7 +47,7 @@ where
     let proof = prover.prove(&mut transcript, mle.clone(), &challs).unwrap();
     transcript.finish().unwrap();
 
-    let instance = GuardedIntance::new(Sum(sum));
+    let instance = MessageGuard::new(Sum(sum));
     let verifier = SumcheckVerifier::<F, SF>::new(vars);
     let transcript = transcript_desc.instanciate();
     let mut transcript = TranscriptGuard::new(transcript, proof);

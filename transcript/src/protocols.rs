@@ -1,5 +1,5 @@
 use crate::{
-    transcript::{GuardedIntance, TranscriptGuard},
+    transcript::{MessageGuard, TranscriptGuard},
     Message, TranscriptBuilder,
 };
 use ark_ff::Field;
@@ -15,7 +15,7 @@ pub trait Protocol<F: Field> {
     fn prove(instance: Self::Instance) -> Self::Proof;
     fn verify<S: Duplex<F>>(
         key: &Self::Key,
-        instance: GuardedIntance<Self::Instance>,
+        instance: MessageGuard<Self::Instance>,
         transcript: &mut TranscriptGuard<F, S, Self::Proof>,
     ) -> Result<(), Self::Error>;
 }
@@ -30,7 +30,7 @@ pub trait Reduction<F: Field> {
     fn transcript_pattern(builder: TranscriptBuilder<F>) -> TranscriptBuilder<F>;
     fn verify_reduction<S: Duplex<F>>(
         key: &Self::Key,
-        instance: GuardedIntance<Self::A>,
+        instance: MessageGuard<Self::A>,
         transcript: &mut TranscriptGuard<F, S, Self::Proof>,
     ) -> Result<Self::B, Self::Error>;
 }

@@ -10,7 +10,7 @@ use sumcheck::{
     TestSponge,
 };
 use transcript::{
-    instances::PolyEvalCheck, params::ParamResolver, protocols::Reduction, GuardedIntance,
+    instances::PolyEvalCheck, params::ParamResolver, protocols::Reduction, MessageGuard,
     Transcript, TranscriptBuilder, TranscriptGuard,
 };
 
@@ -122,7 +122,7 @@ fn test<F: Field>() {
 
     // the instance for sumcheck is just the claimed sum
     let instance = sumcheck::sumcheck::Sum(true_eval.0);
-    let instance = GuardedIntance::new(instance);
+    let instance = MessageGuard::new(instance);
 
     // instanciate and guard transcript
     let transcript: Transcript<F, TestSponge<F>> = transcript_desc.instanciate();

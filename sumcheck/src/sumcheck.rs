@@ -261,7 +261,7 @@ impl<F: Field, SF: SumcheckFunction<F>> Reduction<F> for SumcheckVerifier<F, SF>
 
     fn verify_reduction<S: Duplex<F>>(
         key: &Self::Key,
-        instance: transcript::GuardedIntance<Self::A>,
+        instance: transcript::MessageGuard<Self::A>,
         transcript: &mut TranscriptGuard<F, S, Self::Proof>,
     ) -> Result<Self::B, Self::Error> {
         // let (sum, []) = transcript
