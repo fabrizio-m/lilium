@@ -71,6 +71,16 @@ impl<I> MessageGuard<I> {
         MessageGuard(inner)
     }
 }
+impl<I> MessageGuard<Vec<I>> {
+    pub fn transpose(self) -> Vec<MessageGuard<I>> {
+        self.0.into_iter().map(MessageGuard).collect()
+    }
+}
+impl<I, const N: usize> MessageGuard<[I; N]> {
+    pub fn transpose(self) -> [MessageGuard<I>; N] {
+        self.0.map(MessageGuard)
+    }
+}
 
 impl<F: Field, S: Duplex<F>, P> TranscriptGuard<F, S, P> {
     pub fn new(transcript: Transcript<F, S>, proof: P) -> Self {
@@ -88,9 +98,19 @@ impl<F: Field, S: Duplex<F>, P> TranscriptGuard<F, S, P> {
         let challenges: [F; N] = self.transcript.send_message(&message)?;
         Ok((message, challenges))
     }
+    /// similar to receive_message, doesn't interact with the sponge in any way and returns
+    /// a guarded value to be unwrapped later.
+    pub fn receive_message_delayed<M, Q>(&mut self, query: Q) -> MessageGuard<M>
+    where
+        M: 'static,
+        Q: Fn(&P) -> M,
+    {
+        let message = query(&self.proof);
+        MessageGuard(message)
+    }
     /// unwraps the instance while absorbing it and also returning
     /// challenges.
-    pub fn unwrap_instance<I: Message<F> + 'static, const N: usize>(
+    pub fn unwrap_guard<I: Message<F> + 'static, const N: usize>(
         &mut self,
         instance: MessageGuard<I>,
     ) -> Result<(I, [F; N]), Error> {
