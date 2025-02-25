@@ -1,12 +1,14 @@
 [workspace]
 
-members = [ "automata",
+members = [
+    "automata",
     "ccs",
     "commit",
     "lilium", 
     "transcript",
     "spark",
     "sponge",
-    "sumcheck"
+    "sumcheck",
+    "hash-to-curve"
     ]
 resolver = "2"
