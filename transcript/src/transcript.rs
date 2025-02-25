@@ -55,6 +55,9 @@ impl<F: Field, S: Duplex<F>> Transcript<F, S> {
     pub fn finish(self) -> Result<(), Error> {
         self.sponge.finish().map_err(Error::SpongeError)
     }
+    pub fn finish_unchecked(self) {
+        self.finish().unwrap()
+    }
 }
 
 /// Wraps transcript and proof, ensuring no message circumvents
@@ -65,6 +68,12 @@ pub struct TranscriptGuard<F: Field, S: Duplex<F>, P> {
 }
 /// wrapper to prevent values accidentally bypassing the transcript
 pub struct MessageGuard<I>(I);
+
+impl<I> From<I> for MessageGuard<I> {
+    fn from(value: I) -> Self {
+        Self(value)
+    }
+}
 
 impl<I> MessageGuard<I> {
     pub fn new(inner: I) -> Self {
@@ -130,5 +139,8 @@ impl<F: Field, S: Duplex<F>, P> TranscriptGuard<F, S, P> {
     }
     pub fn finish(self) -> Result<(), Error> {
         self.transcript.finish()
+    }
+    pub fn finish_unchecked(self) {
+        self.transcript.finish_unchecked();
     }
 }

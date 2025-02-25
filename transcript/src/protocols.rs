@@ -4,12 +4,13 @@ use crate::{
 };
 use ark_ff::Field;
 use sponge::sponge::Duplex;
+use std::fmt::Debug;
 
 pub trait Protocol<F: Field> {
     type Key;
     type Instance: Message<F>;
     type Proof;
-    type Error;
+    type Error: Debug;
 
     fn transcript_pattern(builder: TranscriptBuilder<F>) -> TranscriptBuilder<F>;
     fn prove(instance: Self::Instance) -> Self::Proof;

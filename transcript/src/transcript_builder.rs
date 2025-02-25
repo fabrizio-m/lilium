@@ -1,4 +1,9 @@
-use crate::{messages::PointRound, params::ParamResolver, Message, Transcript};
+use crate::{
+    messages::PointRound,
+    params::ParamResolver,
+    protocols::{Protocol, Reduction},
+    Message, Transcript,
+};
 use ark_ff::Field;
 use sponge::sponge::{Duplex, SpongeBuilder};
 use std::{
@@ -17,6 +22,12 @@ pub struct TranscriptBuilder<F: Field> {
 }
 
 impl<F: Field> TranscriptBuilder<F> {
+    pub fn add_protocol_patter<S: Protocol<F>>(self) -> Self {
+        S::transcript_pattern(self)
+    }
+    pub fn add_reduction_patter<S: Reduction<F>>(self) -> Self {
+        S::transcript_pattern(self)
+    }
     pub fn new(vars: usize, params: ParamResolver) -> Self {
         let sponge_builder = SpongeBuilder::new();
         Self {

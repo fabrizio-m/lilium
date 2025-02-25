@@ -11,6 +11,7 @@ pub mod messages;
 pub mod params;
 mod transcript;
 mod transcript_builder;
+pub mod utils;
 
 pub trait Message<F: Field> {
     fn len(vars: usize, param_resolver: &ParamResolver) -> usize;
