@@ -1,0 +1,12 @@
+[package]
+name = "hash-to-curve"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+ark-ff = "0.4"
+ark-ec = "0.4"
+ark-vesta = "0.4"
+
+[dev-dependencies]
+rand = "0.8"
