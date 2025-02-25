@@ -56,7 +56,10 @@ impl<F: Field, S: Duplex<F>> Transcript<F, S> {
         self.sponge.finish().map_err(Error::SpongeError)
     }
     pub fn finish_unchecked(self) {
-        self.finish().unwrap()
+        if let Err(err) = self.finish() {
+            println!("{:#?}", err);
+            panic!();
+        }
     }
 }
 

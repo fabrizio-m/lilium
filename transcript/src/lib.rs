@@ -18,9 +18,9 @@ pub trait Message<F: Field> {
     fn to_field_elements(&self) -> Vec<F>;
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 pub enum Error {
-    SpongeError(sponge::Error),
+    SpongeError(sponge::error::Error),
     /// Attempt to send a message when no more messages were expected
     TranscriptFinished,
     /// Unexpected message or number of challenges generated

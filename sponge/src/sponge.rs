@@ -1,10 +1,12 @@
+use crate::{
+    error::{Error, Mismatch},
+    permutation::Permutation,
+};
+use ark_ff::{Field, PrimeField};
 use std::marker::PhantomData;
 
-use crate::{permutation::Permutation, Error};
-use ark_ff::{Field, PrimeField};
-
 #[derive(PartialEq, Eq, Debug, Clone, Copy)]
-enum Pattern {
+pub(crate) enum Pattern {
     Absorb(u32),
     Squeeze(u32),
 }
@@ -237,9 +239,13 @@ where
         if self.pattern == self.running_pattern {
             Ok(())
         } else {
+            let expected = self.pattern.clone();
+            let found = self.running_pattern.clone();
+            let error = Mismatch::new(expected, found);
+
             // so that it doesn't pannic when dropped
             self.running_pattern = self.pattern.clone();
-            Err(Error::FinishMismatch)
+            Err(Error::FinishMismatch(Box::new(error)))
         }
     }
     /// checks the patterns are compatible

@@ -14,7 +14,7 @@ pub mod utils;
 pub use tests::prove_and_verify;
 pub use tests::TestSponge;
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 pub enum SumcheckError {
     /// A message had an incorrect degree
     MessageDegree,
