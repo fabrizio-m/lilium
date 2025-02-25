@@ -1,7 +1,7 @@
 use ark_ff::Field;
 
 ///A point with `n` variables
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct MultiPoint<F: Field>(Vec<F>);
 
 impl<F: Field> MultiPoint<F> {
