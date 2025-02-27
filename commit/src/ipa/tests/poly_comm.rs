@@ -1,55 +1,64 @@
-use crate::ipa::poly_comm::IpaCommitmentScheme;
-use crate::CommmitmentScheme;
-use ark_ff::UniformRand;
-use ark_vesta::{Fr, Projective};
+use crate::{ipa::poly_comm::IpaCommitmentScheme, CommmitmentScheme2};
+use ark_ff::{Field, UniformRand};
+use ark_vesta::{Fr, Projective, VestaConfig};
+use hash_to_curve::svdw::SvdwMap;
 use rand::thread_rng;
+use sponge::{permutation::UnsafePermutation, sponge::Sponge};
 use sumcheck::polynomials::MultiPoint;
+use transcript::{params::ParamResolver, TranscriptBuilder, TranscriptGuard};
 
-type Scheme = IpaCommitmentScheme<Fr, Projective>;
+type Scheme = IpaCommitmentScheme<Fr, Projective, SvdwMap<VestaConfig>>;
 
 const LEN_LOG: usize = 4;
 const LEN: usize = 1 << LEN_LOG;
 
-#[test]
-fn polynomial_commitment() {
-    let scheme: Scheme = <Scheme as CommmitmentScheme<Fr>>::new(LEN_LOG);
+type TestSponge = Sponge<Fr, UnsafePermutation<Fr, 3>, 2, 1, 3>;
+
+fn polynomial_commitment<S: CommmitmentScheme2<Fr>>(should_fail: bool) {
+    let scheme = S::new(LEN_LOG);
 
     let mut rng = thread_rng();
 
     let mut elem = || Fr::rand(&mut rng);
 
-    let mle: Vec<Fr> = vec![elem(); LEN];
+    let mut mle: Vec<Fr> = vec![elem(); LEN];
 
     let commit = scheme.commit_mle(&mle);
 
     let point: Vec<Fr> = vec![elem(); LEN_LOG];
     let point = MultiPoint::new(point);
 
-    let (eval, open) = scheme.open(&mle, commit, &point, None);
+    let instance = scheme.open_instance(commit.clone(), point.clone(), &mle);
 
-    let verify = scheme.verify(commit, &point, eval, open);
-    assert!(verify);
+    let params = ParamResolver::new();
+    let transcript_builder =
+        TranscriptBuilder::<Fr>::new(LEN_LOG, params).add_protocol_patter::<S>();
+    let transcript_desc = transcript_builder.finish::<TestSponge>();
+    let mut transcript = transcript_desc.instanciate();
+
+    let proof = scheme
+        .open_prove(instance.clone(), &mle, &mut transcript)
+        .unwrap();
+    transcript.finish_unchecked();
+
+    let transcript = transcript_desc.instanciate();
+    let mut transcript = TranscriptGuard::new(transcript, proof);
+    if should_fail {
+        // to make it fail
+        mle[0].double_in_place();
+    }
+    let instance = scheme.open_instance(commit, point, &mle);
+    let verify = S::verify(&scheme, instance.into(), &mut transcript);
+    transcript.finish_unchecked();
+
+    assert!(verify.is_ok());
 }
-
+#[test]
+fn ipa_pcs() {
+    polynomial_commitment::<Scheme>(false);
+}
 #[test]
 #[should_panic]
-fn polynomial_commitment_fail() {
-    let scheme: Scheme = <Scheme as CommmitmentScheme<Fr>>::new(LEN_LOG);
-
-    let mut rng = thread_rng();
-
-    let mut elem = || Fr::rand(&mut rng);
-
-    let mle: Vec<Fr> = vec![elem(); LEN];
-
-    let commit = scheme.commit_mle(&mle);
-
-    let point: Vec<Fr> = vec![elem(); LEN_LOG];
-    let point = MultiPoint::new(point);
-
-    let (eval, open) = scheme.open(&mle, commit, &point, None);
-    let eval = eval * eval;
-
-    let verify = scheme.verify(commit, &point, eval, open);
-    assert!(verify);
+fn ipa_pcs_should_fail() {
+    polynomial_commitment::<Scheme>(true);
 }

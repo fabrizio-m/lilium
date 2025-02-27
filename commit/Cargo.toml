@@ -8,6 +8,9 @@ ark-ff = "0.4"
 ark-ec = "0.4"
 rand = "0.8"
 sumcheck = { path = "../sumcheck"} 
+transcript = { path = "../transcript"} 
+sponge = { path = "../sponge"} 
+hash-to-curve = { path = "../hash-to-curve"} 
 blake3 = "1.5"
 
 [dev-dependencies]

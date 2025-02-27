@@ -1,71 +1,219 @@
 use crate::{
-    ipa::{sponge::SimpleSponge, IpaScheme, Proof},
-    CommmitmentScheme,
+    ipa::{IpaScheme, Proof},
+    CommmitmentScheme2, OpenInstance,
 };
-use ark_ec::VariableBaseMSM;
+use ark_ec::{AffineRepr, CurveConfig, CurveGroup, Group, VariableBaseMSM};
 use ark_ff::PrimeField;
+use hash_to_curve::CurveMap;
+use sponge::sponge::Duplex;
+use std::ops::{Add, Mul};
 use sumcheck::eq::eq;
+use transcript::{
+    messages::{ForeignElement, SingleElement},
+    params::ParamResolver,
+    protocols::Protocol,
+    utils::cycle_cast,
+    Message, MessageGuard, Transcript,
+};
 
-pub struct IpaCommitmentScheme<F, G>(IpaScheme<F, G>)
+use super::{
+    vector_utils::{challenge_combinations, compute_inner_product},
+    RoundMsg,
+};
+
+pub struct IpaCommitmentScheme<F, G, M>(IpaScheme<F, G, M>)
 where
     F: PrimeField,
-    G: VariableBaseMSM<ScalarField = F>;
+    G: VariableBaseMSM<ScalarField = F> + CurveGroup,
+    M: CurveMap<G>;
 
-impl<F, G> CommmitmentScheme<F> for IpaCommitmentScheme<F, G>
+#[derive(Clone)]
+pub struct IpaCommitment<G>(pub(crate) G);
+
+type Scalar<G> = <G as Group>::ScalarField;
+
+impl<G: CurveGroup> Message<Scalar<G>> for IpaCommitment<G> {
+    fn len(_vars: usize, _param_resolver: &ParamResolver) -> usize {
+        4
+    }
+
+    fn to_field_elements(&self) -> Vec<<G::Config as CurveConfig>::ScalarField> {
+        let affine = self.0.into_affine();
+        let (x, y) = affine.xy().unwrap();
+        let mut elems = Vec::with_capacity(4);
+        [*x, *y]
+            .map(ForeignElement::<G::BaseField, Scalar<G>>::from)
+            .into_iter()
+            .for_each(|x| {
+                elems.extend(x.to_field_elements());
+            });
+        elems
+    }
+}
+impl<G: CurveGroup> Mul<Scalar<G>> for IpaCommitment<G> {
+    type Output = Self;
+
+    fn mul(self, rhs: Scalar<G>) -> Self::Output {
+        Self(self.0 * rhs)
+    }
+}
+impl<G: CurveGroup> Add<&Self> for IpaCommitment<G> {
+    type Output = Self;
+
+    fn add(self, rhs: &Self) -> Self::Output {
+        Self(self.0 + rhs.0)
+    }
+}
+
+#[derive(Debug, Clone)]
+pub enum IpaError {
+    Transcript(transcript::Error),
+    /// The final folded commitment doesn't open to the expected value
+    FinalOpenMismatch,
+}
+
+impl From<transcript::Error> for IpaError {
+    fn from(value: transcript::Error) -> Self {
+        Self::Transcript(value)
+    }
+}
+
+impl<F, G, M> Protocol<F> for IpaCommitmentScheme<F, G, M>
 where
     F: PrimeField,
-    G: VariableBaseMSM<ScalarField = F>,
+    G: VariableBaseMSM<ScalarField = F> + CurveGroup,
+    M: CurveMap<G>,
 {
-    type Commitment = G;
+    type Key = Self;
+
+    type Instance = OpenInstance<F, IpaCommitment<G>>;
+
+    type Proof = Proof<F, G>;
+
+    type Error = IpaError;
+
+    fn transcript_pattern(
+        builder: transcript::TranscriptBuilder<F>,
+    ) -> transcript::TranscriptBuilder<F> {
+        builder
+            .round::<Self::Instance, 1>()
+            .fold_rounds::<RoundMsg<G>, 1>()
+            .round::<SingleElement<F>, 0>()
+    }
+
+    fn prove(_instance: Self::Instance) -> Self::Proof {
+        todo!()
+    }
+
+    fn verify<S: sponge::sponge::Duplex<F>>(
+        key: &Self::Key,
+        instance: transcript::MessageGuard<Self::Instance>,
+        transcript: &mut transcript::TranscriptGuard<F, S, Self::Proof>,
+    ) -> Result<(), Self::Error> {
+        let (ins, [u]) = transcript.unwrap_guard(instance)?;
+        // casting challeng u into the base field, and then mapping to curve point
+        let u: G::BaseField = cycle_cast(u);
+        let u = key.0.map.map_to_curve(u);
+
+        let OpenInstance {
+            commit,
+            point,
+            eval,
+        } = ins;
+
+        let commitment: G = commit.0 + u * eval;
+        let mut challenges = vec![];
+        let messages = transcript.receive_message_delayed(|proof| {
+            proof
+                .messages
+                .iter()
+                .cloned()
+                .map(RoundMsg::from)
+                .collect::<Vec<_>>()
+        });
+        let messages: Vec<MessageGuard<RoundMsg<G>>> = messages.transpose();
+
+        let commitment: Result<G, transcript::Error> =
+            messages.into_iter().try_fold(commitment, |acc, msg| {
+                let (msg, [chall]) = transcript.unwrap_guard(msg)?;
+                let RoundMsg { cl, cr } = msg;
+                challenges.push(chall);
+                let commit = acc + cl * chall.square() + cr * chall.inverse().unwrap().square();
+                Ok(commit)
+            });
+        let commitment: G = commitment?;
+
+        let mut challs_inv = challenges.clone();
+        ark_ff::fields::batch_inversion(&mut challs_inv);
+
+        // Efficient way of folding vectors by a single msm/inner product
+        // with the s vector.
+        let s = challenge_combinations(&challenges, &challs_inv);
+
+        // "a" the single value openened from the resulting folded commitment to
+        // the length 1 vector.
+        // Note: doesn't really need to be absorbed, but it probably isn't an
+        // issue to do it anyway.
+        let (SingleElement(a), []) = transcript
+            .receive_message(|proof| SingleElement(proof.a))
+            .unwrap();
+
+        let b = eq(point.clone());
+        let folded_b = compute_inner_product(&s, &b);
+        let folded_g = G::msm_unchecked(&key.0.vector_basis, &s);
+
+        // TODO: zk opening not revealing a
+        // Checking that C = aG + abU
+        let open = (u * folded_b + folded_g) * a;
+        if commitment == open {
+            Ok(())
+        } else {
+            Err(IpaError::FinalOpenMismatch)
+        }
+    }
+}
+
+impl<F, G, M> CommmitmentScheme2<F> for IpaCommitmentScheme<F, G, M>
+where
+    F: PrimeField,
+    G: VariableBaseMSM<ScalarField = F> + CurveGroup,
+    M: CurveMap<G>,
+{
+    type Commitment = IpaCommitment<G>;
 
     type OpenProof = Proof<F, G>;
 
     fn new(vars: usize) -> Self {
-        //TODO: maybe change
         Self(IpaScheme::init(vars, None))
     }
 
     fn commit_mle(&self, evals: &[F]) -> Self::Commitment {
-        self.0.commit(evals)
+        IpaCommitment(self.0.commit(evals))
     }
-
-    fn open(
+    fn open_instance(
         &self,
+        commitment: Self::Commitment,
+        point: sumcheck::polynomials::MultiPoint<F>,
         evals: &[F],
-        commitment: Self::Commitment,
-        point: &sumcheck::polynomials::MultiPoint<F>,
-        eval: Option<F>,
-    ) -> (F, Self::OpenProof) {
-        let a = evals;
+    ) -> OpenInstance<F, Self::Commitment> {
         let b = eq(point.clone());
-        //TODO: maybe acept sponge as argument
-        let mut sponge = SimpleSponge::default();
-        let inner_product = eval.or_else(|| {
-            let x = a
-                .iter()
-                .zip(b.iter())
-                .fold(F::zero(), |acc, (a, b)| acc + *a * b);
-            Some(x)
-        });
-        let eval = inner_product.unwrap();
-        let vectors = [a.to_vec(), b];
-        let open = self
-            .0
-            .prove(vectors, inner_product, commitment, &mut sponge);
-        (eval, open)
+        let eval = compute_inner_product(evals, &b);
+        OpenInstance {
+            commit: commitment,
+            point,
+            eval,
+        }
     }
-
-    fn verify(
+    fn open_prove<S: Duplex<F>>(
         &self,
-        commitment: Self::Commitment,
-        point: &sumcheck::polynomials::MultiPoint<F>,
-        eval: F,
-        proof: Self::OpenProof,
-    ) -> bool {
-        let b = eq(point.clone());
-        let mut sponge = SimpleSponge::default();
-        let inner_product = eval;
-        self.0
-            .verify(&mut sponge, commitment, b, inner_product, proof)
+        instance: OpenInstance<F, Self::Commitment>,
+        evals: &[F],
+        transcript: &mut Transcript<F, S>,
+    ) -> Result<Self::OpenProof, IpaError> {
+        let a = evals;
+        let b = eq(instance.point.clone());
+        let vectors = [a.to_vec(), b];
+
+        Ok(self.0.prove(vectors, instance, transcript)?)
     }
 }

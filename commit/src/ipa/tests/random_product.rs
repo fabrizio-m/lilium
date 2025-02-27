@@ -1,9 +1,10 @@
 use crate::ipa::{self, sponge::SimpleSponge, IpaScheme};
 use ark_ff::{UniformRand, Zero};
-use ark_vesta::{Fr, Projective};
+use ark_vesta::{Fr, Projective, VestaConfig};
+use hash_to_curve::svdw::SvdwMap;
 use rand::thread_rng;
 
-type Scheme = IpaScheme<Fr, Projective>;
+type Scheme = IpaScheme<Fr, Projective, SvdwMap<VestaConfig>>;
 type Proof = ipa::Proof<Fr, Projective>;
 
 const LEN_LOG: usize = 4;

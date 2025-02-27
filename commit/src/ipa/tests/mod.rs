@@ -1,2 +1,5 @@
 mod poly_comm;
-mod random_product;
+
+// as the current implementation supports multilinear evaluation specifically,
+// and not arbitrary inner products.
+//mod random_product;

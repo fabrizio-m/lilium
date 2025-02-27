@@ -1,10 +1,13 @@
-use ark_ec::VariableBaseMSM;
+use ::sponge::sponge::Duplex;
+use ark_ec::{AffineRepr, CurveGroup, Group, VariableBaseMSM};
 use ark_ff::Field;
+use hash_to_curve::CurveMap;
+use poly_comm::IpaCommitment;
 use rand::{rngs::StdRng, SeedableRng};
 use sponge::Sponge;
 use vector_utils::{challenge_combinations, compute_inner_product, fold_basis, fold_vec};
 
-mod poly_comm;
+pub mod poly_comm;
 mod sponge;
 #[cfg(test)]
 mod tests;
@@ -41,13 +44,15 @@ where
     [commit_l, commit_r]
 }
 
-pub struct IpaScheme<F, G>
+pub struct IpaScheme<F, G, M>
 where
     F: Field,
-    G: VariableBaseMSM<ScalarField = F>,
+    G: VariableBaseMSM<ScalarField = F> + CurveGroup,
+    M: CurveMap<G>,
 {
     // basis to commit to the non-public vector
-    vector_basis: Vec<G::MulBase>,
+    pub vector_basis: Vec<G::MulBase>,
+    pub map: M,
 }
 
 pub struct Round<F, G: VariableBaseMSM<ScalarField = F>> {
@@ -66,29 +71,34 @@ impl<F, G: VariableBaseMSM<ScalarField = F>> Round<F, G> {
     }
 }
 
+#[derive(Debug)]
 pub struct Proof<F, G> {
     messages: Vec<(G, G)>,
     a: F,
 }
 
-impl<F, G> IpaScheme<F, G>
+type Res<T> = Result<T, transcript::Error>;
+
+impl<F, G, M> IpaScheme<F, G, M>
 where
     F: Field,
-    G: VariableBaseMSM<ScalarField = F>,
+    G: VariableBaseMSM<ScalarField = F> + CurveGroup,
+    M: CurveMap<G>,
 {
     pub fn new(vector_basis: Vec<G::MulBase>) -> Self {
-        Self { vector_basis }
+        let map = M::new();
+        Self { vector_basis, map }
     }
     pub fn commit(&self, a: &[F]) -> G {
         assert_eq!(a.len(), self.vector_basis.len());
         G::msm_unchecked(&self.vector_basis, a)
     }
 
-    pub fn round<S: Sponge<F, G>>(
+    pub fn round<S: Duplex<F>>(
         round: Round<F, G>,
-        sponge: &mut S,
+        transcript: &mut Transcript<F, S>,
         product_base: G,
-    ) -> (Round<F, G>, (G, G)) {
+    ) -> Res<(Round<F, G>, (G, G))> {
         let Round {
             a,
             b,
@@ -96,9 +106,8 @@ where
             commitment,
         } = round;
         let [cl, cr] = ipa_reduce::<F, G>([&a, &b], &basis, product_base);
-        sponge.absorb_g(cl);
-        sponge.absorb_g(cr);
-        let chall = sponge.squeeze_f();
+        let message = RoundMsg { cl, cr };
+        let [chall] = transcript.send_message(&message)?;
         let chall_inv = chall.inverse().unwrap();
         let a = fold_vec(a, [chall, chall_inv]);
         let b = fold_vec(b, [chall_inv, chall]);
@@ -110,35 +119,37 @@ where
             basis,
             commitment,
         };
-        (round, (cl, cr))
+        Ok((round, (cl, cr)))
     }
-    pub fn reduce<S: Sponge<F, G>>(
+    pub fn reduce<S: Duplex<F>>(
         round: Round<F, G>,
-        sponge: &mut S,
+        transcript: &mut Transcript<F, S>,
         u: G,
         messages: &mut Vec<(G, G)>,
-    ) -> Round<F, G> {
+    ) -> Res<Round<F, G>> {
         if round.reduced() {
-            round
+            Ok(round)
         } else {
-            let (round, (l, r)) = Self::round(round, sponge, u);
+            let (round, (l, r)) = Self::round(round, transcript, u)?;
             messages.push((l, r));
-            Self::reduce(round, sponge, u, messages)
+            Self::reduce(round, transcript, u, messages)
         }
     }
-    pub fn prove<S: Sponge<F, G>>(
+    pub fn prove<S: Duplex<F>>(
         &self,
         vectors: [Vec<F>; 2],
-        inner_product: Option<F>,
-        commitment: G,
-        sponge: &mut S,
-    ) -> Proof<F, G> {
-        // TODO: compute
-        let inner_product = inner_product.unwrap();
-        sponge.absorb_g(commitment);
-        sponge.absorb_f(inner_product);
-        let u = sponge.squeeze_g();
-        // scaling commitment to prevent shifting
+        instance: OpenInstance<F, IpaCommitment<G>>,
+        transcript: &mut Transcript<F, S>,
+    ) -> Res<Proof<F, G>> {
+        let [u] = transcript.send_message(&instance)?;
+        let OpenInstance {
+            commit,
+            eval: inner_product,
+            ..
+        } = instance;
+        let u: G::BaseField = cycle_cast(u);
+        let u = self.map.map_to_curve(u);
+        let commitment = commit.0;
         let commitment: G = commitment + u * inner_product;
 
         let [a, b] = vectors;
@@ -150,10 +161,11 @@ where
             commitment,
         };
         let mut messages = vec![];
-        let last_round = Self::reduce(round, sponge, u, &mut messages);
+        let last_round = Self::reduce(round, transcript, u, &mut messages)?;
         let Round { a, .. } = last_round;
         debug_assert_eq!(a.len(), 1);
-        Proof { messages, a: a[0] }
+        let [] = transcript.send_message(&SingleElement(a[0]))?;
+        Ok(Proof { messages, a: a[0] })
     }
     pub fn verify<S: Sponge<F, G>>(
         &self,
@@ -200,6 +212,49 @@ where
             .take(1 << len_log)
             .collect();
         let vector_basis = G::batch_convert_to_mul_base(&basis);
-        Self { vector_basis }
+        let map = M::new();
+        Self { vector_basis, map }
+    }
+}
+
+use transcript::{
+    messages::{ForeignElement, SingleElement},
+    utils::cycle_cast,
+    Message, Transcript,
+};
+
+use crate::OpenInstance;
+
+struct RoundMsg<G: CurveGroup> {
+    cl: G,
+    cr: G,
+}
+
+type Scalar<G> = <G as Group>::ScalarField;
+
+impl<G: CurveGroup> From<(G, G)> for RoundMsg<G> {
+    fn from(value: (G, G)) -> Self {
+        let (cl, cr) = value;
+        RoundMsg { cl, cr }
+    }
+}
+
+impl<G: CurveGroup> Message<Scalar<G>> for RoundMsg<G> {
+    fn len(vars: usize, param_resolver: &transcript::params::ParamResolver) -> usize {
+        ForeignElement::<G::BaseField, Scalar<G>>::len(vars, param_resolver) * 4
+    }
+
+    fn to_field_elements(&self) -> Vec<<G as Group>::ScalarField> {
+        let [cl, cr] = [self.cl, self.cr].map(G::into_affine);
+        let (x1, y1) = cl.xy().unwrap();
+        let (x2, y2) = cr.xy().unwrap();
+        [x1, y1, x2, y2]
+            .into_iter()
+            .flat_map(|x| {
+                let x: G::BaseField = *x;
+                let foreign = ForeignElement::<G::BaseField, Scalar<G>>::from(x);
+                foreign.to_field_elements()
+            })
+            .collect()
     }
 }
