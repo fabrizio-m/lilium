@@ -44,7 +44,7 @@ impl Mismatch {
                     write!(&mut string, "A{:02} ", n)?;
                 }
                 Pattern::Squeeze(n) => {
-                    write!(&mut string, "A{:02} ", n)?;
+                    write!(&mut string, "S{:02} ", n)?;
                 }
             }
         }
