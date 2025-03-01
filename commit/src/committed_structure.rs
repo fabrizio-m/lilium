@@ -124,7 +124,7 @@ where
             .flatten_vec()
             .into_iter()
             .zip(self.structure.clone().flatten_vec())
-            .filter_map(|(eval, structure)| structure.map(|_| eval))
+            .filter_map(|(eval, structure): (F, Option<usize>)| structure.map(|_| eval))
             .collect();
         let evals_len = evals.len();
         let mut evals = evals.into_iter();

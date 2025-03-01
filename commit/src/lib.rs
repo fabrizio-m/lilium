@@ -7,13 +7,15 @@ use std::{
 use sumcheck::polynomials::MultiPoint;
 use transcript::{protocols::Protocol, Message, Transcript};
 
+pub mod batching;
 pub mod committed_structure;
 pub mod ipa;
 
 pub trait CommmitmentScheme<F: Field> {
     type Commitment: for<'a> Add<&'a Self::Commitment, Output = Self::Commitment>
         + Mul<F, Output = Self::Commitment>
-        + Clone;
+        + Clone
+        + Message<F>;
     type OpenProof;
 
     fn new(vars: usize) -> Self;
@@ -70,7 +72,8 @@ where
 {
     type Commitment: for<'a> Add<&'a Self::Commitment, Output = Self::Commitment>
         + Mul<F, Output = Self::Commitment>
-        + Clone;
+        + Clone
+        + Message<F>;
     type OpenProof: Debug;
 
     fn new(vars: usize) -> Self;
