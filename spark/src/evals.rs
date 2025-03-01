@@ -7,7 +7,7 @@ use ark_ff::Field;
 use sumcheck::{
     eq,
     polynomials::{Evals, MultiPoint},
-    sumcheck::EvalKind,
+    sumcheck::{CommitType, EvalKind},
     utils::{ZeroAvailable, ZeroCheckAvailable},
 };
 
@@ -180,8 +180,8 @@ impl<V> DimensionEval<V> {
         DimensionEval {
             lookup: LookupEval::<()>::kind(),
             eq_eval: EvalKind::FixedSmall,
-            dimension_index: EvalKind::Committed,
-            eq_lookups: EvalKind::Committed,
+            dimension_index: EvalKind::Committed(CommitType::Structure),
+            eq_lookups: EvalKind::Committed(CommitType::Structure),
         }
     }
     /// compute the small evals
@@ -276,8 +276,8 @@ impl<V, const D: usize> SparkEval<V, D> {
         SparkEval {
             dimensions,
             //TODO: maybe it can be made small
-            normal_index: EvalKind::Committed,
-            val: EvalKind::Committed,
+            normal_index: EvalKind::Committed(CommitType::Structure),
+            val: EvalKind::Committed(CommitType::Structure),
             zero_eq: EvalKind::FixedSmall,
             zero: EvalKind::FixedSmall,
         }

@@ -51,10 +51,16 @@ impl<F: Field, V: Var<F>, I, E: Env<F, V, I>> Env<F, V, I> for &E {
 }
 
 #[derive(Clone, Copy, Debug)]
+pub enum CommitType {
+    Structure,
+    ProverProvided,
+}
+
+#[derive(Clone, Copy, Debug)]
 /// Describes how a given mle should be evaluated at a point
 pub enum EvalKind {
     /// To be evaluated through opening a commitment
-    Committed,
+    Committed(CommitType),
     /// Small representation that can be just evaluated by the verifier
     FixedSmall,
     /// Some MLE that can't be directly evaluated, the evaluation is

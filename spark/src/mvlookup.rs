@@ -2,7 +2,7 @@ use crate::challenges::LookupChallenge;
 use ark_ff::Field;
 use sumcheck::{
     polynomials::Evals,
-    sumcheck::{EvalKind, Var},
+    sumcheck::{CommitType, EvalKind, Var},
     utils::{ZeroCheck, ZeroSumcheck},
 };
 
@@ -121,7 +121,7 @@ where
 
 impl<V> LookupEval<V> {
     pub fn kind() -> LookupEval<EvalKind> {
-        let [frac1, frac2, counts] = [EvalKind::Committed; 3];
+        let [frac1, frac2, counts] = [EvalKind::Committed(CommitType::Structure); 3];
         LookupEval {
             frac1,
             frac2,
