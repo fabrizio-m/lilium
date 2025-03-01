@@ -52,8 +52,10 @@ impl<F: Field, V: Var<F>, I, E: Env<F, V, I>> Env<F, V, I> for &E {
 
 #[derive(Clone, Copy, Debug)]
 pub enum CommitType {
+    /// Structure commitments to public mles
     Structure,
-    ProverProvided,
+    /// Instance commitments generally provided by a prover
+    Instance,
 }
 
 #[derive(Clone, Copy, Debug)]
