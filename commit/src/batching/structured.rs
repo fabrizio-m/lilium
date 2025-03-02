@@ -100,6 +100,19 @@ where
     }
 }
 
+impl<F: Field, S: CommmitmentScheme2<F>> StructuredBatchReduction<F, S> {
+    pub fn new(structure_mles: Vec<Vec<F>>, scheme: &S) -> Self {
+        let structure = structure_mles
+            .iter()
+            .map(|mle| scheme.commit_mle(mle))
+            .collect();
+        Self {
+            _phantom: PhantomData,
+            structure,
+            structure_mles,
+        }
+    }
+}
 impl<F: Field, S: CommmitmentScheme2<F> + 'static> StructuredBatchReduction<F, S> {
     pub fn batch_mles<D: Duplex<F>>(
         &self,
