@@ -27,7 +27,7 @@ where
     G: VariableBaseMSM<ScalarField = F> + CurveGroup,
     M: CurveMap<G>;
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct IpaCommitment<G>(pub(crate) G);
 
 type Scalar<G> = <G as Group>::ScalarField;

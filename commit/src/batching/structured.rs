@@ -11,6 +11,7 @@ use transcript::{
 
 /// To batch many open instances and redeuce them into a single one, additionally
 /// acepts an structure of commitments to be batched together.
+#[derive(Debug)]
 pub struct StructuredBatchReduction<F: Field, S: CommmitmentScheme2<F>> {
     _phantom: PhantomData<(F, S)>,
     structure: Vec<S::Commitment>,
