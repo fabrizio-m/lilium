@@ -74,6 +74,10 @@ pub trait EvalsExt<F: Field>: Evals<F> + Sized {
         mle.truncate(half_len);
         mle
     }
+    // TODO: 2 optimizations to be done
+    // 1) Instead of this recursive method, use the lineal eq computation.
+    // 2) add method that allows to filter out mles for cases where only a
+    // subset of the evaluations are needed.
     fn eval(mle: Vec<Self>, point: MultiPoint<F>) -> Self {
         assert_eq!(
             mle.len().ilog2() as usize,
