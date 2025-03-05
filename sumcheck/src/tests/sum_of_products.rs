@@ -19,6 +19,8 @@ impl<F: Field> SumcheckFunction<F> for SumOfProducts {
 
     type Challs = ();
 
+    const KINDS: Self::Mles<EvalKind> = kinds();
+
     fn function<V: Var<F>, E: Env<F, V, Self::Idx>>(env: E, _challs: &Self::Challs) -> V {
         let a = env.get(0);
         let b = env.get(1);
@@ -37,6 +39,9 @@ impl<F: Field> SumcheckFunction<F> for SumOfProducts {
     fn eval_kinds() -> Self::Mles<EvalKind> {
         SimpleEval::new([EvalKind::FixedSmall; 2])
     }
+}
+const fn kinds() -> SimpleEval<EvalKind, 2> {
+    SimpleEval::new([EvalKind::FixedSmall; 2])
 }
 
 fn test<F: Field>() {

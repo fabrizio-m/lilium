@@ -27,6 +27,8 @@ impl<F: Field> SumcheckFunction<F> for MulGate {
 
     type Challs = ();
 
+    const KINDS: Self::Mles<EvalKind> = kinds();
+
     fn function<V: Var<F>, E: Env<F, V, Self::Idx>>(env: E, _challs: &Self::Challs) -> V {
         let a = env.get(1);
         let b = env.get(2);
@@ -47,6 +49,10 @@ impl<F: Field> SumcheckFunction<F> for MulGate {
     fn eval_kinds() -> Self::Mles<EvalKind> {
         SimpleEval::new([EvalKind::FixedSmall; 4])
     }
+}
+
+const fn kinds() -> Evals<EvalKind> {
+    SimpleEval::new([EvalKind::FixedSmall; 4])
 }
 
 fn test<F: Field>() {

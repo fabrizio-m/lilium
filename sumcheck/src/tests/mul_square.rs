@@ -68,6 +68,8 @@ impl SumcheckFunction<Fr> for MulGate {
     type Mles<V: Copy + Debug> = Eval<V>;
     type Challs = ();
 
+    const KINDS: Self::Mles<EvalKind> = kinds();
+
     fn function<V: Var<Fr>, E: Env<Fr, V, Self::Idx>>(env: E, _challs: &()) -> V {
         let a = env.get(0);
         let b = env.get(1);
@@ -92,11 +94,21 @@ impl SumcheckFunction<Fr> for MulGate {
         }
     }
 }
+
+const fn kinds() -> Eval<EvalKind> {
+    Eval {
+        a: EvalKind::FixedSmall,
+        b: EvalKind::FixedSmall,
+        c: EvalKind::FixedSmall,
+    }
+}
 struct SquareGate;
 impl SumcheckFunction<Fr> for SquareGate {
     type Idx = usize;
     type Mles<V: Copy + Debug> = Eval<V>;
     type Challs = ();
+
+    const KINDS: Self::Mles<EvalKind> = kinds();
 
     fn function<V: Var<Fr>, E: Env<Fr, V, Self::Idx>>(env: E, _challs: &()) -> V {
         let a = env.get(0);

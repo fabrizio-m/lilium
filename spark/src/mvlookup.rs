@@ -120,7 +120,7 @@ where
 }
 
 impl<V> LookupEval<V> {
-    pub fn kind() -> LookupEval<EvalKind> {
+    pub const fn kind() -> LookupEval<EvalKind> {
         let [frac1, frac2, counts] = [EvalKind::Committed(CommitType::Structure); 3];
         LookupEval {
             frac1,
@@ -210,6 +210,8 @@ mod test {
 
         // reusing them as we need the same here
         type Challs = SparkChallenges<F>;
+
+        const KINDS: Self::Mles<EvalKind> = Evals::new([EvalKind::FixedSmall; 6]);
 
         fn function<V: Var<F>, E: Env<F, V, Self::Idx>>(env: E, challs: &Self::Challs) -> V {
             // let zero_check = env.get(0);

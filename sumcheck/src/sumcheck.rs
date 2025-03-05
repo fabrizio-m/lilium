@@ -79,6 +79,8 @@ pub trait SumcheckFunction<F: Field> {
     type Challs: Default;
 
     /// Provides a description of how each mle should be evaluated
+    const KINDS: Self::Mles<EvalKind>;
+    /// Provides a description of how each mle should be evaluated
     fn eval_kinds() -> Self::Mles<EvalKind>;
     fn map_evals<A, B, M>(evals: Self::Mles<A>, f: M) -> Self::Mles<B>
     where

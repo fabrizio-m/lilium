@@ -165,7 +165,7 @@ pub mod simple_eval {
     pub struct SimpleEval<F, const N: usize>([F; N]);
 
     impl<F, const N: usize> SimpleEval<F, N> {
-        pub fn new(inner: [F; N]) -> Self {
+        pub const fn new(inner: [F; N]) -> Self {
             Self(inner)
         }
         pub fn map<V, M>(self, f: M) -> SimpleEval<V, N>

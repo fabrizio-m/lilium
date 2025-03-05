@@ -17,6 +17,8 @@ impl<F: Field, const D: usize> SumcheckFunction<F> for SparkEvalCheck<D> {
     type Mles<V: Copy + std::fmt::Debug> = SparkEval<V, D>;
     type Challs = SparkChallenges<F>;
 
+    const KINDS: Self::Mles<EvalKind> = SparkEval::<EvalKind, D>::kinds();
+
     fn function<V, E>(env: E, challs: &SparkChallenges<F>) -> V
     where
         V: Var<F>,

@@ -176,7 +176,7 @@ impl<V: Copy, const D: usize> Evals<V> for SparkEval<V, D> {
     }
 }
 impl<V> DimensionEval<V> {
-    pub fn kind() -> DimensionEval<EvalKind> {
+    pub const fn kind() -> DimensionEval<EvalKind> {
         DimensionEval {
             lookup: LookupEval::<()>::kind(),
             eq_eval: EvalKind::FixedSmall,
@@ -271,7 +271,7 @@ impl<V: Copy, const D: usize> SparkEval<Option<V>, D> {
     }
 }
 impl<V, const D: usize> SparkEval<V, D> {
-    pub fn kinds() -> SparkEval<EvalKind, D> {
+    pub const fn kinds() -> SparkEval<EvalKind, D> {
         let dimensions = [DimensionEval::<()>::kind(); D];
         SparkEval {
             dimensions,
