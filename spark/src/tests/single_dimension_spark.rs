@@ -24,7 +24,7 @@ fn test<F: Field>() {
     let eval_point = vec![elem(); VARS];
     let eval_point = MultiPoint::new(eval_point);
     let poly = SingleEval::from_field_elements(&evals);
-    let true_eval = EvalsExt::eval(poly, eval_point.clone());
+    let true_eval = EvalsExt::eval(&poly, eval_point.clone());
 
     let counts = vec![1; len];
     let lookups = successors(Some(0), |x| Some(x + 1)).take(len).collect();

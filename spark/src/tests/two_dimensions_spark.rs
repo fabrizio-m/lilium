@@ -79,7 +79,7 @@ fn test<F: Field>() {
 
     let dense_poly = dense_poly(&samples);
     // Evaluation of the dense polynomial for reference
-    let true_eval = EvalsExt::eval(dense_poly, eval_point);
+    let true_eval = EvalsExt::eval(&dense_poly, eval_point);
 
     // The structure for the sparse representation
     let structure = sparse_poly(&samples);
@@ -141,7 +141,7 @@ fn test<F: Field>() {
         Ok(PolyEvalCheck { vars, eval: c }) => {
             let r = MultiPoint::new(vars);
             // Evaluating all the mles at the point r
-            let evals = EvalsExt::eval(mle, r);
+            let evals = EvalsExt::eval(&mle, r);
             // This method will combine the evaluations of the mle
             // into the evaluation of the final single sumcheck polynomial
             // and then check it is equal to c.
