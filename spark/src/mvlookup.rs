@@ -232,10 +232,6 @@ mod test {
             checks
         }
 
-        fn eval_kinds() -> Self::Mles<EvalKind> {
-            Evals::new([EvalKind::FixedSmall; 6])
-        }
-
         fn map_evals<A, B, M>(evals: Self::Mles<A>, f: M) -> Self::Mles<B>
         where
             A: Copy + std::fmt::Debug,

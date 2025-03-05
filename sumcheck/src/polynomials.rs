@@ -175,7 +175,9 @@ pub mod simple_eval {
             SimpleEval(self.0.map(f))
         }
     }
+
     impl ZeroCheckAvailable for usize {
+        /// This fixes the index to be 0
         fn zerocheck_eq() -> Self {
             0
         }

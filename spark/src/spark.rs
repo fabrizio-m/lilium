@@ -42,10 +42,6 @@ impl<F: Field, const D: usize> SumcheckFunction<F> for SparkEvalCheck<D> {
         all_checks * combination_challenge + eval
     }
 
-    fn eval_kinds() -> Self::Mles<EvalKind> {
-        SparkEval::<(), D>::kinds()
-    }
-
     fn map_evals<A, B, M>(evals: Self::Mles<A>, f: M) -> Self::Mles<B>
     where
         A: Copy + std::fmt::Debug,

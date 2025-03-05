@@ -35,10 +35,6 @@ impl<F: Field> SumcheckFunction<F> for SumOfProducts {
     {
         evals.map(f)
     }
-
-    fn eval_kinds() -> Self::Mles<EvalKind> {
-        SimpleEval::new([EvalKind::FixedSmall; 2])
-    }
 }
 const fn kinds() -> SimpleEval<EvalKind, 2> {
     SimpleEval::new([EvalKind::FixedSmall; 2])

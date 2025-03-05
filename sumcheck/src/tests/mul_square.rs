@@ -85,14 +85,6 @@ impl SumcheckFunction<Fr> for MulGate {
     {
         map_evals(evals, f)
     }
-
-    fn eval_kinds() -> Self::Mles<EvalKind> {
-        Eval {
-            a: EvalKind::FixedSmall,
-            b: EvalKind::FixedSmall,
-            c: EvalKind::FixedSmall,
-        }
-    }
 }
 
 const fn kinds() -> Eval<EvalKind> {
@@ -122,13 +114,6 @@ impl SumcheckFunction<Fr> for SquareGate {
         M: Fn(A) -> B,
     {
         map_evals(evals, f)
-    }
-    fn eval_kinds() -> Self::Mles<EvalKind> {
-        Eval {
-            a: EvalKind::FixedSmall,
-            b: EvalKind::FixedSmall,
-            c: EvalKind::FixedSmall,
-        }
     }
 }
 

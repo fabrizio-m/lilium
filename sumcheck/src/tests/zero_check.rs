@@ -46,9 +46,6 @@ impl<F: Field> SumcheckFunction<F> for MulGate {
     {
         evals.map(f)
     }
-    fn eval_kinds() -> Self::Mles<EvalKind> {
-        SimpleEval::new([EvalKind::FixedSmall; 4])
-    }
 }
 
 const fn kinds() -> Evals<EvalKind> {
