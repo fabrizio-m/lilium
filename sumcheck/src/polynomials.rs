@@ -1,5 +1,7 @@
 use ark_ff::Field;
 
+use crate::eq::eq;
+
 ///A point with `n` variables
 #[derive(Clone, Debug)]
 pub struct MultiPoint<F: Field>(Vec<F>);
@@ -74,11 +76,8 @@ pub trait EvalsExt<F: Field>: Evals<F> + Sized {
         mle.truncate(half_len);
         mle
     }
-    // TODO: 2 optimizations to be done
-    // 1) Instead of this recursive method, use the lineal eq computation.
-    // 2) add method that allows to filter out mles for cases where only a
-    // subset of the evaluations are needed.
-    fn eval(mle: Vec<Self>, point: MultiPoint<F>) -> Self {
+    /// recursive n log n method of evaluation
+    fn eval_slow(mle: Vec<Self>, point: MultiPoint<F>) -> Self {
         assert_eq!(
             mle.len().ilog2() as usize,
             point.vars(),
@@ -89,10 +88,34 @@ pub trait EvalsExt<F: Field>: Evals<F> + Sized {
         if point.vars() == 0 {
             mle.into_iter().next().unwrap()
         } else {
-            Self::eval(mle, point)
+            Self::eval_slow(mle, point)
         }
     }
+
+    // TODO: 1 optimization to be done
+    // 1) add method that allows to filter out mles for cases where only a
+    // subset of the evaluations are needed.
+    /// Fast iterative O(n) evaluation.
+    fn eval(mles: &[Self], point: MultiPoint<F>) -> Self {
+        let point = point;
+        use std::iter::Iterator;
+        assert_eq!(
+            mles.len().ilog2() as usize,
+            point.vars(),
+            "number of variables missmatch"
+        );
+        let eq: Vec<F> = eq(point);
+        let dummy = mles[0].clone().flatten_vec();
+        let dummy: Self = Self::unflatten_vec(vec![F::zero(); dummy.len()]);
+
+        eq.into_iter().zip(mles).fold(dummy.clone(), |acc, x| {
+            let acc: Self = acc;
+            let (eq_eval, eval): (F, &Self) = x;
+            acc.combine(eval, |a, b| a + b * eq_eval)
+        })
+    }
 }
+
 impl<F, T> EvalsExt<F> for T
 where
     T: Evals<F> + Sized,

@@ -58,6 +58,6 @@ where
     let PolyEvalCheck { vars, eval } = check;
     let r = MultiPoint::new(vars);
 
-    let evals = EvalsExt::eval(mle, r);
+    let evals = EvalsExt::eval(&mle, r);
     assert!(verifier.check_evals_at_r(evals, eval, &challs));
 }

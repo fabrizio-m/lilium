@@ -119,6 +119,6 @@ fn test_eq() {
         .fold(Fr::from(0), |sum, (a, b)| sum + a * b);
 
     let check_poly: Vec<_> = check_poly.into_iter().map(SingleEval).collect();
-    let check_eval = EvalsExt::eval(check_poly, point).0;
+    let check_eval = EvalsExt::eval_slow(check_poly, point).0;
     assert_eq!(eq_eval, check_eval);
 }
