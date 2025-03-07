@@ -8,7 +8,8 @@ use sumcheck::polynomials::MultiPoint;
 use transcript::{protocols::Protocol, Message, Transcript};
 
 pub mod batching;
-pub mod committed_structure;
+// pub mod committed_structure;
+pub mod committed_structure2;
 pub mod ipa;
 
 pub trait CommmitmentScheme<F: Field> {
@@ -73,6 +74,7 @@ where
     type Commitment: for<'a> Add<&'a Self::Commitment, Output = Self::Commitment>
         + Mul<F, Output = Self::Commitment>
         + Clone
+        + Debug
         + Message<F>;
     type OpenProof: Debug;
 

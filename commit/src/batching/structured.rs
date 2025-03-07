@@ -1,13 +1,11 @@
 use crate::{
-    batching::{reduction::BatchReduction, BatchEval, BatchingError},
+    batching::{BatchEval, BatchingError},
     CommmitmentScheme2, OpenInstance,
 };
 use ark_ff::Field;
 use sponge::sponge::Duplex;
 use std::marker::PhantomData;
-use transcript::{
-    protocols::Reduction, Message, MessageGuard, Transcript, TranscriptBuilder, TranscriptGuard,
-};
+use transcript::{protocols::Reduction, Message, MessageGuard, TranscriptBuilder, TranscriptGuard};
 
 /// To batch many open instances and redeuce them into a single one, additionally
 /// acepts an structure of commitments to be batched together.
@@ -15,7 +13,7 @@ use transcript::{
 pub struct StructuredBatchReduction<F: Field, S: CommmitmentScheme2<F>> {
     _phantom: PhantomData<(F, S)>,
     structure: Vec<S::Commitment>,
-    structure_mles: Vec<Vec<F>>,
+    // structure_mles: Vec<Vec<F>>,
 }
 
 /// Extension [BatchEval] including evaluations of public commitments.
@@ -24,6 +22,15 @@ pub struct StructuredBatchEval<F: Field, S: CommmitmentScheme2<F>> {
     /// Only the evaluations are here as the commitments are part
     /// of the structure.
     structure_evals: Vec<F>,
+}
+
+impl<F: Field, S: CommmitmentScheme2<F>> StructuredBatchEval<F, S> {
+    pub(crate) fn new(dynamic_batch: BatchEval<F, S>, structure_evals: Vec<F>) -> Self {
+        Self {
+            dynamic_batch,
+            structure_evals,
+        }
+    }
 }
 
 /// Number of commitments in the strucuture
@@ -110,11 +117,10 @@ impl<F: Field, S: CommmitmentScheme2<F>> StructuredBatchReduction<F, S> {
         Self {
             _phantom: PhantomData,
             structure,
-            structure_mles,
         }
     }
 }
-impl<F: Field, S: CommmitmentScheme2<F> + 'static> StructuredBatchReduction<F, S> {
+/*impl<F: Field, S: CommmitmentScheme2<F> + 'static> StructuredBatchReduction<F, S> {
     pub fn batch_mles<D: Duplex<F>>(
         &self,
         instance: BatchEval<F, S>,
@@ -140,3 +146,4 @@ impl<F: Field, S: CommmitmentScheme2<F> + 'static> StructuredBatchReduction<F, S
         combined
     }
 }
+*/

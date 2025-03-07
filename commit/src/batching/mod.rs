@@ -12,6 +12,18 @@ pub struct BatchEval<F: Field, S: CommmitmentScheme2<F>> {
     commitments_and_evals: Vec<(S::Commitment, F)>,
 }
 
+impl<F: Field, S: CommmitmentScheme2<F>> BatchEval<F, S> {
+    pub(crate) fn new(
+        point: MultiPoint<F>,
+        commitments_and_evals: Vec<(S::Commitment, F)>,
+    ) -> Self {
+        Self {
+            point,
+            commitments_and_evals,
+        }
+    }
+}
+
 pub enum BatchingError<E> {
     Transcript(transcript::Error),
     /// Inner PCS error

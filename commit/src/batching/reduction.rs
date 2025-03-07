@@ -5,9 +5,7 @@ use crate::{
 use ark_ff::Field;
 use sponge::sponge::Duplex;
 use std::marker::PhantomData;
-use transcript::{
-    protocols::Reduction, MessageGuard, Transcript, TranscriptBuilder, TranscriptGuard,
-};
+use transcript::{protocols::Reduction, MessageGuard, TranscriptBuilder, TranscriptGuard};
 
 /// to batch many open instances and redeuce them into a single one
 pub struct BatchReduction<F: Field, S: CommmitmentScheme2<F>> {
@@ -64,7 +62,7 @@ where
     }
 }
 
-impl<F: Field, S: CommmitmentScheme2<F> + 'static> BatchReduction<F, S> {
+/*impl<F: Field, S: CommmitmentScheme2<F> + 'static> BatchReduction<F, S> {
     pub fn batch_mles<D: Duplex<F>>(
         instance: BatchEval<F, S>,
         mles: &[&[F]],
@@ -89,4 +87,4 @@ impl<F: Field, S: CommmitmentScheme2<F> + 'static> BatchReduction<F, S> {
         }
         combined
     }
-}
+}*/
