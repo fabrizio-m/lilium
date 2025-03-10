@@ -76,7 +76,7 @@ where
         + Clone
         + Debug
         + Message<F>;
-    type OpenProof: Debug;
+    type OpenProof: Debug + Clone;
 
     fn new(vars: usize) -> Self;
     fn commit_mle(&self, evals: &[F]) -> Self::Commitment;

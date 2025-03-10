@@ -71,7 +71,7 @@ impl<F, G: VariableBaseMSM<ScalarField = F>> Round<F, G> {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Proof<F, G> {
     messages: Vec<(G, G)>,
     a: F,

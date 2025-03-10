@@ -49,10 +49,13 @@ where
 
     let instance = MessageGuard::new(Sum(sum));
     let verifier = SumcheckVerifier::<F, SF>::new(vars);
-    let transcript = transcript_desc.instanciate();
-    let mut transcript = TranscriptGuard::new(transcript, proof);
+    let mut transcript = transcript_desc.instanciate();
+    let check = {
+        let transcript = TranscriptGuard::new(&mut transcript, proof);
 
-    let check = SumcheckVerifier::verify_reduction(&verifier, instance, &mut transcript).unwrap();
+        let check = SumcheckVerifier::verify_reduction(&verifier, instance, transcript).unwrap();
+        check
+    };
     transcript.finish().unwrap();
 
     let PolyEvalCheck { vars, eval } = check;

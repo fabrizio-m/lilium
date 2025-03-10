@@ -108,7 +108,7 @@ where
     fn verify<S: sponge::sponge::Duplex<F>>(
         key: &Self::Key,
         instance: transcript::MessageGuard<Self::Instance>,
-        transcript: &mut transcript::TranscriptGuard<F, S, Self::Proof>,
+        mut transcript: transcript::TranscriptGuard<F, S, Self::Proof>,
     ) -> Result<(), Self::Error> {
         let (ins, [u]) = transcript.unwrap_guard(instance)?;
         // casting challeng u into the base field, and then mapping to curve point

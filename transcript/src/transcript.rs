@@ -15,6 +15,10 @@ pub struct Transcript<F: Field, S: Duplex<F>> {
 }
 
 impl<F: Field, S: Duplex<F>> Transcript<F, S> {
+    pub fn guard<P>(&mut self, proof: P) -> TranscriptGuard<F, S, P> {
+        TranscriptGuard::new(self, proof)
+    }
+
     pub(crate) fn new(sponge: S, rounds: IntoIter<(TypeId, usize)>, vars: usize) -> Self {
         Self {
             sponge,
@@ -65,10 +69,11 @@ impl<F: Field, S: Duplex<F>> Transcript<F, S> {
 
 /// Wraps transcript and proof, ensuring no message circumvents
 /// the transcript.
-pub struct TranscriptGuard<F: Field, S: Duplex<F>, P> {
-    transcript: Transcript<F, S>,
+pub struct TranscriptGuard<'a, F: Field, S: Duplex<F>, P> {
+    transcript: &'a mut Transcript<F, S>,
     proof: P,
 }
+
 /// wrapper to prevent values accidentally bypassing the transcript
 pub struct MessageGuard<I>(I);
 
@@ -83,20 +88,30 @@ impl<I> MessageGuard<I> {
         MessageGuard(inner)
     }
 }
+
 impl<I> MessageGuard<Vec<I>> {
     pub fn transpose(self) -> Vec<MessageGuard<I>> {
         self.0.into_iter().map(MessageGuard).collect()
     }
 }
+
 impl<I, const N: usize> MessageGuard<[I; N]> {
     pub fn transpose(self) -> [MessageGuard<I>; N] {
         self.0.map(MessageGuard)
     }
 }
 
-impl<F: Field, S: Duplex<F>, P> TranscriptGuard<F, S, P> {
-    pub fn new(transcript: Transcript<F, S>, proof: P) -> Self {
+impl<'a, F: Field, S: Duplex<F>, P> TranscriptGuard<'a, F, S, P> {
+    pub fn new(transcript: &'a mut Transcript<F, S>, proof: P) -> Self {
         Self { transcript, proof }
+    }
+
+    pub fn new_guard<P2>(&mut self, proof: MessageGuard<P2>) -> TranscriptGuard<F, S, P2> {
+        let proof = proof.0;
+        TranscriptGuard {
+            transcript: self.transcript,
+            proof,
+        }
     }
 
     /// Allows to extract messages from the proof, absorbing them in the
@@ -139,11 +154,5 @@ impl<F: Field, S: Duplex<F>, P> TranscriptGuard<F, S, P> {
     /// generates a multivariate point
     pub fn point(&mut self) -> Result<Vec<F>, Error> {
         self.transcript.point()
-    }
-    pub fn finish(self) -> Result<(), Error> {
-        self.transcript.finish()
-    }
-    pub fn finish_unchecked(self) {
-        self.transcript.finish_unchecked();
     }
 }

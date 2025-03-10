@@ -5,7 +5,7 @@ use hash_to_curve::svdw::SvdwMap;
 use rand::thread_rng;
 use sponge::{permutation::UnsafePermutation, sponge::Sponge};
 use sumcheck::polynomials::MultiPoint;
-use transcript::{params::ParamResolver, TranscriptBuilder, TranscriptGuard};
+use transcript::{params::ParamResolver, TranscriptBuilder};
 
 type Scheme = IpaCommitmentScheme<Fr, Projective, SvdwMap<VestaConfig>>;
 
@@ -41,14 +41,14 @@ fn polynomial_commitment<S: CommmitmentScheme2<Fr>>(should_fail: bool) {
         .unwrap();
     transcript.finish_unchecked();
 
-    let transcript = transcript_desc.instanciate();
-    let mut transcript = TranscriptGuard::new(transcript, proof);
+    let mut transcript = transcript_desc.instanciate();
+    // let mut transcript = TranscriptGuard::new(transcript, proof);
     if should_fail {
         // to make it fail
         mle[0].double_in_place();
     }
     let instance = scheme.open_instance(commit, point, &mle);
-    let verify = S::verify(&scheme, instance.into(), &mut transcript);
+    let verify = S::verify(&scheme, instance.into(), transcript.guard(proof));
     transcript.finish_unchecked();
 
     assert!(verify.is_ok());

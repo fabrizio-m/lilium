@@ -34,7 +34,7 @@ where
     fn verify_reduction<D: Duplex<F>>(
         _key: &Self::Key,
         instance: MessageGuard<Self::A>,
-        transcript: &mut TranscriptGuard<F, D, Self::Proof>,
+        mut transcript: TranscriptGuard<F, D, Self::Proof>,
     ) -> Result<Self::B, Self::Error> {
         let (instance, [chall]) = transcript
             .unwrap_guard(instance)

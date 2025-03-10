@@ -11,7 +11,7 @@ use sumcheck::{
 };
 use transcript::{
     instances::PolyEvalCheck, params::ParamResolver, protocols::Reduction, MessageGuard,
-    Transcript, TranscriptBuilder, TranscriptGuard,
+    Transcript, TranscriptBuilder,
 };
 
 // Creating an sparse 8-variate polynomial and representing it
@@ -125,9 +125,9 @@ fn test<F: Field>() {
     let instance = MessageGuard::new(instance);
 
     // instanciate and guard transcript
-    let transcript: Transcript<F, TestSponge<F>> = transcript_desc.instanciate();
-    let mut transcript = TranscriptGuard::new(transcript, proof);
-    let res = Verifier::<F>::verify_reduction(&verifier, instance, &mut transcript);
+    let mut transcript: Transcript<F, TestSponge<F>> = transcript_desc.instanciate();
+    // let mut transcript = TranscriptGuard::new(transcript, proof);
+    let res = Verifier::<F>::verify_reduction(&verifier, instance, transcript.guard(proof));
 
     // verifying the proof for the fiven sum, in this case the evaluation
     // of the committed sparse polynomial

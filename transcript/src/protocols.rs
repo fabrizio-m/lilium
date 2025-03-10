@@ -17,7 +17,7 @@ pub trait Protocol<F: Field> {
     fn verify<S: Duplex<F>>(
         key: &Self::Key,
         instance: MessageGuard<Self::Instance>,
-        transcript: &mut TranscriptGuard<F, S, Self::Proof>,
+        transcript: TranscriptGuard<F, S, Self::Proof>,
     ) -> Result<(), Self::Error>;
 }
 
@@ -32,6 +32,6 @@ pub trait Reduction<F: Field> {
     fn verify_reduction<S: Duplex<F>>(
         key: &Self::Key,
         instance: MessageGuard<Self::A>,
-        transcript: &mut TranscriptGuard<F, S, Self::Proof>,
+        transcript: TranscriptGuard<F, S, Self::Proof>,
     ) -> Result<Self::B, Self::Error>;
 }

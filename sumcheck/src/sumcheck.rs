@@ -270,7 +270,7 @@ impl<F: Field, SF: SumcheckFunction<F>> Reduction<F> for SumcheckVerifier<F, SF>
     fn verify_reduction<S: Duplex<F>>(
         key: &Self::Key,
         instance: transcript::MessageGuard<Self::A>,
-        transcript: &mut TranscriptGuard<F, S, Self::Proof>,
+        mut transcript: TranscriptGuard<F, S, Self::Proof>,
     ) -> Result<Self::B, Self::Error> {
         // let (sum, []) = transcript
         // .unwrap_instance_unsafe(instance)
