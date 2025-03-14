@@ -60,7 +60,6 @@ fn normal_index<F: Field>(n: usize) -> Vec<F> {
 }
 
 impl<F: Field, const D: usize> SparkStructure<F, D> {
-    // pub fn new(dimensions: [DimensionStructure<F>; D], normal_index: Vec<F>, val: Vec<F>) -> Self {
     pub fn new(evals: Vec<([usize; D], F)>) -> Self {
         let len = evals.len();
         assert!(len.is_power_of_two(), "must be power of 2");
