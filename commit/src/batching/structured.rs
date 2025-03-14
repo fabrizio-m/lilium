@@ -9,14 +9,15 @@ use transcript::{protocols::Reduction, Message, MessageGuard, TranscriptBuilder,
 
 /// To batch many open instances and redeuce them into a single one, additionally
 /// acepts an structure of commitments to be batched together.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct StructuredBatchReduction<F: Field, S: CommmitmentScheme2<F>> {
     _phantom: PhantomData<(F, S)>,
     structure: Vec<S::Commitment>,
     // structure_mles: Vec<Vec<F>>,
 }
 
-/// Extension [BatchEval] including evaluations of public commitments.
+/// Extension of [BatchEval] including evaluations of public commitments.
+#[derive(Debug, Clone)]
 pub struct StructuredBatchEval<F: Field, S: CommmitmentScheme2<F>> {
     dynamic_batch: BatchEval<F, S>,
     /// Only the evaluations are here as the commitments are part
@@ -49,6 +50,12 @@ impl<F: Field, S: CommmitmentScheme2<F>> Message<F> for StructuredBatchEval<F, S
     }
 }
 
+/// Evaluations of each mle in the given point.
+pub struct PointEvals<F> {
+    pub instance: Vec<F>,
+    pub structure: Vec<F>,
+}
+
 impl<F, S> Reduction<F> for StructuredBatchReduction<F, S>
 where
     F: Field,
@@ -56,7 +63,7 @@ where
 {
     type A = StructuredBatchEval<F, S>;
 
-    type B = OpenInstance<F, S::Commitment>;
+    type B = (OpenInstance<F, S::Commitment>, PointEvals<F>);
 
     type Key = Self;
 
@@ -87,6 +94,11 @@ where
         // shouldn't fail as the transcript will catch this issue first.
         assert_eq!(structure_evals.len(), key.structure.len());
 
+        let evals = PointEvals {
+            instance: commitments_and_evals.iter().map(|x| x.1.clone()).collect(),
+            structure: structure_evals.clone(),
+        };
+
         let structure_commits: Vec<S::Commitment> = key.structure.clone();
         let structure = structure_commits.into_iter().zip(structure_evals);
 
@@ -100,11 +112,14 @@ where
             (commit, eval)
         });
 
-        Ok(OpenInstance {
-            commit,
-            point,
-            eval,
-        })
+        Ok((
+            OpenInstance {
+                commit,
+                point,
+                eval,
+            },
+            evals,
+        ))
     }
 }
 
