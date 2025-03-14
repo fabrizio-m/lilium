@@ -1,5 +1,7 @@
 //! Shallue-van de Woestijne map
 
+use std::fmt::Debug;
+
 use crate::CurveMap;
 use ark_ec::{
     short_weierstrass::{self, Affine, SWCurveConfig},
@@ -65,8 +67,18 @@ fn find_z<C: SWCurveConfig>() -> Option<F<C>> {
     None
 }
 
+#[derive(Debug)]
 pub struct SvdwMap<C: SWCurveConfig> {
     z: C::BaseField,
+}
+
+impl<C: SWCurveConfig> Clone for SvdwMap<C>
+where
+    C::BaseField: Debug,
+{
+    fn clone(&self) -> Self {
+        Self { z: self.z.clone() }
+    }
 }
 
 fn sgn0_is_even<F: PrimeField>(x: F) -> bool {

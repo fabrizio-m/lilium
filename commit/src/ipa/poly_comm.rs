@@ -21,6 +21,7 @@ use super::{
     RoundMsg,
 };
 
+#[derive(Debug, Clone)]
 pub struct IpaCommitmentScheme<F, G, M>(IpaScheme<F, G, M>)
 where
     F: PrimeField,

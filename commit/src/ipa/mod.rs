@@ -44,6 +44,7 @@ where
     [commit_l, commit_r]
 }
 
+#[derive(Debug, Clone)]
 pub struct IpaScheme<F, G, M>
 where
     F: Field,

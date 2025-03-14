@@ -7,6 +7,7 @@ pub mod reduction;
 pub mod structured;
 
 /// Batch evaluation instance
+#[derive(Debug, Clone)]
 pub struct BatchEval<F: Field, S: CommmitmentScheme2<F>> {
     point: MultiPoint<F>,
     commitments_and_evals: Vec<(S::Commitment, F)>,
@@ -24,6 +25,7 @@ impl<F: Field, S: CommmitmentScheme2<F>> BatchEval<F, S> {
     }
 }
 
+#[derive(Debug)]
 pub enum BatchingError<E> {
     Transcript(transcript::Error),
     /// Inner PCS error
