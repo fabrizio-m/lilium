@@ -1,9 +1,10 @@
 use crate::{
     batching::{
-        structured::{StructuredBatchEval, StructuredBatchReduction},
+        self,
+        structured::{PointEvals, StructuredBatchEval, StructuredBatchReduction},
         BatchEval,
     },
-    CommmitmentScheme2,
+    CommmitmentScheme2, OpenInstance,
 };
 use ark_ff::Field;
 use sponge::sponge::Duplex;
@@ -12,8 +13,9 @@ use sumcheck::{
     polynomials::{Evals, EvalsExt, MultiPoint},
     sumcheck::{CommitType, EvalKind, SumcheckFunction},
 };
-use transcript::Transcript;
+use transcript::{protocols::Reduction, Transcript};
 
+//TODO: split into prover and verifier to save memory
 /// type generalizing the handling of commitment to structures, allowing
 /// to commit to a strucuture based on a [SumcheckFunction] implementor.
 /// Also allows to open all the commitments in a given point and verify
@@ -88,6 +90,11 @@ where
             batch_commitment,
             _phantom: PhantomData,
         }
+    }
+
+    /// Number of variables forming the domain, log(mles.len()).
+    pub fn vars(&self) -> usize {
+        self.mles.len().ilog2() as usize
     }
 
     /// Provides the verifer for the batch commitment.
@@ -170,6 +177,7 @@ where
                 _ => {}
             }
         }
+        ///TODO:should be handled
         assert_eq!(self.structure_len, structure_evals.len());
         assert_eq!(self.instance_len, instance_evals.len());
 
@@ -234,5 +242,65 @@ where
     {
         let [chall] = transcript.send_message(&instance)?;
         Ok(Self::combine_mles(mles, chall))
+    }
+}
+
+impl<F, SF, CS> Reduction<F> for CommittedStructure<F, SF, CS>
+where
+    F: Field,
+    SF: SumcheckFunction<F>,
+    CS: CommmitmentScheme2<F> + 'static,
+{
+    type A = StructuredBatchEval<F, CS>;
+
+    type B = (OpenInstance<F, CS::Commitment>, SF::Mles<Option<F>>);
+
+    type Key = Self;
+
+    type Proof = ();
+
+    type Error = batching::BatchingError<CS::Error>;
+
+    fn transcript_pattern(
+        builder: transcript::TranscriptBuilder<F>,
+    ) -> transcript::TranscriptBuilder<F> {
+        StructuredBatchReduction::<F, CS>::transcript_pattern(builder)
+    }
+
+    fn verify_reduction<S: Duplex<F>>(
+        key: &Self::Key,
+        instance: transcript::MessageGuard<Self::A>,
+        transcript: transcript::TranscriptGuard<F, S, Self::Proof>,
+    ) -> Result<Self::B, Self::Error> {
+        let reduced = StructuredBatchReduction::verify_reduction(
+            &key.batch_commitment,
+            instance,
+            transcript,
+        )?;
+        let (eval_instance, evaluations) = reduced;
+
+        let PointEvals {
+            instance,
+            structure,
+        } = evaluations;
+
+        let mut instance_evals = instance.into_iter();
+        let mut structure_evals = structure.into_iter();
+        let evals: Vec<EvalKind> = SF::KINDS.flatten_vec();
+        let evals = evals.into_iter().map(|kind| match kind {
+            EvalKind::Committed(commit_type) => {
+                let eval = match commit_type {
+                    CommitType::Instance => instance_evals.next(),
+                    CommitType::Structure => structure_evals.next(),
+                };
+                // shouldn't fail as previous reduction already checks
+                assert!(eval.is_some());
+                eval
+            }
+            _ => None,
+        });
+        let evals: SF::Mles<Option<F>> = SF::Mles::unflatten_vec(evals.collect());
+
+        Ok((eval_instance, evals))
     }
 }
