@@ -1,4 +1,6 @@
-use crate::{challenges::SparkChallenges, evals::SparkEval, spark::SparkEvalCheck};
+use crate::{
+    challenges::SparkChallenges, evals::SparkEval, spark::SparkEvalCheck, structure::SparkStructure,
+};
 use ark_ff::Field;
 use commit::{
     batching::{structured::StructuredBatchEval, BatchingError},
@@ -6,6 +8,7 @@ use commit::{
     CommmitmentScheme2, OpenInstance,
 };
 use sponge::sponge::Duplex;
+use std::rc::Rc;
 use sumcheck::{
     polynomials::{Evals, MultiPoint},
     sumcheck::{Sum, SumcheckFunction, SumcheckVerifier},
@@ -15,15 +18,21 @@ use transcript::{
     params::ParamResolver, protocols::Reduction, Message, MessageGuard, TranscriptGuard,
 };
 
-struct CommittedSpark<F: Field, C: CommmitmentScheme2<F>, const D: usize> {
+pub struct CommittedSpark<F: Field, C: CommmitmentScheme2<F>, const D: usize> {
     // structure: SparkStructure<F, D>,
     committed_structure: CommittedStructure<F, SparkEvalCheck<D>, C>,
     sumcheck_verifier: SumcheckVerifier<F, SparkEvalCheck<D>>,
 }
 
-struct CommittedSparkInstance<F: Field, const D: usize> {
+pub struct CommittedSparkInstance<F: Field, const D: usize> {
     point: [MultiPoint<F>; D],
     eval: F,
+}
+
+impl<F: Field, const D: usize> CommittedSparkInstance<F, D> {
+    pub fn new(point: [MultiPoint<F>; D], eval: F) -> Self {
+        Self { point, eval }
+    }
 }
 
 impl<F: Field, const D: usize> Message<F> for CommittedSparkInstance<F, D> {
@@ -39,33 +48,35 @@ impl<F: Field, const D: usize> Message<F> for CommittedSparkInstance<F, D> {
     }
 }
 
-struct CommittedSparkProof<F: Field, C: CommmitmentScheme2<F>, const D: usize> {
+#[derive(Debug, Clone)]
+pub struct CommittedSparkProof<F: Field, C: CommmitmentScheme2<F>, const D: usize> {
     sumcheck_proof: sumcheck::sumcheck::Proof<F, SparkEvalCheck<D>>,
     committed_evals: StructuredBatchEval<F, C>,
 }
 
-pub enum Error<E> {
+#[derive(Debug, Clone)]
+pub enum Error<F: Field, C: CommmitmentScheme2<F>> {
     Transcript(transcript::Error),
     Sumcheck(SumcheckError),
-    Batching(BatchingError<E>),
+    Batching(BatchingError<F, C>),
     /// Final eval check at r failed
     EvalCheck,
 }
 
-impl<E> From<transcript::Error> for Error<E> {
+impl<F: Field, C: CommmitmentScheme2<F>> From<transcript::Error> for Error<F, C> {
     fn from(value: transcript::Error) -> Self {
         Self::Transcript(value)
     }
 }
 
-impl<E> From<SumcheckError> for Error<E> {
+impl<F: Field, C: CommmitmentScheme2<F>> From<SumcheckError> for Error<F, C> {
     fn from(value: SumcheckError) -> Self {
         Self::Sumcheck(value)
     }
 }
 
-impl<E> From<BatchingError<E>> for Error<E> {
-    fn from(value: BatchingError<E>) -> Self {
+impl<F: Field, C: CommmitmentScheme2<F>> From<BatchingError<F, C>> for Error<F, C> {
+    fn from(value: BatchingError<F, C>) -> Self {
         Self::Batching(value)
     }
 }
@@ -83,7 +94,7 @@ where
 
     type Proof = CommittedSparkProof<F, C, D>;
 
-    type Error = Error<C::Error>;
+    type Error = Error<F, C>;
 
     fn transcript_pattern(
         builder: transcript::TranscriptBuilder<F>,
@@ -144,6 +155,28 @@ where
             Ok(open_instance)
         } else {
             Err(Error::EvalCheck)
+        }
+    }
+}
+
+impl<F: Field, C: CommmitmentScheme2<F>, const D: usize> CommittedSpark<F, C, D> {
+    pub fn new(structure: &SparkStructure<F, D>, scheme: &C) -> Self {
+        assert!(structure.val.len().is_power_of_two());
+        let vars = structure.val.len().ilog2() as usize;
+
+        let dummy_point = MultiPoint::new(vec![F::zero(); vars]);
+        let points = [(); D].map(|_| dummy_point.clone());
+        let challenges = SparkChallenges::default();
+        let zero_check_point = dummy_point;
+
+        let mles = SparkEval::<F, D>::evals(structure, points, challenges, zero_check_point);
+
+        let committed_structure = CommittedStructure::new(Rc::new(mles), scheme);
+        let sumcheck_verifier: SumcheckVerifier<F, SparkEvalCheck<D>> = SumcheckVerifier::new(vars);
+
+        Self {
+            committed_structure,
+            sumcheck_verifier,
         }
     }
 }
