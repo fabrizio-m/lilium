@@ -69,7 +69,7 @@ where
 
     type Proof = ();
 
-    type Error = BatchingError<S::Error>;
+    type Error = BatchingError<F, S>;
 
     fn transcript_pattern(builder: TranscriptBuilder<F>) -> TranscriptBuilder<F> {
         builder.round::<BatchEval<F, S>, 1>()

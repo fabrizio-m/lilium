@@ -62,7 +62,7 @@ where
         elems
     }
 }
-pub trait CommmitmentScheme2<F: Field>: Protocol<F> + Clone
+pub trait CommmitmentScheme2<F: Field>: Protocol<F> + Debug + Clone
 where
     Self: Protocol<
         F,

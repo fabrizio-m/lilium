@@ -259,7 +259,7 @@ where
 
     type Proof = ();
 
-    type Error = batching::BatchingError<CS::Error>;
+    type Error = batching::BatchingError<F, CS>;
 
     fn transcript_pattern(
         builder: transcript::TranscriptBuilder<F>,

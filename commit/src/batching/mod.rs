@@ -25,11 +25,11 @@ impl<F: Field, S: CommmitmentScheme2<F>> BatchEval<F, S> {
     }
 }
 
-#[derive(Debug)]
-pub enum BatchingError<E> {
+#[derive(Debug, Clone)]
+pub enum BatchingError<F: Field, C: CommmitmentScheme2<F>> {
     Transcript(transcript::Error),
     /// Inner PCS error
-    Pcs(E),
+    Pcs(C::Error),
 }
 
 pub struct CommitsNumber;
