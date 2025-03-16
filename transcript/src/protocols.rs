@@ -10,7 +10,7 @@ pub trait Protocol<F: Field> {
     type Key;
     type Instance: Message<F>;
     type Proof;
-    type Error: Debug;
+    type Error: Debug + Clone;
 
     fn transcript_pattern(builder: TranscriptBuilder<F>) -> TranscriptBuilder<F>;
     fn prove(instance: Self::Instance) -> Self::Proof;
