@@ -1,10 +1,20 @@
-use ark_ff::Field;
-
 use crate::eq::eq;
+use ark_ff::Field;
+use transcript::Message;
 
 ///A point with `n` variables
 #[derive(Clone, Debug)]
 pub struct MultiPoint<F: Field>(Vec<F>);
+
+impl<F: Field> Message<F> for MultiPoint<F> {
+    fn len(vars: usize, _param_resolver: &transcript::params::ParamResolver) -> usize {
+        vars
+    }
+
+    fn to_field_elements(&self) -> Vec<F> {
+        self.0.clone()
+    }
+}
 
 impl<F: Field> MultiPoint<F> {
     pub fn new(vars: Vec<F>) -> Self {
