@@ -1,8 +1,8 @@
 use ark_ec::CurveGroup;
+use std::fmt::Debug;
 
 pub mod svdw;
-
-pub trait CurveMap<G: CurveGroup>: Clone {
+pub trait CurveMap<G: CurveGroup>: Debug + Clone {
     fn new() -> Self;
     fn map_to_curve(&self, u: G::BaseField) -> G;
 }

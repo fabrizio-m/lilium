@@ -67,9 +67,14 @@ fn find_z<C: SWCurveConfig>() -> Option<F<C>> {
     None
 }
 
-#[derive(Debug)]
 pub struct SvdwMap<C: SWCurveConfig> {
     z: C::BaseField,
+}
+
+impl<C: SWCurveConfig> Debug for SvdwMap<C> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("SvdwMap").field("z", &self.z).finish()
+    }
 }
 
 impl<C: SWCurveConfig> Clone for SvdwMap<C>
