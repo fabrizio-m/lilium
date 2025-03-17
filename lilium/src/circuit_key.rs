@@ -3,23 +3,19 @@ use ccs::{
     circuit::{BuildStructure, Circuit},
     structure::{CcsStructure, Matrix},
 };
-use commit::{committed_structure::CommittedStructure, CommmitmentScheme};
-use spark::{
-    challenges::SparkChallenges, evals::SparkEval, spark::SparkEvalCheck, structure::SparkMatrix,
-};
+use commit::CommmitmentScheme2;
+use spark::{committed_spark::CommittedSpark, structure::SparkMatrix};
 use sponge::sponge::Duplex;
 use std::marker::PhantomData;
-use sumcheck::polynomials::MultiPoint;
-use transcript::{TranscriptBuilder, TranscriptDescriptor};
-
-type SparkCommitment<F, CS> = CommittedStructure<F, SparkEvalCheck<2>, CS>;
+use sumcheck::sumcheck::DegreeParam;
+use transcript::{params::ParamResolver, TranscriptBuilder, TranscriptDescriptor};
 
 /// key to create and verify proofs for a given circuit
 pub struct CircuitKey<
     F: Field,
     D: Duplex<F>,
     C,
-    CS: CommmitmentScheme<F>,
+    CS: CommmitmentScheme2<F>,
     const IO: usize = 0,
     const S: usize = 0,
 > {
@@ -27,7 +23,7 @@ pub struct CircuitKey<
     pub transcript: TranscriptDescriptor<F, D>,
     pub ccs_structure: CcsStructure<IO, S, F>,
     pub spark_structure: [SparkMatrix<F>; IO],
-    pub spark_commitments: [SparkCommitment<F, CS>; IO],
+    pub spark_commitments: [CommittedSpark<F, CS, 2>; IO],
     pub committment_scheme: CS,
 }
 
@@ -35,7 +31,7 @@ impl<F, T, C, CS, const IO: usize, const S: usize> CircuitKey<F, T, C, CS, IO, S
 where
     F: Field,
     T: Duplex<F>,
-    CS: CommmitmentScheme<F>,
+    CS: CommmitmentScheme2<F>,
 {
     pub fn new<const IN: usize, const OUT: usize, const PRIV_OUT: usize>() -> Self
     where
@@ -55,19 +51,18 @@ where
             SparkMatrix::<F>::new(evals)
         });
         let committment_scheme = CS::new(8);
-        let dummy_point = vec![F::zero(); vars];
-        let dummy_point = MultiPoint::new(dummy_point);
-        let dummy_points = [dummy_point.clone(), dummy_point.clone()];
         let spark_commitments = spark_structure.each_ref().map(|s| {
-            let points = dummy_points.clone();
-            let challenges = SparkChallenges::default();
-            let zero_check_point = dummy_point.clone();
-            let mles = SparkEval::<F, 2>::evals(s, points, challenges, zero_check_point);
-            let commitment: SparkCommitment<F, CS> =
-                CommittedStructure::commit(&committment_scheme, mles);
+            let commitment = CommittedSpark::new(s, &committment_scheme);
             commitment
         });
-        let transcript_builder = TranscriptBuilder::new(vars);
+
+        // This assumes IO is selected properly, which should be fine as it
+        // can be higher than needed but not lower.
+        let degree = IO;
+        /// TODO: more params needed
+        let mut resolver = ParamResolver::new();
+        resolver.set::<DegreeParam>(degree);
+        let transcript_builder = TranscriptBuilder::new(vars, resolver);
         //TODO: make transcript
         let transcript = transcript_builder.finish();
 
@@ -79,5 +74,55 @@ where
             spark_commitments,
             committment_scheme,
         }
+    }
+}
+
+// key abstractions
+
+pub trait AbstractKey<F: Field> {
+    fn domain_vars(&self) -> usize;
+}
+
+pub trait KeyCommitment<F, C>: AbstractKey<F>
+where
+    F: Field,
+    C: CommmitmentScheme2<F>,
+{
+    fn pcs(&self) -> &C;
+}
+pub trait KeySparkStructure<F, C, const IO: usize>: KeyCommitment<F, C>
+where
+    F: Field,
+    C: CommmitmentScheme2<F>,
+{
+    fn spark_structure(&self) -> &[SparkMatrix<F>; IO];
+    fn spark_keys(&self) -> &[CommittedSpark<F, C, 2>; IO];
+}
+
+impl<F: Field, D: Duplex<F>, C, CS: CommmitmentScheme2<F>, const IO: usize, const S: usize>
+    AbstractKey<F> for CircuitKey<F, D, C, CS, IO, S>
+{
+    fn domain_vars(&self) -> usize {
+        self.ccs_structure.vars()
+    }
+}
+
+impl<F: Field, D: Duplex<F>, C, CS: CommmitmentScheme2<F>, const IO: usize, const S: usize>
+    KeyCommitment<F, CS> for CircuitKey<F, D, C, CS, IO, S>
+{
+    fn pcs(&self) -> &CS {
+        &self.committment_scheme
+    }
+}
+
+impl<F: Field, D: Duplex<F>, C, CS: CommmitmentScheme2<F>, const IO: usize, const S: usize>
+    KeySparkStructure<F, CS, IO> for CircuitKey<F, D, C, CS, IO, S>
+{
+    fn spark_structure(&self) -> &[SparkMatrix<F>; IO] {
+        &self.spark_structure
+    }
+
+    fn spark_keys(&self) -> &[CommittedSpark<F, CS, 2>; IO] {
+        &self.spark_commitments
     }
 }

@@ -1,4 +1,5 @@
 use ark_ff::Field;
+use commit::CommmitmentScheme2;
 use std::marker::PhantomData;
 
 pub mod circuit_key;
@@ -10,8 +11,24 @@ pub struct Prover<F: Field, const IO: usize = 0> {
     _phantom: PhantomData<F>,
 }
 
-pub enum Error {
+#[derive(Debug, Clone)]
+pub enum Error<F: Field, C: CommmitmentScheme2<F>> {
     TranscriptError(transcript::Error),
+    /// Committed spark error
+    Spark(spark::committed_spark::Error<F, C>),
+    Pcs(C::Error),
+}
+
+impl<F: Field, C: CommmitmentScheme2<F>> From<transcript::Error> for Error<F, C> {
+    fn from(value: transcript::Error) -> Self {
+        Self::TranscriptError(value)
+    }
+}
+
+impl<F: Field, C: CommmitmentScheme2<F>> From<spark::committed_spark::Error<F, C>> for Error<F, C> {
+    fn from(value: spark::committed_spark::Error<F, C>) -> Self {
+        Self::Spark(value)
+    }
 }
 
 /*impl<F: Field, const IO: usize> Prover<F, IO> {
