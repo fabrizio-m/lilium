@@ -55,10 +55,10 @@ impl<V: Copy> Evals<V> for LookupEval<V> {
         vec.push(counts);
     }
 
-    fn unflatten(vec: &mut Vec<V>) -> Self {
-        let counts = vec.pop().unwrap();
-        let frac2 = vec.pop().unwrap();
-        let frac1 = vec.pop().unwrap();
+    fn unflatten(elems: &mut std::vec::IntoIter<V>) -> Self {
+        let frac1 = elems.next().unwrap();
+        let frac2 = elems.next().unwrap();
+        let counts = elems.next().unwrap();
         Self {
             frac1,
             frac2,

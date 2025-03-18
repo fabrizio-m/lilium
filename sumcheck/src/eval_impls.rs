@@ -22,9 +22,7 @@ impl<T: Evals<V> + Copy, V, const N: usize> Evals<V> for [T; N] {
         }
     }
 
-    fn unflatten(vec: &mut Vec<V>) -> Self {
-        let mut vec = [(); N].map(|_| T::unflatten(vec));
-        vec.reverse();
-        vec
+    fn unflatten(elems: &mut std::vec::IntoIter<V>) -> Self {
+        [(); N].map(|_| T::unflatten(elems))
     }
 }

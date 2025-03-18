@@ -42,10 +42,10 @@ impl<V: Copy> Evals<V> for Eval<V> {
         vec.push(c);
     }
 
-    fn unflatten(vec: &mut Vec<V>) -> Self {
-        let c = vec.pop().unwrap();
-        let b = vec.pop().unwrap();
-        let a = vec.pop().unwrap();
+    fn unflatten(elems: &mut std::vec::IntoIter<V>) -> Self {
+        let a = elems.next().unwrap();
+        let b = elems.next().unwrap();
+        let c = elems.next().unwrap();
         Self { a, b, c }
     }
 }

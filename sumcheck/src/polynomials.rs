@@ -1,3 +1,5 @@
+use std::vec::IntoIter;
+
 use crate::eq::eq;
 use ark_ff::Field;
 use transcript::Message;
@@ -53,21 +55,18 @@ pub trait Evals<V>: Sized + Clone {
     fn index(&self, index: Self::Idx) -> &V;
     ///should combine 2 [Self] into one by using `f` to combine each element
     fn combine<C: Fn(V, V) -> V>(&self, other: &Self, f: C) -> Self;
-
-    /// flatten all elements into a vec, each element should be pushed into the vec,
-    /// should also include the corresponding index.
+    /// Flatten all elements into a vec, each element should be pushed into the vec.
     fn flatten(self, vec: &mut Vec<V>);
-    /// unflatten Self from a vec, can be assumed to be the output of flatten,
-    /// it allows to implement the methods as the opposite of flatten using pop().
-    fn unflatten(vec: &mut Vec<V>) -> Self;
+    /// Unflatten Self from elems, can be assumed to be the output of flatten.
+    fn unflatten(elems: &mut IntoIter<V>) -> Self;
     fn flatten_vec(self) -> Vec<V> {
         let mut vec = vec![];
         self.flatten(&mut vec);
         vec
     }
     fn unflatten_vec(vec: Vec<V>) -> Self {
-        let mut vec = vec;
-        Self::unflatten(&mut vec)
+        let mut iter = vec.into_iter();
+        Self::unflatten(&mut iter)
     }
 }
 
@@ -156,8 +155,8 @@ impl<V: Copy> Evals<V> for SingleEval<V> {
         vec.push(self.0);
     }
 
-    fn unflatten(vec: &mut Vec<V>) -> Self {
-        Self(vec.pop().unwrap())
+    fn unflatten(elems: &mut IntoIter<V>) -> Self {
+        Self(elems.next().unwrap())
     }
 }
 impl<F: Clone> SingleEval<F> {
@@ -199,6 +198,7 @@ pub mod simple_eval {
         fn index(&self, index: Self::Idx) -> &V {
             &self.0[index]
         }
+
         fn combine<C: Fn(V, V) -> V>(&self, other: &Self, f: C) -> Self {
             let mut res = self.0.clone();
             for i in 0..N {
@@ -206,15 +206,16 @@ pub mod simple_eval {
             }
             Self(res)
         }
+
         fn flatten(self, vec: &mut Vec<V>) {
             for i in 0..N {
                 vec.push(self.0[i]);
             }
         }
 
-        fn unflatten(vec: &mut Vec<V>) -> Self {
-            vec.reverse();
-            Self(vec.clone().try_into().unwrap())
+        fn unflatten(elems: &mut std::vec::IntoIter<V>) -> Self {
+            let elems: Vec<V> = elems.take(N).collect();
+            Self(elems.try_into().unwrap())
         }
     }
 }

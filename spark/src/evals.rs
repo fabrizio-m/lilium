@@ -85,11 +85,11 @@ impl<V: Copy> Evals<V> for DimensionEval<V> {
         vec.push(eq_lookups);
     }
 
-    fn unflatten(vec: &mut Vec<V>) -> Self {
-        let eq_lookups = vec.pop().unwrap();
-        let dimension_index = vec.pop().unwrap();
-        let eq_eval = vec.pop().unwrap();
-        let lookup = LookupEval::unflatten(vec);
+    fn unflatten(elems: &mut std::vec::IntoIter<V>) -> Self {
+        let lookup = LookupEval::unflatten(elems);
+        let eq_eval = elems.next().unwrap();
+        let dimension_index = elems.next().unwrap();
+        let eq_lookups = elems.next().unwrap();
         Self {
             lookup,
             eq_eval,
@@ -98,6 +98,7 @@ impl<V: Copy> Evals<V> for DimensionEval<V> {
         }
     }
 }
+
 #[derive(Clone, Copy, Debug)]
 pub enum SparkIndex {
     Dimension(usize, DimensionIndex),
@@ -163,9 +164,12 @@ impl<V: Copy, const D: usize> Evals<V> for SparkEval<V, D> {
         vec.extend([normal_index, val, zero_eq, zero]);
     }
 
-    fn unflatten(vec: &mut Vec<V>) -> Self {
-        let [zero, zero_eq, val, normal_index] = [(); 4].map(|_| vec.pop().unwrap());
-        let dimensions = Evals::unflatten(vec);
+    fn unflatten(elems: &mut std::vec::IntoIter<V>) -> Self {
+        let dimensions = <[DimensionEval<V>; D] as Evals<V>>::unflatten(elems);
+        let normal_index = elems.next().unwrap();
+        let val = elems.next().unwrap();
+        let zero_eq = elems.next().unwrap();
+        let zero = elems.next().unwrap();
         Self {
             dimensions,
             normal_index,
