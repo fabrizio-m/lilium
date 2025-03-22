@@ -13,6 +13,7 @@ impl<F: Field> Message<F> for () {
     }
 }
 
+#[derive(Debug, Clone, Copy)]
 pub struct SingleElement<F>(pub F);
 
 impl<F: Field> Message<F> for SingleElement<F> {
