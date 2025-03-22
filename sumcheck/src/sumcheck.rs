@@ -102,10 +102,27 @@ pub struct SumcheckProver<F: Field, SF: SumcheckFunction<F>> {
     degree: usize,
 }
 
-#[derive(Clone, Debug)]
 pub struct Proof<F: Field, SF: SumcheckFunction<F>> {
     messages: Vec<Message<F>>,
     _f: PhantomData<SF>,
+}
+
+impl<F: Field, SF: SumcheckFunction<F>> Debug for Proof<F, SF> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Proof")
+            .field("messages", &self.messages)
+            .field("_f", &self._f)
+            .finish()
+    }
+}
+
+impl<F: Field, SF: SumcheckFunction<F>> Clone for Proof<F, SF> {
+    fn clone(&self) -> Self {
+        Self {
+            messages: self.messages.clone(),
+            _f: self._f.clone(),
+        }
+    }
 }
 
 /// degree of sumcheck messages
