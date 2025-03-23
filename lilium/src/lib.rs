@@ -1,6 +1,7 @@
 use ark_ff::Field;
 use commit::CommmitmentScheme2;
 use std::marker::PhantomData;
+use sumcheck::SumcheckError;
 
 pub mod circuit_key;
 mod instances;
@@ -17,6 +18,10 @@ pub enum Error<F: Field, C: CommmitmentScheme2<F>> {
     /// Committed spark error
     Spark(spark::committed_spark::Error<F, C>),
     Pcs(C::Error),
+    Sumcheck(SumcheckError),
+    /// Polynomial doesn't evaluate to the expected value at the point
+    /// given by sumcheck
+    EvalCheck,
 }
 
 impl<F: Field, C: CommmitmentScheme2<F>> From<transcript::Error> for Error<F, C> {
@@ -28,6 +33,11 @@ impl<F: Field, C: CommmitmentScheme2<F>> From<transcript::Error> for Error<F, C>
 impl<F: Field, C: CommmitmentScheme2<F>> From<spark::committed_spark::Error<F, C>> for Error<F, C> {
     fn from(value: spark::committed_spark::Error<F, C>) -> Self {
         Self::Spark(value)
+    }
+}
+impl<F: Field, C: CommmitmentScheme2<F>> From<SumcheckError> for Error<F, C> {
+    fn from(value: SumcheckError) -> Self {
+        Self::Sumcheck(value)
     }
 }
 

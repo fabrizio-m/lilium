@@ -119,6 +119,7 @@ impl<F: Field, T: Duplex<F>, C, CS: CommmitmentScheme2<F>, const IO: usize, cons
         Ok(true)
     }*/
 }
+struct MatrixEvalProtocol<F, K, CS, const IO: usize>(PhantomData<(F, K, CS)>);
 struct MatrixEvalProof<F, CS, const IO: usize>
 where
     F: Field,
@@ -127,8 +128,6 @@ where
     spark_proofs: [CommittedSparkProof<F, CS, 2>; IO],
     open_proofs: [CS::OpenProof; IO],
 }
-
-struct MatrixEvalProtocol<F, K, CS, const IO: usize>(PhantomData<(F, K, CS)>);
 
 impl<K, F, CS, const IO: usize> Protocol<F> for MatrixEvalProtocol<F, K, CS, IO>
 where
@@ -148,14 +147,10 @@ where
     fn transcript_pattern(
         builder: transcript::TranscriptBuilder<F>,
     ) -> transcript::TranscriptBuilder<F> {
-        let builder = builder.round::<Self::Instance, 0>();
-        let builder = [(); IO].iter().fold(builder, |builder, _| {
-            builder.add_reduction_patter::<CommittedSpark<F, CS, 2>>()
-        });
-        let builder = [(); IO]
-            .iter()
-            .fold(builder, |builder, _| builder.add_protocol_patter::<CS>());
         builder
+            .round::<Self::Instance, 0>()
+            .repeat::<IO, _>(CommittedSpark::<F, CS, 2>::transcript_pattern)
+            .repeat::<IO, _>(CS::transcript_pattern)
     }
 
     fn verify<S: Duplex<F>>(
