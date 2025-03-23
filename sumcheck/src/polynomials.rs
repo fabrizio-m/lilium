@@ -1,7 +1,6 @@
-use std::vec::IntoIter;
-
 use crate::eq::eq;
 use ark_ff::Field;
+use std::vec::IntoIter;
 use transcript::Message;
 
 ///A point with `n` variables
