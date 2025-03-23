@@ -107,6 +107,9 @@ impl<F: Field> TranscriptBuilder<F> {
             vars,
         }
     }
+    pub fn repeat<const N: usize, M: Fn(Self) -> Self>(self, f: M) -> Self {
+        [(); N].iter().fold(self, |acc, _| f(acc))
+    }
 }
 
 pub struct TranscriptDescriptor<F: Field, S: Duplex<F>> {
