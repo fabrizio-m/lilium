@@ -35,6 +35,9 @@ impl<F: Field> MultiPoint<F> {
     pub fn inner(self) -> Vec<F> {
         self.0
     }
+    pub fn inner_ref(&self) -> &[F] {
+        &self.0
+    }
     /// eval self as eq poly with point
     pub fn eval_as_eq(&self, point: &Self) -> F {
         assert_eq!(self.0.len(), point.0.len());
