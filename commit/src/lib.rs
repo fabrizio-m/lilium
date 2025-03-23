@@ -8,7 +8,6 @@ use sumcheck::polynomials::MultiPoint;
 use transcript::{protocols::Protocol, Message, Transcript};
 
 pub mod batching;
-// pub mod committed_structure;
 pub mod committed_structure2;
 pub mod ipa;
 
