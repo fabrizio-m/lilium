@@ -4,7 +4,7 @@ use crate::{
         structured::{PointEvals, StructuredBatchEval, StructuredBatchReduction},
         BatchEval,
     },
-    CommmitmentScheme2, OpenInstance,
+    CommmitmentScheme, OpenInstance,
 };
 use ark_ff::Field;
 use sponge::sponge::Duplex;
@@ -25,7 +25,7 @@ pub struct CommittedStructure<F, SF, CS>
 where
     F: Field,
     SF: SumcheckFunction<F>,
-    CS: CommmitmentScheme2<F>,
+    CS: CommmitmentScheme<F>,
 {
     mles: Rc<Vec<SF::Mles<F>>>,
     structure_len: usize,
@@ -38,7 +38,7 @@ pub struct MultiCommit<F, SF, CS>
 where
     F: Field,
     SF: SumcheckFunction<F>,
-    CS: CommmitmentScheme2<F>,
+    CS: CommmitmentScheme<F>,
 {
     commitments: Vec<CS::Commitment>,
     _f: PhantomData<SF>,
@@ -48,7 +48,7 @@ impl<F, SF, CS> CommittedStructure<F, SF, CS>
 where
     F: Field,
     SF: SumcheckFunction<F>,
-    CS: CommmitmentScheme2<F>,
+    CS: CommmitmentScheme<F>,
 {
     pub fn new(mles: Rc<Vec<SF::Mles<F>>>, scheme: &CS) -> Self {
         let kinds = SF::KINDS;
@@ -249,7 +249,7 @@ impl<F, SF, CS> Reduction<F> for CommittedStructure<F, SF, CS>
 where
     F: Field,
     SF: SumcheckFunction<F>,
-    CS: CommmitmentScheme2<F> + 'static,
+    CS: CommmitmentScheme<F> + 'static,
 {
     type A = StructuredBatchEval<F, CS>;
 

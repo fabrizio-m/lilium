@@ -4,7 +4,7 @@ use crate::{
     Error,
 };
 use ark_ff::Field;
-use commit::{CommmitmentScheme2, OpenInstance};
+use commit::{CommmitmentScheme, OpenInstance};
 use spark::committed_spark::{CommittedSpark, CommittedSparkInstance, CommittedSparkProof};
 use sponge::sponge::Duplex;
 use std::marker::PhantomData;
@@ -16,7 +16,7 @@ use transcript::{
 // type SparkProof<F> = sumcheck::sumcheck::Proof<F, SparkEvalCheck<2>>;
 // type SparkVerifier<F> = SumcheckVerifier<F, SparkEvalCheck<2>>;
 
-impl<F: Field, T: Duplex<F>, C, CS: CommmitmentScheme2<F>, const IO: usize, const S: usize>
+impl<F: Field, T: Duplex<F>, C, CS: CommmitmentScheme<F>, const IO: usize, const S: usize>
     CircuitKey<F, T, C, CS, IO, S>
 {
     /*fn prove_matrix_evals(
@@ -123,7 +123,7 @@ struct MatrixEvalProtocol<F, K, CS, const IO: usize>(PhantomData<(F, K, CS)>);
 struct MatrixEvalProof<F, CS, const IO: usize>
 where
     F: Field,
-    CS: CommmitmentScheme2<F>,
+    CS: CommmitmentScheme<F>,
 {
     spark_proofs: [CommittedSparkProof<F, CS, 2>; IO],
     open_proofs: [CS::OpenProof; IO],
@@ -133,7 +133,7 @@ impl<K, F, CS, const IO: usize> Protocol<F> for MatrixEvalProtocol<F, K, CS, IO>
 where
     F: Field,
     //TODO: check
-    CS: CommmitmentScheme2<F> + 'static,
+    CS: CommmitmentScheme<F> + 'static,
     K: KeySparkStructure<F, CS, IO>,
 {
     type Instance = BatchMatrixEvalInstance<F, IO>;

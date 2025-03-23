@@ -4,8 +4,8 @@ use crate::{
 use ark_ff::Field;
 use commit::{
     batching::{structured::StructuredBatchEval, BatchingError},
-    committed_structure2::CommittedStructure,
-    CommmitmentScheme2, OpenInstance,
+    committed_structure::CommittedStructure,
+    CommmitmentScheme, OpenInstance,
 };
 use sponge::sponge::Duplex;
 use std::rc::Rc;
@@ -18,7 +18,7 @@ use transcript::{
     params::ParamResolver, protocols::Reduction, Message, MessageGuard, TranscriptGuard,
 };
 
-pub struct CommittedSpark<F: Field, C: CommmitmentScheme2<F>, const D: usize> {
+pub struct CommittedSpark<F: Field, C: CommmitmentScheme<F>, const D: usize> {
     // structure: SparkStructure<F, D>,
     committed_structure: CommittedStructure<F, SparkEvalCheck<D>, C>,
     sumcheck_verifier: SumcheckVerifier<F, SparkEvalCheck<D>>,
@@ -49,13 +49,13 @@ impl<F: Field, const D: usize> Message<F> for CommittedSparkInstance<F, D> {
 }
 
 #[derive(Debug, Clone)]
-pub struct CommittedSparkProof<F: Field, C: CommmitmentScheme2<F>, const D: usize> {
+pub struct CommittedSparkProof<F: Field, C: CommmitmentScheme<F>, const D: usize> {
     sumcheck_proof: sumcheck::sumcheck::Proof<F, SparkEvalCheck<D>>,
     committed_evals: StructuredBatchEval<F, C>,
 }
 
 #[derive(Debug, Clone)]
-pub enum Error<F: Field, C: CommmitmentScheme2<F>> {
+pub enum Error<F: Field, C: CommmitmentScheme<F>> {
     Transcript(transcript::Error),
     Sumcheck(SumcheckError),
     Batching(BatchingError<F, C>),
@@ -63,19 +63,19 @@ pub enum Error<F: Field, C: CommmitmentScheme2<F>> {
     EvalCheck,
 }
 
-impl<F: Field, C: CommmitmentScheme2<F>> From<transcript::Error> for Error<F, C> {
+impl<F: Field, C: CommmitmentScheme<F>> From<transcript::Error> for Error<F, C> {
     fn from(value: transcript::Error) -> Self {
         Self::Transcript(value)
     }
 }
 
-impl<F: Field, C: CommmitmentScheme2<F>> From<SumcheckError> for Error<F, C> {
+impl<F: Field, C: CommmitmentScheme<F>> From<SumcheckError> for Error<F, C> {
     fn from(value: SumcheckError) -> Self {
         Self::Sumcheck(value)
     }
 }
 
-impl<F: Field, C: CommmitmentScheme2<F>> From<BatchingError<F, C>> for Error<F, C> {
+impl<F: Field, C: CommmitmentScheme<F>> From<BatchingError<F, C>> for Error<F, C> {
     fn from(value: BatchingError<F, C>) -> Self {
         Self::Batching(value)
     }
@@ -84,7 +84,7 @@ impl<F: Field, C: CommmitmentScheme2<F>> From<BatchingError<F, C>> for Error<F, 
 impl<F, C, const D: usize> Reduction<F> for CommittedSpark<F, C, D>
 where
     F: Field,
-    C: CommmitmentScheme2<F> + 'static,
+    C: CommmitmentScheme<F> + 'static,
 {
     type A = CommittedSparkInstance<F, D>;
 
@@ -159,7 +159,7 @@ where
     }
 }
 
-impl<F: Field, C: CommmitmentScheme2<F>, const D: usize> CommittedSpark<F, C, D> {
+impl<F: Field, C: CommmitmentScheme<F>, const D: usize> CommittedSpark<F, C, D> {
     pub fn new(structure: &SparkStructure<F, D>, scheme: &C) -> Self {
         assert!(structure.val.len().is_power_of_two());
         let vars = structure.val.len().ilog2() as usize;

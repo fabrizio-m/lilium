@@ -3,7 +3,7 @@ use ccs::{
     circuit::{BuildStructure, Circuit},
     structure::{CcsStructure, Matrix},
 };
-use commit::CommmitmentScheme2;
+use commit::CommmitmentScheme;
 use spark::{committed_spark::CommittedSpark, structure::SparkMatrix};
 use sponge::sponge::Duplex;
 use std::marker::PhantomData;
@@ -15,7 +15,7 @@ pub struct CircuitKey<
     F: Field,
     D: Duplex<F>,
     C,
-    CS: CommmitmentScheme2<F>,
+    CS: CommmitmentScheme<F>,
     const IO: usize = 0,
     const S: usize = 0,
 > {
@@ -31,7 +31,7 @@ impl<F, T, C, CS, const IO: usize, const S: usize> CircuitKey<F, T, C, CS, IO, S
 where
     F: Field,
     T: Duplex<F>,
-    CS: CommmitmentScheme2<F>,
+    CS: CommmitmentScheme<F>,
 {
     pub fn new<const IN: usize, const OUT: usize, const PRIV_OUT: usize>() -> Self
     where
@@ -86,20 +86,20 @@ pub trait AbstractKey<F: Field> {
 pub trait KeyCommitment<F, C>: AbstractKey<F>
 where
     F: Field,
-    C: CommmitmentScheme2<F>,
+    C: CommmitmentScheme<F>,
 {
     fn pcs(&self) -> &C;
 }
 pub trait KeySparkStructure<F, C, const IO: usize>: KeyCommitment<F, C>
 where
     F: Field,
-    C: CommmitmentScheme2<F>,
+    C: CommmitmentScheme<F>,
 {
     fn spark_structure(&self) -> &[SparkMatrix<F>; IO];
     fn spark_keys(&self) -> &[CommittedSpark<F, C, 2>; IO];
 }
 
-impl<F: Field, D: Duplex<F>, C, CS: CommmitmentScheme2<F>, const IO: usize, const S: usize>
+impl<F: Field, D: Duplex<F>, C, CS: CommmitmentScheme<F>, const IO: usize, const S: usize>
     AbstractKey<F> for CircuitKey<F, D, C, CS, IO, S>
 {
     fn domain_vars(&self) -> usize {
@@ -107,7 +107,7 @@ impl<F: Field, D: Duplex<F>, C, CS: CommmitmentScheme2<F>, const IO: usize, cons
     }
 }
 
-impl<F: Field, D: Duplex<F>, C, CS: CommmitmentScheme2<F>, const IO: usize, const S: usize>
+impl<F: Field, D: Duplex<F>, C, CS: CommmitmentScheme<F>, const IO: usize, const S: usize>
     KeyCommitment<F, CS> for CircuitKey<F, D, C, CS, IO, S>
 {
     fn pcs(&self) -> &CS {
@@ -115,7 +115,7 @@ impl<F: Field, D: Duplex<F>, C, CS: CommmitmentScheme2<F>, const IO: usize, cons
     }
 }
 
-impl<F: Field, D: Duplex<F>, C, CS: CommmitmentScheme2<F>, const IO: usize, const S: usize>
+impl<F: Field, D: Duplex<F>, C, CS: CommmitmentScheme<F>, const IO: usize, const S: usize>
     KeySparkStructure<F, CS, IO> for CircuitKey<F, D, C, CS, IO, S>
 {
     fn spark_structure(&self) -> &[SparkMatrix<F>; IO] {

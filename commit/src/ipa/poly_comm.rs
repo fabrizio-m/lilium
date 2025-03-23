@@ -1,6 +1,6 @@
 use crate::{
     ipa::{IpaScheme, Proof},
-    CommmitmentScheme2, OpenInstance,
+    CommmitmentScheme, OpenInstance,
 };
 use ark_ec::{AffineRepr, CurveConfig, CurveGroup, Group, VariableBaseMSM};
 use ark_ff::PrimeField;
@@ -174,7 +174,7 @@ where
     }
 }
 
-impl<F, G, M> CommmitmentScheme2<F> for IpaCommitmentScheme<F, G, M>
+impl<F, G, M> CommmitmentScheme<F> for IpaCommitmentScheme<F, G, M>
 where
     F: PrimeField,
     G: VariableBaseMSM<ScalarField = F> + CurveGroup,

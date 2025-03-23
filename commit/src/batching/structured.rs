@@ -1,6 +1,6 @@
 use crate::{
     batching::{BatchEval, BatchingError},
-    CommmitmentScheme2, OpenInstance,
+    CommmitmentScheme, OpenInstance,
 };
 use ark_ff::Field;
 use sponge::sponge::Duplex;
@@ -10,7 +10,7 @@ use transcript::{protocols::Reduction, Message, MessageGuard, TranscriptBuilder,
 /// To batch many open instances and redeuce them into a single one, additionally
 /// acepts an structure of commitments to be batched together.
 #[derive(Debug, Clone)]
-pub struct StructuredBatchReduction<F: Field, S: CommmitmentScheme2<F>> {
+pub struct StructuredBatchReduction<F: Field, S: CommmitmentScheme<F>> {
     _phantom: PhantomData<(F, S)>,
     structure: Vec<S::Commitment>,
     // structure_mles: Vec<Vec<F>>,
@@ -18,14 +18,14 @@ pub struct StructuredBatchReduction<F: Field, S: CommmitmentScheme2<F>> {
 
 /// Extension of [BatchEval] including evaluations of public commitments.
 #[derive(Debug, Clone)]
-pub struct StructuredBatchEval<F: Field, S: CommmitmentScheme2<F>> {
+pub struct StructuredBatchEval<F: Field, S: CommmitmentScheme<F>> {
     dynamic_batch: BatchEval<F, S>,
     /// Only the evaluations are here as the commitments are part
     /// of the structure.
     structure_evals: Vec<F>,
 }
 
-impl<F: Field, S: CommmitmentScheme2<F>> StructuredBatchEval<F, S> {
+impl<F: Field, S: CommmitmentScheme<F>> StructuredBatchEval<F, S> {
     pub(crate) fn new(dynamic_batch: BatchEval<F, S>, structure_evals: Vec<F>) -> Self {
         Self {
             dynamic_batch,
@@ -37,7 +37,7 @@ impl<F: Field, S: CommmitmentScheme2<F>> StructuredBatchEval<F, S> {
 /// Number of commitments in the strucuture
 pub struct StructureLength;
 
-impl<F: Field, S: CommmitmentScheme2<F>> Message<F> for StructuredBatchEval<F, S> {
+impl<F: Field, S: CommmitmentScheme<F>> Message<F> for StructuredBatchEval<F, S> {
     fn len(vars: usize, param_resolver: &transcript::params::ParamResolver) -> usize {
         let structure_length = param_resolver.get::<StructureLength>();
         BatchEval::<F, S>::len(vars, param_resolver) + structure_length
@@ -59,7 +59,7 @@ pub struct PointEvals<F> {
 impl<F, S> Reduction<F> for StructuredBatchReduction<F, S>
 where
     F: Field,
-    S: CommmitmentScheme2<F> + 'static,
+    S: CommmitmentScheme<F> + 'static,
 {
     type A = StructuredBatchEval<F, S>;
 
@@ -123,7 +123,7 @@ where
     }
 }
 
-impl<F: Field, S: CommmitmentScheme2<F>> StructuredBatchReduction<F, S> {
+impl<F: Field, S: CommmitmentScheme<F>> StructuredBatchReduction<F, S> {
     pub fn new(structure_mles: Vec<Vec<F>>, scheme: &S) -> Self {
         let structure = structure_mles
             .iter()

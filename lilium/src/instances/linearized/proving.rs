@@ -9,7 +9,7 @@ use crate::{
     },
 };
 use ark_ff::Field;
-use commit::{CommmitmentScheme2, OpenInstance};
+use commit::{CommmitmentScheme, OpenInstance};
 use std::marker::PhantomData;
 use sumcheck::{
     polynomials::MultiPoint,
@@ -81,7 +81,7 @@ impl<F, K, CS, const I: usize, const IO: usize> Reduction<F>
     for LinearizedInstanceReduction<F, K, CS, I, IO>
 where
     F: Field,
-    CS: CommmitmentScheme2<F> + 'static,
+    CS: CommmitmentScheme<F> + 'static,
     K: KeySparkStructure<F, CS, IO>,
 {
     type A = LinearizedInstance<F, CS, I, IO>;

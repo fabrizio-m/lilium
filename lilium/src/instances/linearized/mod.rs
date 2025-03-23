@@ -1,5 +1,5 @@
 use ark_ff::Field;
-use commit::CommmitmentScheme2;
+use commit::CommmitmentScheme;
 use sumcheck::polynomials::MultiPoint;
 use transcript::{params::ParamResolver, Message};
 
@@ -9,7 +9,7 @@ pub mod sumcheck_argument;
 /// A linearized committed ccs instance
 pub(crate) struct LinearizedInstance<
     F: Field,
-    C: CommmitmentScheme2<F>,
+    C: CommmitmentScheme<F>,
     const I: usize,
     const IO: usize,
 > {
@@ -29,7 +29,7 @@ pub(crate) struct LinearizedInstance<
 impl<F, C, const I: usize, const IO: usize> Message<F> for LinearizedInstance<F, C, I, IO>
 where
     F: Field,
-    C: CommmitmentScheme2<F>,
+    C: CommmitmentScheme<F>,
 {
     fn len(vars: usize, param_resolver: &ParamResolver) -> usize {
         let commit = C::Commitment::len(vars, param_resolver);

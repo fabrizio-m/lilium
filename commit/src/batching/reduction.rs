@@ -1,6 +1,6 @@
 use crate::{
     batching::{BatchEval, BatchingError},
-    CommmitmentScheme2, OpenInstance,
+    CommmitmentScheme, OpenInstance,
 };
 use ark_ff::Field;
 use sponge::sponge::Duplex;
@@ -8,14 +8,14 @@ use std::marker::PhantomData;
 use transcript::{protocols::Reduction, MessageGuard, TranscriptBuilder, TranscriptGuard};
 
 /// to batch many open instances and redeuce them into a single one
-pub struct BatchReduction<F: Field, S: CommmitmentScheme2<F>> {
+pub struct BatchReduction<F: Field, S: CommmitmentScheme<F>> {
     _phantom: PhantomData<(F, S)>,
 }
 
 impl<F: Field, S> Reduction<F> for BatchReduction<F, S>
 where
     F: Field,
-    S: CommmitmentScheme2<F> + 'static,
+    S: CommmitmentScheme<F> + 'static,
 {
     type A = BatchEval<F, S>;
 

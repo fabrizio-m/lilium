@@ -1,4 +1,4 @@
-use crate::{ipa::poly_comm::IpaCommitmentScheme, CommmitmentScheme2};
+use crate::{ipa::poly_comm::IpaCommitmentScheme, CommmitmentScheme};
 use ark_ff::{Field, UniformRand};
 use ark_vesta::{Fr, Projective, VestaConfig};
 use hash_to_curve::svdw::SvdwMap;
@@ -14,7 +14,7 @@ const LEN: usize = 1 << LEN_LOG;
 
 type TestSponge = Sponge<Fr, UnsafePermutation<Fr, 3>, 2, 1, 3>;
 
-fn polynomial_commitment<S: CommmitmentScheme2<Fr>>(should_fail: bool) {
+fn polynomial_commitment<S: CommmitmentScheme<Fr>>(should_fail: bool) {
     let scheme = S::new(LEN_LOG);
 
     let mut rng = thread_rng();
