@@ -45,6 +45,16 @@ pub struct OpenInstance<F: Field, G> {
     eval: F,
 }
 
+impl<F: Field, G> OpenInstance<F, G> {
+    pub fn new(commit: G, point: MultiPoint<F>, eval: F) -> Self {
+        Self {
+            commit,
+            point,
+            eval,
+        }
+    }
+}
+
 impl<F: Field, G> Message<F> for OpenInstance<F, G>
 where
     G: Message<F>,
