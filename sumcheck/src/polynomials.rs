@@ -17,6 +17,24 @@ impl<F: Field> Message<F> for MultiPoint<F> {
     }
 }
 
+impl<F: Field> From<Vec<F>> for MultiPoint<F> {
+    fn from(value: Vec<F>) -> Self {
+        Self(value)
+    }
+}
+
+impl<F: Field> From<&[F]> for MultiPoint<F> {
+    fn from(value: &[F]) -> Self {
+        Self(value.to_vec())
+    }
+}
+
+impl<F: Field> AsRef<[F]> for MultiPoint<F> {
+    fn as_ref(&self) -> &[F] {
+        &self.0
+    }
+}
+
 impl<F: Field> MultiPoint<F> {
     pub fn new(vars: Vec<F>) -> Self {
         MultiPoint(vars)
@@ -115,7 +133,7 @@ pub trait EvalsExt<F: Field>: Evals<F> + Sized {
             point.vars(),
             "number of variables missmatch"
         );
-        let eq: Vec<F> = eq(point);
+        let eq: Vec<F> = eq(&point);
         let dummy = mles[0].clone().flatten_vec();
         let dummy: Self = Self::unflatten_vec(vec![F::zero(); dummy.len()]);
 

@@ -77,15 +77,15 @@ fn eval_eq<F: Field>(dest: &mut [F], mut vars: Vec<F>, zero: F) {
 }
 
 /// Computes eq(x,point) for each x in 0..(2^vars)
-pub fn eq<F: Field>(point: MultiPoint<F>) -> Vec<F> {
+pub fn eq<F: Field>(point: &MultiPoint<F>) -> Vec<F> {
     let n_log = point.vars();
     eq_subset(point, n_log)
 }
 
 /// Computes eq(x,point) for each x in 0..(2^n_log)
-pub fn eq_subset<F: Field>(point: MultiPoint<F>, n_log: usize) -> Vec<F> {
+pub fn eq_subset<F: Field>(point: &MultiPoint<F>, n_log: usize) -> Vec<F> {
     // these are the values corresponding to a 1 in the corresponding bit
-    let vars = point.inner();
+    let vars = point.inner_ref();
     assert!(vars.len() >= n_log, "subset bigger than full set");
     assert!(n_log > 0, "subset must not be empty");
     let len = 1 << n_log;
@@ -124,7 +124,7 @@ fn test_eq() {
     let point = vec![r_point(); vars];
     let point = MultiPoint::new(point);
 
-    let eq_evals = eq(point.clone());
+    let eq_evals = eq(&point);
 
     let check_poly = vec![r_point(); eq_evals.len()];
 
@@ -145,8 +145,8 @@ fn test_subset() {
     let vars: [Fr; 4] = [2_u32, 3, 4, 5].map(Fr::from);
     let point: MultiPoint<Fr> = MultiPoint::new(vars.to_vec());
 
-    let full_eq = eq(point.clone());
-    let subset_eq = eq_subset(point, 2);
+    let full_eq = eq(&point);
+    let subset_eq = eq_subset(&point, 2);
 
     for i in 0..4 {
         assert_eq!(full_eq[i], subset_eq[i]);

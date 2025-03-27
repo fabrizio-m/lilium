@@ -59,7 +59,7 @@ fn test<F: Field>() {
     let zero_check_point = vec![elem(); VARS];
     let zero_check_point = MultiPoint::new(zero_check_point);
 
-    let zero_eq = crate::eq::eq(zero_check_point);
+    let zero_eq = crate::eq::eq(&zero_check_point);
 
     let mut evals = vec![];
     for i in 0..EVALS {

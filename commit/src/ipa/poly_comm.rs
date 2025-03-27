@@ -159,7 +159,7 @@ where
             .receive_message(|proof| SingleElement(proof.a))
             .unwrap();
 
-        let b = eq(point.clone());
+        let b = eq(&point);
         let folded_b = compute_inner_product(&s, &b);
         let folded_g = G::msm_unchecked(&key.0.vector_basis, &s);
 
