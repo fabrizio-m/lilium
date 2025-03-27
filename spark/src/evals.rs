@@ -225,7 +225,7 @@ impl<F: Field> DimensionEval<F> {
         normal_index: &[F],
         challenges: &SparkChallenges<F>,
     ) -> Vec<Self> {
-        let eq_eval = eq::eq(point);
+        let eq_eval = eq::eq(&point);
         let eq_lookups: Vec<F> = structure.lookups.iter().map(|i| eq_eval[*i]).collect();
         // let lookups = structure.dimen
         let compression_chall = *challenges.compression_challenge();
@@ -335,7 +335,7 @@ impl<F: Field, const D: usize> SparkEval<F, D> {
             evals
         });
 
-        let zero_eq = eq::eq(zero_check_point);
+        let zero_eq = eq::eq(&zero_check_point);
 
         let mut d = dimensions.map(|x| x.into_iter());
 

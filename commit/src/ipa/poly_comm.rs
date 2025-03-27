@@ -197,7 +197,7 @@ where
         point: sumcheck::polynomials::MultiPoint<F>,
         evals: &[F],
     ) -> OpenInstance<F, Self::Commitment> {
-        let b = eq(point.clone());
+        let b = eq(&point);
         let eval = compute_inner_product(evals, &b);
         OpenInstance {
             commit: commitment,
@@ -212,7 +212,7 @@ where
         transcript: &mut Transcript<F, S>,
     ) -> Result<Self::OpenProof, IpaError> {
         let a = evals;
-        let b = eq(instance.point.clone());
+        let b = eq(&instance.point);
         let vectors = [a.to_vec(), b];
 
         Ok(self.0.prove(vectors, instance, transcript)?)
