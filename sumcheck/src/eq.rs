@@ -69,24 +69,40 @@ fn eval_eq<F: Field>(dest: &mut [F], mut vars: Vec<F>, zero: F) {
         let (left, right) = dest.split_at_mut(half_len);
         eval_eq(left, vars, zero);
         for (l, r) in left.iter().zip(right.iter_mut()) {
+            // to avoid lsp false positive
+            let r: &mut F = r;
             *r = var * l;
         }
     }
 }
 
-pub fn eq<F: Field>(vars: MultiPoint<F>) -> Vec<F> {
-    // this are the values corresponding to a 1 in the corresponding bit
-    let v = vars.inner();
-    let len = 1 << v.len();
+/// Computes eq(x,point) for each x in 0..(2^vars)
+pub fn eq<F: Field>(point: MultiPoint<F>) -> Vec<F> {
+    let n_log = point.vars();
+    eq_subset(point, n_log)
+}
+
+/// Computes eq(x,point) for each x in 0..(2^n_log)
+pub fn eq_subset<F: Field>(point: MultiPoint<F>, n_log: usize) -> Vec<F> {
+    // these are the values corresponding to a 1 in the corresponding bit
+    let vars = point.inner();
+    assert!(vars.len() >= n_log, "subset bigger than full set");
+    assert!(n_log > 0, "subset must not be empty");
+    let len = 1 << n_log;
     // this are the values corresponding to a 0 in the corresponding bit
-    let one_minus_v: Vec<F> = v.iter().map(|x| F::one() - x).collect();
-    // the inverse of the previous, multiplying by it would undo the previous
+    let one_minus_v: Vec<F> = vars.iter().map(|x| F::one() - x).collect();
+    // the inverse of above, multiplying by it will undo multiplying by the value.
     let mut one_minus_v_inv = one_minus_v.clone();
     ark_ff::fields::batch_inversion(&mut one_minus_v_inv);
     // this have the effect of setting the value of an evaluation from 0 to 1
     // for any particular bit.
     // combines the effect of v and one_minus_v_inv
-    let vars: Vec<F> = v.iter().zip(one_minus_v_inv).map(|(a, b)| *a * b).collect();
+    let mut vars: Vec<F> = vars
+        .iter()
+        .zip(one_minus_v_inv)
+        .map(|(a, b)| *a * b)
+        .collect();
+    vars.truncate(n_log);
 
     let zero: F = one_minus_v.iter().cloned().reduce(Mul::mul).unwrap();
     let mut eq = Vec::with_capacity(len);
@@ -121,4 +137,18 @@ fn test_eq() {
     let check_poly: Vec<_> = check_poly.into_iter().map(SingleEval).collect();
     let check_eval = EvalsExt::eval_slow(check_poly, point).0;
     assert_eq!(eq_eval, check_eval);
+}
+
+#[test]
+fn test_subset() {
+    use ark_vesta::Fr;
+    let vars: [Fr; 4] = [2_u32, 3, 4, 5].map(Fr::from);
+    let point: MultiPoint<Fr> = MultiPoint::new(vars.to_vec());
+
+    let full_eq = eq(point.clone());
+    let subset_eq = eq_subset(point, 2);
+
+    for i in 0..4 {
+        assert_eq!(full_eq[i], subset_eq[i]);
+    }
 }
