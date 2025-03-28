@@ -12,6 +12,7 @@ use ark_ff::Field;
 use commit::{CommmitmentScheme, OpenInstance};
 use std::marker::PhantomData;
 use sumcheck::{
+    eq::eq_subset,
     polynomials::MultiPoint,
     sumcheck::{Sum, SumcheckVerifier},
 };
@@ -175,7 +176,7 @@ where
 }
 
 fn eval_input_selector<F: Field>(point: &MultiPoint<F>, input_len: usize) -> F {
-    let eq_evals = eq_subset(point.inner_ref(), input_len + 1);
+    let eq_evals = eq_subset(&point, input_len + 1);
     // Given that we multiply by either 1 or 0, we can just add the 1s and
     // ignore the zeros.
     eq_evals
@@ -184,17 +185,8 @@ fn eval_input_selector<F: Field>(point: &MultiPoint<F>, input_len: usize) -> F {
         .fold(F::zero(), |acc, e| acc + e)
 }
 
-/// Evaluate a subset of eq(vars) over n vars
-fn eq_subset<F: Field>(vars: &[F], elems: usize) -> Vec<F> {
-    ///TODO: check it evaluates the correct subset of eq
-    let public_input_vars = elems.next_power_of_two().ilog2() as usize;
-    let public_input_vars: Vec<F> = vars[0..public_input_vars].to_vec();
-    let public_input_vars = MultiPoint::new(public_input_vars);
-    sumcheck::eq::eq(public_input_vars)
-}
-
 fn eval_ux<F: Field>(vars: &[F], u: F, inputs: &[F]) -> F {
-    let eq_evals = eq_subset(vars, inputs.len() + 1);
+    let eq_evals = eq_subset(&vars.into(), inputs.len() + 1);
     let evals = [u];
     let evals = evals.iter().chain(inputs);
     evals
