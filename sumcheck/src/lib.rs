@@ -8,6 +8,7 @@ pub mod eval_impls;
 pub(crate) mod message;
 pub mod polynomials;
 pub mod sumcheck;
+mod symbolic;
 mod tests;
 pub mod utils;
 
