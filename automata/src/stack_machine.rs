@@ -1,11 +1,11 @@
 /// Stack from which elements cab bu popped.
 pub struct PopableStack<'a, T> {
-    stack: &'a mut Vec<T>,
+    pub(crate) stack: &'a mut Vec<T>,
 }
 
 /// Stach to which elements can be pushed.
 pub struct PushableStack<'a, T, const N: usize> {
-    stack: &'a mut Vec<T>,
+    pub(crate) stack: &'a mut Vec<T>,
 }
 
 impl<'a, T> PopableStack<'a, T> {
