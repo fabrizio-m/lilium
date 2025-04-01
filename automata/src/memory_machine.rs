@@ -34,13 +34,15 @@ where
     pub fn run_program(
         program: &[MemoryInstruction<S::Instruction, A>],
         initial_stack: Vec<S::StackElem>,
+        input: Vec<S::Input>,
         memory: &M,
     ) -> Vec<S::StackElem> {
         let mut stack: Vec<S::StackElem> = initial_stack;
+        let mut input = input.into_iter();
         for instruction in program {
             match instruction {
                 MemoryInstruction::Inner(instruction) => {
-                    let stack = PopableStack { stack: &mut stack };
+                    let stack = PopableStack::new(&mut stack, &mut input);
                     let _ = S::transition(instruction, stack);
                 }
                 MemoryInstruction::LoadImmediate(address) => {
@@ -56,14 +58,16 @@ where
     pub fn bound_program(
         program: &[MemoryInstruction<S::Instruction, A>],
         initial_stack: Vec<S::StackElem>,
+        input: Vec<S::Input>,
         memory: &M,
     ) -> usize {
         let mut stack: Vec<S::StackElem> = initial_stack;
+        let mut input = input.into_iter();
         let mut bound = 0;
         for instruction in program {
             match instruction {
                 MemoryInstruction::Inner(instruction) => {
-                    let stack = PopableStack { stack: &mut stack };
+                    let stack = PopableStack::new(&mut stack, &mut input);
                     let _ = S::transition(instruction, stack);
                 }
                 MemoryInstruction::LoadImmediate(address) => {

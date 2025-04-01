@@ -1,6 +1,7 @@
-/// Stack from which elements cab bu popped.
-pub struct PopableStack<'a, T> {
-    pub(crate) stack: &'a mut Vec<T>,
+/// Stack from which elements cab be popped.
+pub struct PopableStack<'a, S: StackMachine> {
+    pub(crate) stack: &'a mut Vec<S::StackElem>,
+    input: Input<'a, S::Input>,
 }
 
 /// Stach to which elements can be pushed.
@@ -8,14 +9,36 @@ pub struct PushableStack<'a, T, const N: usize> {
     pub(crate) stack: &'a mut Vec<T>,
 }
 
-impl<'a, T> PopableStack<'a, T> {
-    /// Pop P elements, returning the elements and a stack to which
-    /// N elements can bu pushed.
-    pub fn pop<const P: usize, const N: usize>(self) -> ([T; P], PushableStack<'a, T, N>) {
-        let Self { stack } = self;
-        let elems = [(); P].map(|_| stack.pop().unwrap());
+/// Allows to take an input element, taking an input is optional.
+pub struct Input<'a, T> {
+    input: &'a mut std::vec::IntoIter<T>,
+}
+
+/// obtained after pop, contains elements, stack, and input.
+pub struct PopResult<'a, S: StackMachine, const P: usize, const N: usize> {
+    pub popped_elements: [S::StackElem; P],
+    pub stack: PushableStack<'a, S::StackElem, N>,
+    pub input: Input<'a, S::Input>,
+}
+
+impl<'a, S: StackMachine> PopableStack<'a, S> {
+    pub(crate) fn new(
+        stack: &'a mut Vec<S::StackElem>,
+        input: &'a mut std::vec::IntoIter<S::Input>,
+    ) -> Self {
+        let input = Input { input };
+        Self { stack, input }
+    }
+
+    pub fn pop<const P: usize, const N: usize>(self) -> PopResult<'a, S, P, N> {
+        let Self { stack, input } = self;
+        let popped_elements = [(); P].map(|_| stack.pop().unwrap());
         let stack = PushableStack { stack };
-        (elems, stack)
+        PopResult {
+            popped_elements,
+            stack,
+            input,
+        }
     }
 }
 
@@ -32,38 +55,56 @@ impl<'a, T, const N: usize> PushableStack<'a, T, N> {
     }
 }
 
+impl<'a, T> Input<'a, T> {
+    /// Take an input element
+    pub fn take(self) -> T {
+        // There should always be enough input
+        let elem = self.input.next().expect("no more input");
+        elem
+    }
+}
+
 /// Stack machine, types aim to guarantee control flow remaining constant for a given
 /// program, allowing to bound the stack for a given program.
 /// It can be considered as a pushdown automaton for arbitrary programns, and a fsm for
 /// a given program.
-pub trait StackMachine {
+pub trait StackMachine: Sized {
     /// Type of stack elements.
     type StackElem;
     type Instruction;
+    /// type of input, being optional it can be just ().
+    type Input;
     /// Machine transition, control flow should depend only on the instraction.
     /// The stack enforces that by allowing to pop N elements once, and at the
     /// same time determining how many elements will be pushed.
     /// Finally, this function must return `End`, which can only be obtained
     /// by pushing the defined number of elements.
-    fn transition(instruction: &Self::Instruction, stack: PopableStack<Self::StackElem>) -> End;
+    fn transition<'a>(instruction: &Self::Instruction, stack: PopableStack<'a, Self>) -> End;
     /// Runs instructions, returning final stack.
     fn run_program(
         program: &[Self::Instruction],
         initial_stack: Vec<Self::StackElem>,
+        input: Vec<Self::Input>,
     ) -> Vec<Self::StackElem> {
         let mut stack: Vec<Self::StackElem> = initial_stack;
+        let mut input = input.into_iter();
         for instruction in program {
-            let stack = PopableStack { stack: &mut stack };
+            let stack = PopableStack::new(&mut stack, &mut input);
             let _ = Self::transition(instruction, stack);
         }
         stack
     }
     /// Finds the smallest stack size for the given program.
-    fn bound_program(program: &[Self::Instruction], initial_stack: Vec<Self::StackElem>) -> usize {
+    fn bound_program(
+        program: &[Self::Instruction],
+        initial_stack: Vec<Self::StackElem>,
+        input: Vec<Self::Input>,
+    ) -> usize {
         let mut stack: Vec<Self::StackElem> = initial_stack;
+        let mut input = input.into_iter();
         let mut bound = stack.len();
         for instruction in program {
-            let stack_wrapped = PopableStack { stack: &mut stack };
+            let stack_wrapped = PopableStack::new(&mut stack, &mut input);
             let _ = Self::transition(instruction, stack_wrapped);
             bound = stack.len().max(bound);
         }
