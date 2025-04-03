@@ -10,6 +10,12 @@ pub enum MemoryInstruction<I, A> {
     LoadImmediate(A),
 }
 
+impl<I, A> From<I> for MemoryInstruction<I, A> {
+    fn from(value: I) -> Self {
+        Self::Inner(value)
+    }
+}
+
 /// Read-only memory, `A` addresses, `V` values.
 pub trait Memory<A, V> {
     fn read(&self, address: A) -> V;
