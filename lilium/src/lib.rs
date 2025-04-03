@@ -5,7 +5,6 @@ use sumcheck::SumcheckError;
 
 pub mod circuit_key;
 mod instances;
-pub mod multivariate;
 mod proving;
 
 pub struct Prover<F: Field, const IO: usize = 0> {
