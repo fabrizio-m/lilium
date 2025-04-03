@@ -1,5 +1,5 @@
 // A transducer, a Mealy  machine
-pub trait FiniteAutomata {
+pub trait FiniteAutomaton {
     /// type for initiallization, may be same as state
     type Init;
     type State;

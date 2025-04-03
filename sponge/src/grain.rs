@@ -1,6 +1,6 @@
 //! Grain LFSR
 
-use automata::FiniteAutomata;
+use automata::FiniteAutomaton;
 
 pub(crate) struct Grain {
     low: u64,
@@ -33,7 +33,7 @@ impl Grain {
     */
 }
 
-impl FiniteAutomata for Grain {
+impl FiniteAutomaton for Grain {
     type Init = (u64, u16);
 
     type State = (u64, u16);

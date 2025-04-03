@@ -4,5 +4,4 @@ mod fsm;
 pub mod memory_machine;
 pub mod stack_machine;
 
-//TODO: rename
-pub use fsm::FiniteAutomata;
+pub use fsm::FiniteAutomaton;

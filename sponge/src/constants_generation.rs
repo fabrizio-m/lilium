@@ -1,6 +1,6 @@
 use crate::grain::Grain;
 use ark_ff::{BigInteger, PrimeField};
-use automata::FiniteAutomata;
+use automata::FiniteAutomaton;
 use std::{cmp::Ordering, marker::PhantomData, u16, u64};
 
 pub enum Field {
@@ -96,7 +96,7 @@ impl PoseidonEncoding {
 struct BitMachine {
     grain: Grain,
 }
-impl FiniteAutomata for BitMachine {
+impl FiniteAutomaton for BitMachine {
     type Init = PoseidonEncoding;
 
     type State = Grain;
@@ -157,7 +157,7 @@ impl FieldMachine {
     }
 }
 
-impl FiniteAutomata for FieldMachine {
+impl FiniteAutomaton for FieldMachine {
     type Init = (PoseidonEncoding, Vec<bool>);
 
     type State = ();
