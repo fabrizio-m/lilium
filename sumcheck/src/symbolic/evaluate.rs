@@ -1,5 +1,6 @@
 use crate::symbolic::compute::{MvPoly, MvPolyTerm};
 use ark_ff::Field;
+use automata::memory_machine::Memory;
 use std::{collections::BTreeMap, iter::Iterator};
 
 /// A representation of a multivariate polynomial optimized for evaluation,
@@ -7,31 +8,27 @@ use std::{collections::BTreeMap, iter::Iterator};
 /// Essentiall Horner's rule with memory optimizations
 #[derive(Debug, Clone)]
 pub struct MvEvaluator<F: Field, V> {
-    pub operations: Vec<Op<V>>,
-    pub operands: Vec<(F, V)>,
+    program: Vec<MvIr<F, V>>,
 }
 
 // TODO: Explore using Pippenger instead.
 
-/// Whether to take from operands or from the stack of partial results.
+/// Stack machine instructions to evaluate a multivariate polynomial.
+/// Can be used together with a V -> F map to resolve variables, and
+/// a stack to evaluate the polynomial.
+/// It aims first to be simple and abstract, it can be used directly
+/// or as an IR to create a more performant instructions.
 #[derive(Debug, Clone)]
-pub enum OperandOrStack {
-    Operand,
-    Stack,
-}
-// TODO: Add operations to optimize sum and scaling of degree 1 terms
-// which will apear in the intended use case.
-#[derive(Debug, Clone)]
-pub enum Op<V> {
-    /// Pop 1 from stack and 1 from either stack or operands, add and push
-    /// into stack
-    Add(OperandOrStack),
-    /// Pop from stack, multiply by V and push back
+pub enum MvIr<F, V> {
+    // (coeff,var), push 1.
+    PushChild(F, V),
+    // pop 2, push 1
+    Add,
+    /// pop 1, push 1
     Mul(V),
-    /// Pop from operands, push to stack
-    OperandToStack,
 }
 
+#[derive(Clone, Debug)]
 enum EvalTree<F: Field, V> {
     Parent(V, Vec<Self>),
     Child(V, F),
@@ -52,46 +49,30 @@ where
         // adding a fake var to group all into a single tree, this var will later be discarded
         let root = EvalTree::Parent(dummy_var, top_level_nodes);
 
-        let mut operations = vec![];
-        let mut operands = vec![];
-        Self::tree_operations(&mut operations, &mut operands, root);
-        match operations.pop().unwrap() {
-            Op::Mul(_) => {}
+        let mut program = vec![];
+        Self::tree_operations2(&mut program, root);
+        match program.pop().unwrap() {
+            MvIr::Mul(_) => {}
             _ => panic!("last operation should be Mul"),
         }
-        Self {
-            operations,
-            operands,
-        }
+        Self { program }
     }
-    /// Flattens the tree into operations and operands
-    fn tree_operations(
-        operations: &mut Vec<Op<V>>,
-        operands: &mut Vec<(F, V)>,
-        tree: EvalTree<F, V>,
-    ) -> OperandOrStack {
+
+    fn tree_operations2(operations: &mut Vec<MvIr<F, V>>, tree: EvalTree<F, V>) {
         match tree {
             EvalTree::Parent(var, children) => {
-                let mut locations = Vec::with_capacity(children.len());
-                for child in children.into_iter().rev() {
-                    let location = Self::tree_operations(operations, operands, child);
-                    locations.push(location);
+                let mut nodes = 0;
+                for child in children.into_iter() {
+                    Self::tree_operations2(operations, child);
+                    nodes += 1;
                 }
-                let mut locations = locations.into_iter();
-                let first = locations.next().unwrap();
-                if let OperandOrStack::Operand = first {
-                    operations.push(Op::OperandToStack);
+                let adds = nodes - 1;
+                for _ in 0..adds {
+                    operations.push(MvIr::Add);
                 }
-                for location in locations {
-                    operations.push(Op::Add(location));
-                }
-                operations.push(Op::Mul(var));
-                OperandOrStack::Stack
+                operations.push(MvIr::Mul(var));
             }
-            EvalTree::Child(var, coeff) => {
-                operands.push((coeff, var));
-                OperandOrStack::Operand
-            }
+            EvalTree::Child(var, coeff) => operations.push(MvIr::PushChild(coeff, var)),
         }
     }
     /// Turn terms into trees
@@ -155,5 +136,39 @@ where
             }
         }
         var_count
+    }
+    /// Evaluate with a memory resolving variable to their value.
+    pub fn eval<M: Memory<V, F>>(&self, vars: &M) -> F
+    where
+        V: Copy,
+    {
+        let program = &self.program;
+        let mut stack: Vec<F> = vec![];
+        for instruction in program.iter() {
+            let instruction: &MvIr<F, V> = instruction;
+            match instruction {
+                MvIr::PushChild(coeff, var) => {
+                    let var = vars.read(*var);
+                    stack.push(var * coeff);
+                }
+                MvIr::Add => {
+                    let a = stack.pop().unwrap();
+                    let b = stack.pop().unwrap();
+                    stack.push(a + b);
+                }
+                MvIr::Mul(var) => {
+                    let a = stack.pop().unwrap();
+                    let b = vars.read(*var);
+                    stack.push(a * b);
+                }
+            }
+        }
+        assert_eq!(stack.len(), 1);
+        stack.pop().unwrap()
+    }
+
+    /// Provide access to inner program.
+    pub fn program(&self) -> &[MvIr<F, V>] {
+        &self.program
     }
 }

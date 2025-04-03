@@ -10,6 +10,7 @@ ark-ff = "0.4"
 ark-poly = "0.4"
 transcript = { path = "../transcript"} 
 sponge = { path = "../sponge"} 
+automata = { path = "../automata"} 
 
 [dev-dependencies]
 rand = "0.8.5"
