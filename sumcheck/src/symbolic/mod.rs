@@ -4,5 +4,6 @@
 
 pub mod compute;
 pub mod evaluate;
+pub mod message_eval;
 #[cfg(test)]
 mod test;

@@ -1,0 +1,219 @@
+//! Optimized machine to evaluate polynomials over sumcheck messages,
+//! which are univariate polynomials.
+//! It allocates no additional memory, and has decent cache locality.
+//! It does not utilize the abstraction in `automata`, as generalizing
+//! them for this unique use case would add too much complexity.
+
+use crate::symbolic::evaluate::MvIr;
+use ark_ff::Field;
+use automata::memory_machine::Memory;
+
+enum Instruction<V> {
+    Add,
+    Mul,
+    Load(V),
+    Eval,
+    EvalWithCoeff,
+}
+
+fn translate<F, V>(program: Vec<MvIr<F, V>>) -> (Vec<Instruction<V>>, Vec<F>) {
+    use Instruction::*;
+    let mut instructions = vec![];
+    let mut coeffs = vec![];
+    for instruction in program {
+        match instruction {
+            MvIr::PushChild(coeff, var) => {
+                coeffs.push(coeff);
+                instructions.extend([Load(var), EvalWithCoeff]);
+            }
+            MvIr::Add => {
+                instructions.push(Add);
+            }
+            MvIr::Mul(var) => {
+                instructions.extend([Load(var), Eval, Mul]);
+            }
+        }
+    }
+    (instructions, coeffs)
+}
+
+fn pop_2<F>(stack: &mut [F], message_len: usize) -> [&mut [F]; 2] {
+    let split_at = stack.len() - (message_len * 2);
+    let (_, right) = stack.split_at_mut(split_at);
+    let (left, right) = right.split_at_mut(message_len);
+    [left, right]
+}
+
+/// Based on `Message::new_degree_n`, extends the stack with the evals.
+fn eval<F: Field>(e0: F, e1: F, stack: &mut Vec<F>, message_len: usize) {
+    // P(x) = (e1 - e0)x + e0
+    let original_len = stack.len();
+    stack.resize(original_len + message_len, e0);
+    let (_, evals) = stack.split_at_mut(original_len);
+
+    let diff = e1 - e0;
+    let mut last = F::zero();
+    for e in evals {
+        let e: &mut F = e;
+        *e += last;
+        last = last + diff;
+    }
+}
+
+fn eval_sample<F, V, M>(program: &[Instruction<V>], coeffs: &[F], memory: &M) -> F
+where
+    V: Copy,
+    F: Field,
+    //TODO: this will likely not be optimal
+    M: Memory<V, (F, F)>,
+{
+    /// should be pre allocated
+    let mut stack = vec![];
+    let mut coeffs = coeffs.iter();
+    let message_len = 5_usize;
+
+    for instruction in program {
+        let instruction: &Instruction<V> = instruction;
+        match instruction {
+            Instruction::Add => {
+                let [left, right] = pop_2(&mut stack, message_len);
+                for (a, b) in left.into_iter().zip(right) {
+                    *a += b;
+                }
+                stack.truncate(stack.len() - message_len);
+            }
+            Instruction::Mul => {
+                let [left, right] = pop_2(&mut stack, message_len);
+                for (a, b) in left.into_iter().zip(right) {
+                    *a *= b;
+                }
+                stack.truncate(stack.len() - message_len);
+            }
+            Instruction::Load(var) => {
+                let (e0, e1) = memory.read(*var);
+                stack.push(e0);
+                stack.push(e1);
+            }
+            Instruction::Eval => {
+                let e1 = stack.pop().unwrap();
+                let e0 = stack.pop().unwrap();
+                eval(e0, e1, &mut stack, message_len);
+            }
+            Instruction::EvalWithCoeff => {
+                let coeff: &F = coeffs.next().unwrap();
+                let mut e2 = stack.pop().unwrap();
+                let mut e1 = stack.pop().unwrap();
+                e1 *= coeff;
+                e2 *= coeff;
+            }
+        }
+    }
+    // not a single element
+    stack.pop().unwrap()
+}
+
+pub(crate) struct MessageEvaluator<F, V> {
+    program: Vec<Instruction<V>>,
+    coefficients: Vec<F>,
+    vars: Vec<(F, F)>,
+    stack: Vec<F>,
+    message_len: usize,
+}
+
+/// Could be implemented for a bigger integer than u8.
+impl<F: Field> MessageEvaluator<F, u8> {
+    pub(crate) fn new(ir: Vec<MvIr<F, u8>>, message_len: usize) -> Self {
+        let (program, coefficients) = translate(ir);
+        ///TODO
+        let vars = vec![];
+        let bound = Self::bound(&program, message_len);
+        let stack = Vec::with_capacity(bound);
+        Self {
+            program,
+            coefficients,
+            vars,
+            stack,
+            message_len,
+        }
+    }
+    fn bound(program: &[Instruction<u8>], message_size: usize) -> usize {
+        use Instruction::*;
+        let mut bound = 0;
+        let mut stack = 0;
+        for instruction in program {
+            let instruction: &Instruction<u8> = instruction;
+            stack = match instruction {
+                Add | Mul => stack - message_size,
+                Load(_) => stack + 2,
+                Eval | EvalWithCoeff => (stack - 2) + message_size,
+            };
+            bound = bound.max(stack);
+        }
+        bound
+    }
+    /// Eval leaving the result as the only elements in the stack.
+    /// Before call, variables should be set, and stack must be empty.
+    pub(crate) fn eval(&mut self) {
+        let mut stack = &mut self.stack;
+        let mut coeffs = self.coefficients.iter();
+        let message_len = self.message_len;
+        let memory = &self.vars;
+
+        for instruction in &self.program {
+            let instruction: &Instruction<u8> = instruction;
+            match instruction {
+                Instruction::Add => {
+                    let [left, right] = pop_2(&mut stack, message_len);
+                    for (a, b) in left.into_iter().zip(right) {
+                        *a += b;
+                    }
+                    stack.truncate(stack.len() - message_len);
+                }
+                Instruction::Mul => {
+                    let [left, right] = pop_2(&mut stack, message_len);
+                    for (a, b) in left.into_iter().zip(right) {
+                        *a *= b;
+                    }
+                    stack.truncate(stack.len() - message_len);
+                }
+                Instruction::Load(var) => {
+                    let (e0, e1) = memory[*var as usize];
+                    stack.push(e0);
+                    stack.push(e1);
+                }
+                Instruction::Eval => {
+                    let e1 = stack.pop().unwrap();
+                    let e0 = stack.pop().unwrap();
+                    eval(e0, e1, &mut stack, message_len);
+                }
+                Instruction::EvalWithCoeff => {
+                    let coeff: &F = coeffs.next().unwrap();
+                    let mut e2 = stack.pop().unwrap();
+                    let mut e1 = stack.pop().unwrap();
+                    e1 *= coeff;
+                    e2 *= coeff;
+                }
+            }
+        }
+    }
+
+    /// Returns result left on the stack, panics on unexpected
+    /// stack size.
+    pub(crate) fn result(&self) -> &[F] {
+        assert_eq!(self.stack.len(), self.message_len);
+        &self.stack
+    }
+
+    /// Allows access to variables in other to set them
+    /// to the desired values.
+    pub(crate) fn vars_mut(&mut self) -> &[(F, F)] {
+        self.vars.as_mut_slice()
+    }
+
+    /// Truncates stack to length 0, then extends it
+    /// with the provided elements.
+    pub(crate) fn set_stack(&mut self, new_stack: &[F]) {
+        self.stack.truncate(0);
+        self.stack.extend(new_stack);
+    }
+}
