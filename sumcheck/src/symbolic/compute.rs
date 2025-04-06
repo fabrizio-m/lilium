@@ -66,13 +66,13 @@ impl<V: Eq + Clone + Ord> Mul for &MvPolyTerm<V> {
     }
 }
 
-impl<F: Field, V> Add<&Self> for MvPoly<F, V>
+impl<F: Field, V> Add for MvPoly<F, V>
 where
     V: Eq + Ord + Clone,
 {
     type Output = Self;
 
-    fn add(self, rhs: &Self) -> Self::Output {
+    fn add(self, rhs: Self) -> Self::Output {
         let mut sum: BTreeMap<MvPolyTerm<V>, F> = self.terms.into_iter().collect();
         for (term, constant) in rhs.terms.iter().cloned() {
             let term = sum.entry(term).or_insert(F::zero());
@@ -83,13 +83,13 @@ where
     }
 }
 
-impl<F: Field, V> Mul<&Self> for MvPoly<F, V>
+impl<F: Field, V> Mul for MvPoly<F, V>
 where
     V: Eq + Ord + Clone,
 {
     type Output = Self;
 
-    fn mul(self, rhs: &Self) -> Self::Output {
+    fn mul(self, rhs: Self) -> Self::Output {
         let mut product = MvPoly::default();
         for (lterm, lconst) in self.terms.into_iter() {
             let terms = rhs
@@ -98,7 +98,7 @@ where
                 .map(|(rterm, rconst)| (rterm * &lterm, lconst * rconst))
                 .collect();
             let partial_product = MvPoly { terms };
-            product = product + &partial_product;
+            product = product + partial_product;
         }
         product
     }
@@ -125,13 +125,19 @@ where
 
     fn sub(self, rhs: Self) -> Self::Output {
         let rhs = -rhs;
-        self + (&rhs)
+        self + (rhs)
     }
 }
 
 impl<F: Field, V: Eq + Ord> MvPoly<F, V> {
     pub fn new(var: V, coeff: F) -> Self {
         let vars = BTreeMap::from([(var, 1)]);
+        let term = MvPolyTerm { vars };
+        let terms = vec![(term, coeff)];
+        MvPoly { terms }
+    }
+    pub fn new_const(coeff: F) -> Self {
+        let vars = BTreeMap::new();
         let term = MvPolyTerm { vars };
         let terms = vec![(term, coeff)];
         MvPoly { terms }
