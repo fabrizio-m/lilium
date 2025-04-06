@@ -34,7 +34,7 @@ fn high_degree<R: Rng>(rng: &mut R) -> Poly {
                 Some(single_var_poly(rng, i))
             }
         })
-        .fold(init, |acc, v| acc * &v)
+        .fold(init, |acc, v| acc * v)
 }
 
 /// Random multi-term higher degree poly.
@@ -43,7 +43,7 @@ fn full_poly<R: Rng>(rng: &mut R) -> Poly {
     (0..20)
         .into_iter()
         .map(|_| high_degree(rng))
-        .fold(init, |acc, t| acc + &t)
+        .fold(init, |acc, t| acc + t)
 }
 
 /// Print only in case of PRINT_OPS set.
