@@ -6,7 +6,7 @@
 
 use crate::symbolic::evaluate::MvIr;
 use ark_ff::Field;
-use automata::memory_machine::Memory;
+use std::cmp::Ord;
 
 enum Instruction<V> {
     Add,
@@ -60,58 +60,6 @@ fn eval<F: Field>(e0: F, e1: F, stack: &mut Vec<F>, message_len: usize) {
     }
 }
 
-fn eval_sample<F, V, M>(program: &[Instruction<V>], coeffs: &[F], memory: &M) -> F
-where
-    V: Copy,
-    F: Field,
-    //TODO: this will likely not be optimal
-    M: Memory<V, (F, F)>,
-{
-    /// should be pre allocated
-    let mut stack = vec![];
-    let mut coeffs = coeffs.iter();
-    let message_len = 5_usize;
-
-    for instruction in program {
-        let instruction: &Instruction<V> = instruction;
-        match instruction {
-            Instruction::Add => {
-                let [left, right] = pop_2(&mut stack, message_len);
-                for (a, b) in left.into_iter().zip(right) {
-                    *a += b;
-                }
-                stack.truncate(stack.len() - message_len);
-            }
-            Instruction::Mul => {
-                let [left, right] = pop_2(&mut stack, message_len);
-                for (a, b) in left.into_iter().zip(right) {
-                    *a *= b;
-                }
-                stack.truncate(stack.len() - message_len);
-            }
-            Instruction::Load(var) => {
-                let (e0, e1) = memory.read(*var);
-                stack.push(e0);
-                stack.push(e1);
-            }
-            Instruction::Eval => {
-                let e1 = stack.pop().unwrap();
-                let e0 = stack.pop().unwrap();
-                eval(e0, e1, &mut stack, message_len);
-            }
-            Instruction::EvalWithCoeff => {
-                let coeff: &F = coeffs.next().unwrap();
-                let mut e2 = stack.pop().unwrap();
-                let mut e1 = stack.pop().unwrap();
-                e1 *= coeff;
-                e2 *= coeff;
-            }
-        }
-    }
-    // not a single element
-    stack.pop().unwrap()
-}
-
 pub(crate) struct MessageEvaluator<F, V> {
     program: Vec<Instruction<V>>,
     coefficients: Vec<F>,
@@ -124,9 +72,8 @@ pub(crate) struct MessageEvaluator<F, V> {
 impl<F: Field> MessageEvaluator<F, u8> {
     pub(crate) fn new(ir: Vec<MvIr<F, u8>>, message_len: usize) -> Self {
         let (program, coefficients) = translate(ir);
-        ///TODO
-        let vars = vec![];
-        let bound = Self::bound(&program, message_len);
+        let (bound, vars) = Self::analyze(&program, message_len);
+        let vars = vec![(F::zero(), F::zero()); vars as usize + 1];
         let stack = Vec::with_capacity(bound);
         Self {
             program,
@@ -136,20 +83,25 @@ impl<F: Field> MessageEvaluator<F, u8> {
             message_len,
         }
     }
-    fn bound(program: &[Instruction<u8>], message_size: usize) -> usize {
+    /// Returns (stack_bound, highest_var).
+    fn analyze(program: &[Instruction<u8>], message_size: usize) -> (usize, u8) {
         use Instruction::*;
         let mut bound = 0;
         let mut stack = 0;
+        let mut highest_var = 0;
         for instruction in program {
             let instruction: &Instruction<u8> = instruction;
             stack = match instruction {
                 Add | Mul => stack - message_size,
-                Load(_) => stack + 2,
+                Load(var) => {
+                    highest_var = highest_var.max(*var);
+                    stack + 2
+                }
                 Eval | EvalWithCoeff => (stack - 2) + message_size,
             };
             bound = bound.max(stack);
         }
-        bound
+        (bound, highest_var)
     }
     /// Eval leaving the result as the only elements in the stack.
     /// Before call, variables should be set, and stack must be empty.
