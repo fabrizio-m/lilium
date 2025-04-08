@@ -6,5 +6,6 @@ pub mod compute;
 pub mod evaluate;
 pub mod expression;
 pub mod message_eval;
+pub mod sumcheck_eval;
 #[cfg(test)]
 mod test;
