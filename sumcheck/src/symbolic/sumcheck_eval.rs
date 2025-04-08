@@ -5,7 +5,7 @@ use crate::{
     symbolic::{
         compute::MvPoly,
         evaluate::{MvEvaluator, MvIr},
-        expression::{compute_mv_poly, ExpEnv, Expression},
+        expression::{compute_mv_poly, ExpEnv, Expression, VarOrChall},
         message_eval::MessageEvaluator,
     },
 };
@@ -23,25 +23,24 @@ where
     accumulator_init: Vec<F>,
 }
 
+type Var<F, S> = VarOrChall<<S as SumcheckFunction<F>>::Idx, <S as SumcheckFunction<F>>::ChallIdx>;
+
 impl<F: Field, S> SumcheckEvaluator<F, S>
 where
     S: SumcheckFunction<F>,
 {
-    pub fn new() -> Self
-    where
-        S::Idx: Ord,
-    {
+    pub fn new() -> Self {
         let challs = Self::chall();
         let env = ExpEnv;
         ///TODO: challenges are being treated as constants, which will result in them
         ///becoming coefficients, fix that.
         // Build expression tree.
-        let exp: Expression<F, S::Idx> = S::function(env, &challs);
+        let exp: Expression<F, S::Idx, S::ChallIdx> = S::function(env, &challs);
         // Evaluate tree into MV polynomial.
-        let poly: MvPoly<F, S::Idx> = compute_mv_poly(exp);
+        let poly: MvPoly<F, Var<F, S>> = compute_mv_poly(exp);
         // Simplify into abstract stack machine operations.
         let evaluator = MvEvaluator::new(poly);
-        let program: &[MvIr<F, S::Idx>] = evaluator.program();
+        let program: &[MvIr<F, Var<F, S>>] = evaluator.program();
         // Modify program, translating indices to u8.
         let (ir, var_map) = Self::transpile(program);
         let message_len = Self::message_len();
@@ -58,11 +57,11 @@ where
         }
     }
 
-    /// Translates indices from `S::Idx` into `u8`, and creates a map to resolve
-    /// `u8` -> `S::Idx`.
+    /// Translates indices from `Var<F,S>` into `u8`, and creates a map to resolve
+    /// `u8` -> `Var<F,S>`.
     /// Also adds an extra `MvIr::Add` instruction at the end to accumulate the result
     /// into some previous result present at the start of the stack.
-    fn transpile(program: &[MvIr<F, S::Idx>]) -> (Vec<MvIr<F, u8>>, Vec<S::Idx>) {
+    fn transpile(program: &[MvIr<F, Var<F, S>>]) -> (Vec<MvIr<F, u8>>, Vec<S::Idx>) {
         // Using KINDS as a way of getting a default value.
         let kinds = S::KINDS;
         // assign a temporal integer id to each eval;
@@ -78,7 +77,7 @@ where
         let mut next_id = successors(Some(0u8), |x| x.checked_add(1));
         let mut true_ids: BTreeMap<usize, u8> = BTreeMap::new();
         let ir = program.iter().map(|instruction| {
-            let instruction: &MvIr<F, S::Idx> = instruction;
+            let instruction: &MvIr<F, Var<F, S>> = instruction;
             let mut map_var = |var: S::Idx| {
                 let temp_id = *ids.index(var);
                 // Overwriting as (k,v) should be the same.
@@ -87,6 +86,13 @@ where
                     .entry(temp_id)
                     .or_insert_with(|| next_id.next().unwrap());
                 *id
+            };
+            let mut map_var = |var: Var<F, S>| match var {
+                VarOrChall::Var(var) => map_var(var),
+                VarOrChall::Challenge(chall) => {
+                    //TODO: have to handle challenges
+                    todo!()
+                }
             };
             match instruction {
                 MvIr::PushChild(coeff, var) => MvIr::PushChild(*coeff, map_var(*var)),

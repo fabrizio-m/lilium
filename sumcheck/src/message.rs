@@ -4,10 +4,7 @@ use crate::{
     sumcheck::{DegreeParam, Env, Var},
 };
 use ark_ff::Field;
-use std::{
-    marker::PhantomData,
-    ops::{Add, AddAssign, Mul, MulAssign, Sub},
-};
+use std::ops::{Add, AddAssign, Index, Mul, MulAssign, Sub};
 use transcript::params::ParamResolver;
 
 #[derive(Clone, Debug)]
@@ -157,31 +154,40 @@ impl<F: Field> AddAssign for Message<F> {
         *self = rhs + &*self;
     }
 }
-pub struct MessageEnv<'a, I: Copy, F: Field, E: Evals<F, Idx = I>> {
+pub struct MessageEnv<'a, E, C> {
     evals_left: &'a E,
     evals_right: &'a E,
+    challs: C,
     degree: usize,
-    _phantom: PhantomData<(I, F)>,
 }
 
-impl<'a, I: Copy, F: Field, E: Evals<F, Idx = I>> MessageEnv<'a, I, F, E> {
-    pub fn new(evals_left: &'a E, evals_right: &'a E, degree: usize) -> Self {
+impl<'a, E, C> MessageEnv<'a, E, C> {
+    pub fn new(evals_left: &'a E, evals_right: &'a E, degree: usize, challs: C) -> Self {
         Self {
             evals_left,
             evals_right,
             degree,
-            _phantom: PhantomData,
+            challs,
         }
     }
 }
 
-impl<'a, I: Copy, F: Field, E: Evals<F, Idx = I>> Env<F, Message<F>, I>
-    for MessageEnv<'a, I, F, E>
+impl<'a, I1, I2, F, E, C> Env<F, Message<F>, I1, I2> for MessageEnv<'a, E, C>
+where
+    I1: Copy,
+    F: Field,
+    E: Evals<F, Idx = I1>,
+    C: Index<I2, Output = F>,
 {
-    fn get(&self, i: I) -> Message<F> {
+    fn get(&self, i: I1) -> Message<F> {
         let e0 = self.evals_left.index(i);
         let e1 = self.evals_right.index(i);
         let message = Message::new_degree_n(*e0, *e1, self.degree);
         message
+    }
+    fn get_chall(&self, chall_idx: I2) -> Message<F> {
+        let chall = self.challs[chall_idx];
+        // Not optimal, but this Environment won't be performance critical.
+        Message::new_degree_n(chall, chall, self.degree)
     }
 }

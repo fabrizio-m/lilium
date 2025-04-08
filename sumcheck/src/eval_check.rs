@@ -10,30 +10,37 @@ use crate::{
     sumcheck::{Env, Var},
 };
 use ark_ff::Field;
-use std::marker::PhantomData;
+use std::{marker::PhantomData, ops::Index};
 
 impl<F: Field> Var<F> for F {}
-pub struct EvalCheckEnv<F: Field, I, E: Evals<F, Idx = I>> {
+
+pub struct EvalCheckEnv<F, E, C> {
     evals: E,
-    _phantom: PhantomData<(F, I)>,
+    challs: C,
+    _phantom: PhantomData<F>,
 }
 
-impl<F: Field, I, E: Evals<F, Idx = I>> EvalCheckEnv<F, I, E> {
-    pub fn new(eval: E) -> Self {
+impl<F, E, C> EvalCheckEnv<F, E, C> {
+    pub fn new(eval: E, challs: C) -> Self {
         Self {
             evals: eval,
+            challs,
             _phantom: PhantomData,
         }
     }
 }
 
-impl<F, I, E> Env<F, F, I> for EvalCheckEnv<F, I, E>
+impl<F, I1, I2, C, E> Env<F, F, I1, I2> for EvalCheckEnv<F, E, C>
 where
     F: Field,
-    E: Evals<F, Idx = I>,
+    E: Evals<F, Idx = I1>,
+    C: Index<I2, Output = F>,
 {
-    fn get(&self, i: I) -> F {
+    fn get(&self, i: I1) -> F {
         let f = *self.evals.index(i);
         f
+    }
+    fn get_chall(&self, chall_idx: I2) -> F {
+        self.challs[chall_idx]
     }
 }

@@ -11,7 +11,7 @@ use sponge::sponge::Duplex;
 use std::{
     fmt::Debug,
     marker::PhantomData,
-    ops::{Add, AddAssign, Mul, MulAssign, Sub},
+    ops::{Add, AddAssign, Index, Mul, MulAssign, Sub},
 };
 use transcript::{
     instances::PolyEvalCheck, params::ParamResolver, protocols::Reduction, Transcript,
@@ -35,18 +35,30 @@ pub trait Var<F: Field>:
 {
 }
 
+// TODO: With symbolic evaluation now available, Env can move into a
+// concrete type supportting only symbolic expressions. And all other
+// environments be replaced with expression evaluation algorithms.
 /// allows access to variables
-pub trait Env<F, V, I>
+pub trait Env<F, V, I, C>
 where
     F: Field,
     V: Var<F>,
 {
     fn get(&self, i: I) -> V;
+    fn get_chall(&self, chall_idx: C) -> V;
 }
 // implement also for references
-impl<F: Field, V: Var<F>, I, E: Env<F, V, I>> Env<F, V, I> for &E {
+impl<F, V, I, C, E> Env<F, V, I, C> for &E
+where
+    F: Field,
+    V: Var<F>,
+    E: Env<F, V, I, C>,
+{
     fn get(&self, i: I) -> V {
         (*self).get(i)
+    }
+    fn get_chall(&self, chall_idx: C) -> V {
+        (*self).get_chall(chall_idx)
     }
 }
 
@@ -74,9 +86,10 @@ pub enum EvalKind {
 /// Defines a polynomial used in sumcheck as a function of multilinear
 /// polynomials
 pub trait SumcheckFunction<F: Field> {
-    type Idx: Copy;
+    type Idx: Copy + Ord + Eq;
     type Mles<V: Copy + Debug>: Evals<V, Idx = Self::Idx>;
-    type Challs: Default;
+    type Challs: Index<Self::ChallIdx, Output = F> + Clone + Default;
+    type ChallIdx: Copy + Ord + Eq;
 
     /// Provides a description of how each mle should be evaluated
     const KINDS: Self::Mles<EvalKind>;
@@ -86,7 +99,10 @@ pub trait SumcheckFunction<F: Field> {
         B: Copy + Debug,
         M: Fn(A) -> B;
     ///computes the arbitrary degree polynomial as a function of multilinear polynomials
-    fn function<V: Var<F>, E: Env<F, V, Self::Idx>>(env: E, challs: &Self::Challs) -> V;
+    fn function<V: Var<F>, E: Env<F, V, Self::Idx, Self::ChallIdx>>(
+        env: E,
+        challs: &Self::Challs,
+    ) -> V;
 }
 
 pub fn sumcheck_degree<F: Field, SF: SumcheckFunction<F>>() -> usize {
@@ -166,7 +182,7 @@ where
         for (left, right) in left.iter().zip(right) {
             // let left: &mut Eval<F, SF> = left;
             // left.combine(right, f);
-            let env = MessageEnv::new(left, right, degree);
+            let env = MessageEnv::new(left, right, degree, challs.clone());
             let m = SF::function(env, challs);
             message += m;
         }
@@ -250,7 +266,7 @@ impl<F: Field, SF: SumcheckFunction<F>> SumcheckVerifier<F, SF> {
     // Will check that c = P(r) from the evaluations of the
     // multilinear polynomials that compose it
     pub fn check_evals_at_r(&self, evals: SF::Mles<F>, c: F, challs: &SF::Challs) -> bool {
-        let env = EvalCheckEnv::new(evals);
+        let env = EvalCheckEnv::new(evals, challs.clone());
         let eval = SF::function(env, challs);
         eval == c
     }

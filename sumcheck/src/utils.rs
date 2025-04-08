@@ -14,11 +14,11 @@ pub trait ZeroCheckAvailable: Sized {
     /// a polynomial f by it and checking the sum is 0 is equivalent
     /// to checking that f is the zero polynomial
     fn zerocheck_eq() -> Self;
-    fn zero_check<F, V, E>(env: &E, zero_check: ZeroCheck<V>) -> ZeroSumcheck<V>
+    fn zero_check<F, V, C, E>(env: &E, zero_check: ZeroCheck<V>) -> ZeroSumcheck<V>
     where
         F: Field,
         V: Var<F>,
-        E: Env<F, V, Self>,
+        E: Env<F, V, Self, C>,
     {
         let idx = Self::zerocheck_eq();
         let eq = env.get(idx);
