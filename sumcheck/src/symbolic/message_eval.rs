@@ -60,6 +60,8 @@ fn eval<F: Field>(e0: F, e1: F, stack: &mut Vec<F>, message_len: usize) {
     }
 }
 
+/// Stack machine optimized to operate over univariate polynomials, the
+/// sumcheck messages specifically.
 pub(crate) struct MessageEvaluator<F, V> {
     program: Vec<Instruction<V>>,
     coefficients: Vec<F>,
@@ -94,12 +96,12 @@ impl<F: Field> MessageEvaluator<F, u8> {
             stack = match instruction {
                 Add | Mul => stack - message_size,
                 Load(var) => {
-                    highest_var = highest_var.max(*var);
+                    highest_var = Ord::max(highest_var, *var);
                     stack + 2
                 }
                 Eval | EvalWithCoeff => (stack - 2) + message_size,
             };
-            bound = bound.max(stack);
+            bound = Ord::max(bound, stack);
         }
         (bound, highest_var)
     }
@@ -156,16 +158,14 @@ impl<F: Field> MessageEvaluator<F, u8> {
         &self.stack
     }
 
-    /// Allows access to variables in other to set them
-    /// to the desired values.
-    pub(crate) fn vars_mut(&mut self) -> &[(F, F)] {
-        self.vars.as_mut_slice()
-    }
-
     /// Truncates stack to length 0, then extends it
     /// with the provided elements.
     pub(crate) fn set_stack(&mut self, new_stack: &[F]) {
         self.stack.truncate(0);
         self.stack.extend(new_stack);
+    }
+
+    pub(crate) fn set_var(&mut self, idx: usize, eval: (F, F)) {
+        self.vars[idx] = eval;
     }
 }
