@@ -8,6 +8,8 @@ use crate::symbolic::evaluate::MvIr;
 use ark_ff::Field;
 use std::cmp::Ord;
 
+/// Instruction set optimized for univariate polynomials
+/// (in evaluation form) as operands.
 enum Instruction<V> {
     Add,
     Mul,
@@ -16,6 +18,8 @@ enum Instruction<V> {
     EvalWithCoeff,
 }
 
+/// Translate instruction set, also extracting coeffcients into a
+/// Vec<F>.
 fn translate<F, V>(program: Vec<MvIr<F, V>>) -> (Vec<Instruction<V>>, Vec<F>) {
     use Instruction::*;
     let mut instructions = vec![];
@@ -37,6 +41,7 @@ fn translate<F, V>(program: Vec<MvIr<F, V>>) -> (Vec<Instruction<V>>, Vec<F>) {
     (instructions, coeffs)
 }
 
+/// Splits off, 2 &mut [F] of length message_len from the top of the stack.
 fn pop_2<F>(stack: &mut [F], message_len: usize) -> [&mut [F]; 2] {
     let split_at = stack.len() - (message_len * 2);
     let (_, right) = stack.split_at_mut(split_at);
