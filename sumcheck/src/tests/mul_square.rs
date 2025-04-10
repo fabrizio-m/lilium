@@ -1,6 +1,6 @@
 use crate::{
     polynomials::Evals,
-    sumcheck::{Env, EvalKind, SumcheckFunction, Var},
+    sumcheck::{Env, EvalKind, NoChallIdx, NoChallenges, SumcheckFunction, Var},
     tests::prove_and_verify,
 };
 use ark_vesta::Fr;
@@ -66,11 +66,15 @@ struct MulGate;
 impl SumcheckFunction<Fr> for MulGate {
     type Idx = usize;
     type Mles<V: Copy + Debug> = Eval<V>;
-    type Challs = ();
+    type ChallIdx = NoChallIdx;
+    type Challs = NoChallenges<Fr>;
 
     const KINDS: Self::Mles<EvalKind> = kinds();
 
-    fn function<V: Var<Fr>, E: Env<Fr, V, Self::Idx>>(env: E, _challs: &()) -> V {
+    fn function<V: Var<Fr>, E: Env<Fr, V, Self::Idx, Self::ChallIdx>>(
+        env: E,
+        _challs: &NoChallenges<Fr>,
+    ) -> V {
         let a = env.get(0);
         let b = env.get(1);
         let c = env.get(2);
@@ -98,11 +102,15 @@ struct SquareGate;
 impl SumcheckFunction<Fr> for SquareGate {
     type Idx = usize;
     type Mles<V: Copy + Debug> = Eval<V>;
-    type Challs = ();
+    type ChallIdx = NoChallIdx;
+    type Challs = NoChallenges<Fr>;
 
     const KINDS: Self::Mles<EvalKind> = kinds();
 
-    fn function<V: Var<Fr>, E: Env<Fr, V, Self::Idx>>(env: E, _challs: &()) -> V {
+    fn function<V: Var<Fr>, E: Env<Fr, V, Self::Idx, Self::ChallIdx>>(
+        env: E,
+        _challs: &NoChallenges<Fr>,
+    ) -> V {
         let a = env.get(0);
         a.clone() * a
     }
@@ -132,7 +140,7 @@ fn sumcheck_mul() {
     let mle: Vec<Eval> = (0..domain_size).map(|_| rand_eval()).collect();
 
     let sum = Fr::from(0);
-    prove_and_verify::<Fr, MulGate>(mle, sum, ());
+    prove_and_verify::<Fr, MulGate>(mle, sum, NoChallenges::<Fr>::default());
 }
 #[test]
 fn sumcheck_square() {
@@ -148,5 +156,5 @@ fn sumcheck_square() {
         Eval { a, b, c }
     };
     let mle: Vec<Eval> = (0..domain_size).map(|_| rand_eval()).collect();
-    prove_and_verify::<Fr, SquareGate>(mle, sumc, ());
+    prove_and_verify::<Fr, SquareGate>(mle, sumc, NoChallenges::<Fr>::default());
 }

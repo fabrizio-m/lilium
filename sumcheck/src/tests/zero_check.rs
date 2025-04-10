@@ -1,6 +1,6 @@
 use crate::{
     polynomials::{simple_eval::SimpleEval, MultiPoint},
-    sumcheck::{Env, EvalKind, SumcheckFunction, Var},
+    sumcheck::{Env, EvalKind, NoChallIdx, NoChallenges, SumcheckFunction, Var},
     tests::prove_and_verify,
     utils::{ZeroCheck, ZeroCheckAvailable},
 };
@@ -25,11 +25,16 @@ impl<F: Field> SumcheckFunction<F> for MulGate {
 
     type Mles<V: Copy + Debug> = Evals<V>;
 
-    type Challs = ();
+    type ChallIdx = NoChallIdx;
+
+    type Challs = NoChallenges<F>;
 
     const KINDS: Self::Mles<EvalKind> = kinds();
 
-    fn function<V: Var<F>, E: Env<F, V, Self::Idx>>(env: E, _challs: &Self::Challs) -> V {
+    fn function<V: Var<F>, E: Env<F, V, Self::Idx, Self::ChallIdx>>(
+        env: E,
+        _challs: &Self::Challs,
+    ) -> V {
         let a = env.get(1);
         let b = env.get(2);
         let c = env.get(3);
@@ -72,7 +77,7 @@ fn test<F: Field>() {
     }
 
     let sum = F::zero();
-    prove_and_verify::<F, MulGate>(evals, sum, ());
+    prove_and_verify::<F, MulGate>(evals, sum, NoChallenges::default());
 }
 
 #[test]

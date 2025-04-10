@@ -83,6 +83,22 @@ pub enum EvalKind {
     Virtual,
 }
 
+#[derive(Debug, Clone, Copy, Default)]
+/// To be used when no challenges are needed.
+pub struct NoChallenges<F>(PhantomData<F>);
+
+/// Index for `NoChallenges`, being a variant-less enum, it has no values.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub enum NoChallIdx {}
+
+impl<F> Index<NoChallIdx> for NoChallenges<F> {
+    type Output = F;
+
+    fn index(&self, _index: NoChallIdx) -> &Self::Output {
+        unreachable!()
+    }
+}
+
 /// Defines a polynomial used in sumcheck as a function of multilinear
 /// polynomials
 pub trait SumcheckFunction<F: Field> {

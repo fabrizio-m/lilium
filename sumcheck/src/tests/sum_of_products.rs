@@ -1,6 +1,6 @@
 use crate::{
     polynomials::simple_eval::SimpleEval,
-    sumcheck::{Env, EvalKind, SumcheckFunction, Var},
+    sumcheck::{Env, EvalKind, NoChallIdx, NoChallenges, SumcheckFunction, Var},
     tests::prove_and_verify,
 };
 use ark_ff::Field;
@@ -17,11 +17,15 @@ impl<F: Field> SumcheckFunction<F> for SumOfProducts {
 
     type Mles<V: Copy + Debug> = SimpleEval<V, 2>;
 
-    type Challs = ();
+    type ChallIdx = NoChallIdx;
+    type Challs = NoChallenges<F>;
 
     const KINDS: Self::Mles<EvalKind> = kinds();
 
-    fn function<V: Var<F>, E: Env<F, V, Self::Idx>>(env: E, _challs: &Self::Challs) -> V {
+    fn function<V: Var<F>, E: Env<F, V, Self::Idx, Self::ChallIdx>>(
+        env: E,
+        _challs: &Self::Challs,
+    ) -> V {
         let a = env.get(0);
         let b = env.get(1);
         a * b
@@ -54,7 +58,7 @@ fn test<F: Field>() {
         let eval = [a, b];
         evals.push(SimpleEval::new(eval));
     }
-    prove_and_verify::<F, SumOfProducts>(evals, sum, ());
+    prove_and_verify::<F, SumOfProducts>(evals, sum, NoChallenges::default());
 }
 
 #[test]
