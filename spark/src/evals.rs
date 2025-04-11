@@ -39,7 +39,7 @@ pub struct DimensionEval<V> {
     eq_lookups: V,
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum DimensionIndex {
     Lookup(LookupIdx),
     EqEval,
@@ -99,7 +99,7 @@ impl<V: Copy> Evals<V> for DimensionEval<V> {
     }
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum SparkIndex {
     Dimension(usize, DimensionIndex),
     NormalIndex,

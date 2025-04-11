@@ -6,7 +6,7 @@ use sumcheck::{
     utils::{ZeroCheck, ZeroSumcheck},
 };
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum LookupIdx {
     /// Claimed fraction for left side
     Frac1,
@@ -181,7 +181,7 @@ mod test {
     const VARS: usize = 8;
     const EVALS: usize = 1 << VARS;
     use crate::{
-        challenges::{CombinationChallenge, SparkChallenges},
+        challenges::{ChallIdx, CombinationChallenge, SparkChallenges},
         mvlookup::LookupEval,
     };
     use ark_ff::Field;
@@ -210,10 +210,15 @@ mod test {
 
         // reusing them as we need the same here
         type Challs = SparkChallenges<F>;
+        type ChallIdx = ChallIdx;
 
         const KINDS: Self::Mles<EvalKind> = Evals::new([EvalKind::FixedSmall; 6]);
 
-        fn function<V: Var<F>, E: Env<F, V, Self::Idx>>(env: E, challs: &Self::Challs) -> V {
+        fn function<V, E>(env: E, challs: &Self::Challs) -> V
+        where
+            V: Var<F>,
+            E: Env<F, V, Self::Idx, Self::ChallIdx>,
+        {
             // let zero_check = env.get(0);
             let lookups = env.get(1);
             let table = env.get(2);

@@ -1,5 +1,7 @@
 use crate::{
-    challenges::{CombinationChallenge, CompressionChallenge, LookupChallenge, SparkChallenges},
+    challenges::{
+        ChallIdx, CombinationChallenge, CompressionChallenge, LookupChallenge, SparkChallenges,
+    },
     evals::{DimensionIndex, SparkEval, SparkIndex},
     mvlookup::{self, LookupIdx},
 };
@@ -15,6 +17,7 @@ pub struct SparkEvalCheck<const D: usize>;
 impl<F: Field, const D: usize> SumcheckFunction<F> for SparkEvalCheck<D> {
     type Idx = SparkIndex;
     type Mles<V: Copy + std::fmt::Debug> = SparkEval<V, D>;
+    type ChallIdx = ChallIdx;
     type Challs = SparkChallenges<F>;
 
     const KINDS: Self::Mles<EvalKind> = SparkEval::<EvalKind, D>::kinds();
@@ -22,7 +25,7 @@ impl<F: Field, const D: usize> SumcheckFunction<F> for SparkEvalCheck<D> {
     fn function<V, E>(env: E, challs: &SparkChallenges<F>) -> V
     where
         V: Var<F>,
-        E: Env<F, V, Self::Idx>,
+        E: Env<F, V, Self::Idx, Self::ChallIdx>,
     {
         let normal_index = env.get(SparkIndex::NormalIndex);
         let val = env.get(SparkIndex::Val);
@@ -61,7 +64,7 @@ fn dimension<F, V, E, C>(
 where
     F: Field,
     V: Var<F>,
-    E: Env<F, V, SparkIndex>,
+    E: Env<F, V, SparkIndex, ChallIdx>,
     C: CompressionChallenge<F> + LookupChallenge<F>,
 {
     let idx = |x| SparkIndex::Dimension(i, x);

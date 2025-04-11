@@ -1,3 +1,5 @@
+use std::ops::Index;
+
 use ark_ff::Field;
 
 /// Challenges used in spark
@@ -9,6 +11,29 @@ pub struct SparkChallenges<F: Field> {
     combination_challenge: F,
     /// Used to compress several polynomials into 1
     compression_challenge: F,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub enum ChallIdx {
+    /// The shift used in the denominator in lookups/multiset check
+    LookupChallenge,
+    /// used to combine multiple sucheck statements into one
+    CombinationChallenge,
+    /// Used to compress several polynomials into 1
+    CompressionChallenge,
+}
+
+impl<F: Field> Index<ChallIdx> for SparkChallenges<F> {
+    type Output = F;
+
+    fn index(&self, index: ChallIdx) -> &Self::Output {
+        use ChallIdx::*;
+        match index {
+            LookupChallenge => &self.lookup_challenge,
+            CombinationChallenge => &self.combination_challenge,
+            CompressionChallenge => &self.compression_challenge,
+        }
+    }
 }
 
 pub trait CompressionChallenge<F: Field> {
