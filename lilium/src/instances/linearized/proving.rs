@@ -20,6 +20,8 @@ use transcript::{
     instances::PolyEvalCheck, messages::SingleElement, protocols::Reduction, MessageGuard,
 };
 
+use super::sumcheck_argument::SingleChall;
+
 /*
 struct LinearizedInstanceProver<F, K, CS, const I: usize, const IO: usize>(PhantomData<(F, K, CS)>);
 
@@ -158,6 +160,7 @@ where
         let input_selector = eval_input_selector(&open_point, public_inputs.len());
         let evals = LinearizedMles::new(products, r_eq, w_eval, ux_eval, input_selector);
 
+        let chall = SingleChall(chall);
         let checks = sumcheck_verifier.check_evals_at_r(evals, eval, &chall);
         if !checks {
             return Err(crate::Error::EvalCheck);

@@ -30,7 +30,7 @@ impl<V, const IO: usize> LinearizedMles<V, IO> {
     }
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Index {
     /// M_i(rx,x)z(x) for the given i
     Product(usize),
@@ -125,12 +125,25 @@ const fn kinds<const IO: usize>() -> LinearizedMles<EvalKind, IO> {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Default)]
+pub struct SingleChall<F>(pub F);
+
+impl<F> std::ops::Index<()> for SingleChall<F> {
+    type Output = F;
+
+    fn index(&self, _index: ()) -> &Self::Output {
+        &self.0
+    }
+}
+
 impl<F: Field, const IO: usize> SumcheckFunction<F> for LinearizedSumcheck<IO> {
     type Idx = Index;
 
     type Mles<V: Copy + std::fmt::Debug> = LinearizedMles<V, IO>;
 
-    type Challs = F;
+    type ChallIdx = ();
+
+    type Challs = SingleChall<F>;
 
     const KINDS: Self::Mles<EvalKind> = kinds();
 
@@ -154,8 +167,12 @@ impl<F: Field, const IO: usize> SumcheckFunction<F> for LinearizedSumcheck<IO> {
         }
     }
 
-    fn function<V: Var<F>, E: Env<F, V, Self::Idx>>(env: E, challs: &Self::Challs) -> V {
-        let chall = challs;
+    fn function<V, E>(env: E) -> V
+    where
+        V: Var<F>,
+        E: Env<F, V, Self::Idx, Self::ChallIdx>,
+    {
+        let chall = env.get_chall(());
         let w = env.get(Index::W);
 
         let inputs_check = {
@@ -169,7 +186,7 @@ impl<F: Field, const IO: usize> SumcheckFunction<F> for LinearizedSumcheck<IO> {
 
         let mut acc = inputs_check.0;
         for i in 0..IO {
-            acc *= *chall;
+            acc = acc * &chall;
             let m_eq = env.get(Index::Product(i));
             acc += &m_eq;
         }
