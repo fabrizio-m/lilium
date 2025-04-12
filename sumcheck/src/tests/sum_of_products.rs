@@ -22,10 +22,7 @@ impl<F: Field> SumcheckFunction<F> for SumOfProducts {
 
     const KINDS: Self::Mles<EvalKind> = kinds();
 
-    fn function<V: Var<F>, E: Env<F, V, Self::Idx, Self::ChallIdx>>(
-        env: E,
-        _challs: &Self::Challs,
-    ) -> V {
+    fn function<V: Var<F>, E: Env<F, V, Self::Idx, Self::ChallIdx>>(env: E) -> V {
         let a = env.get(0);
         let b = env.get(1);
         a * b

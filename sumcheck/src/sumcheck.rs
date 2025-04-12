@@ -115,16 +115,12 @@ pub trait SumcheckFunction<F: Field> {
         B: Copy + Debug,
         M: Fn(A) -> B;
     ///computes the arbitrary degree polynomial as a function of multilinear polynomials
-    fn function<V: Var<F>, E: Env<F, V, Self::Idx, Self::ChallIdx>>(
-        env: E,
-        challs: &Self::Challs,
-    ) -> V;
+    fn function<V: Var<F>, E: Env<F, V, Self::Idx, Self::ChallIdx>>(env: E) -> V;
 }
 
 pub fn sumcheck_degree<F: Field, SF: SumcheckFunction<F>>() -> usize {
     let degree_env = DegreeEnv::new();
-    let challs = <SF::Challs as Default>::default();
-    let degree = SF::function(degree_env, &challs);
+    let degree = SF::function(degree_env);
     degree.0
 }
 
@@ -199,7 +195,7 @@ where
             // let left: &mut Eval<F, SF> = left;
             // left.combine(right, f);
             let env = MessageEnv::new(left, right, degree, challs.clone());
-            let m = SF::function(env, challs);
+            let m = SF::function(env);
             message += m;
         }
         message
@@ -283,7 +279,7 @@ impl<F: Field, SF: SumcheckFunction<F>> SumcheckVerifier<F, SF> {
     // multilinear polynomials that compose it
     pub fn check_evals_at_r(&self, evals: SF::Mles<F>, c: F, challs: &SF::Challs) -> bool {
         let env = EvalCheckEnv::new(evals, challs.clone());
-        let eval = SF::function(env, challs);
+        let eval = SF::function(env);
         eval == c
     }
 }

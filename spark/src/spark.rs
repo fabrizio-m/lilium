@@ -1,7 +1,5 @@
 use crate::{
-    challenges::{
-        ChallIdx, CombinationChallenge, CompressionChallenge, LookupChallenge, SparkChallenges,
-    },
+    challenges::{ChallIdx, SparkChallenges},
     evals::{DimensionIndex, SparkEval, SparkIndex},
     mvlookup::{self, LookupIdx},
 };
@@ -22,7 +20,7 @@ impl<F: Field, const D: usize> SumcheckFunction<F> for SparkEvalCheck<D> {
 
     const KINDS: Self::Mles<EvalKind> = SparkEval::<EvalKind, D>::kinds();
 
-    fn function<V, E>(env: E, challs: &SparkChallenges<F>) -> V
+    fn function<V, E>(env: E) -> V
     where
         V: Var<F>,
         E: Env<F, V, Self::Idx, Self::ChallIdx>,
@@ -31,14 +29,16 @@ impl<F: Field, const D: usize> SumcheckFunction<F> for SparkEvalCheck<D> {
         let val = env.get(SparkIndex::Val);
         let mut eval = val;
         let mut all_checks = env.get(SparkIndex::zero());
-        let combination_challenge = *challs.combination_challenge();
+        //let combination_challenge = *challs.combination_challenge();
+        let combination_challenge = env.get_chall(ChallIdx::CombinationChallenge);
         for i in 0..D {
-            let (dim, checks) = dimension(&env, i, normal_index.clone(), challs);
+            let (dim, checks) = dimension(&env, i, normal_index.clone());
 
             for check in checks {
                 // TODO: should be handled without unwrapping
                 all_checks += &check.0;
-                all_checks *= combination_challenge;
+                //all_checks *= combination_challenge.clone();
+                all_checks = all_checks * combination_challenge.clone();
             }
             eval = dim * eval;
         }
@@ -55,17 +55,15 @@ impl<F: Field, const D: usize> SumcheckFunction<F> for SparkEvalCheck<D> {
     }
 }
 
-fn dimension<F, V, E, C>(
+fn dimension<F, V, E>(
     env: E,
     i: usize,
     normal_index: V,
-    challenges: &C,
 ) -> (V, [sumcheck::utils::ZeroSumcheck<V>; 3])
 where
     F: Field,
     V: Var<F>,
     E: Env<F, V, SparkIndex, ChallIdx>,
-    C: CompressionChallenge<F> + LookupChallenge<F>,
 {
     let idx = |x| SparkIndex::Dimension(i, x);
     let dimension_index = idx(DimensionIndex::Dimension);
@@ -82,12 +80,18 @@ where
 
     let eq_evals = env.get(eq_eval);
 
-    let table = collapse_columns(normal_index, eq_evals, challenges);
+    let compression_challenge = env.get_chall(ChallIdx::CompressionChallenge);
+    let table = collapse_columns(normal_index, eq_evals, compression_challenge.clone());
     let dimension_index = env.get(dimension_index);
     let dimension_lookups = env.get(dimension_lookups);
-    let lookups = collapse_columns(dimension_index, dimension_lookups.clone(), challenges);
+    let lookups = collapse_columns(
+        dimension_index,
+        dimension_lookups.clone(),
+        compression_challenge,
+    );
 
-    let ([c1, c2], c3) = mvlookup::lookup(lookups, table, counts, fracs, challenges);
+    let lookup_challenge = env.get_chall(ChallIdx::LookupChallenge);
+    let ([c1, c2], c3) = mvlookup::lookup(lookups, table, counts, fracs, lookup_challenge);
     let checks = [
         SparkIndex::zero_check(&env, c1),
         SparkIndex::zero_check(&env, c2),
@@ -96,12 +100,10 @@ where
     (dimension_lookups, checks)
 }
 
-fn collapse_columns<F, V, C>(a: V, b: V, challenges: &C) -> V
+fn collapse_columns<F, V>(a: V, b: V, compression_challenge: V) -> V
 where
     F: Field,
     V: Var<F>,
-    C: CompressionChallenge<F>,
 {
-    let challenge = challenges.compression_challenge();
-    a + b * *challenge
+    a + b * compression_challenge
 }

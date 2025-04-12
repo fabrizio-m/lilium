@@ -30,12 +30,11 @@ where
     S: SumcheckFunction<F>,
 {
     pub fn new() -> Self {
-        let challs = Self::chall();
         let env = ExpEnv;
         ///TODO: challenges are being treated as constants, which will result in them
         ///becoming coefficients, fix that.
         // Build expression tree.
-        let exp: Expression<F, S::Idx, S::ChallIdx> = S::function(env, &challs);
+        let exp: Expression<F, S::Idx, S::ChallIdx> = S::function(env);
         // Evaluate tree into MV polynomial.
         let poly: MvPoly<F, Var<F, S>> = compute_mv_poly(exp);
         // Simplify into abstract stack machine operations.
@@ -119,14 +118,9 @@ where
     }
     fn message_len() -> usize {
         let env = DegreeEnv::new();
-        let challs = S::Challs::default();
-        let degree = S::function(env, &challs);
+        let degree = S::function(env);
         // as a degree d polynomial requires d + 1 evaluations.
         degree.0 + 1
-    }
-    fn chall() -> S::Challs {
-        ///TODO
-        todo!()
     }
     fn eval_accumulate(&mut self, evals: [&S::Mles<F>; 2]) {
         let [left, right] = evals;

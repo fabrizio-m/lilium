@@ -31,10 +31,7 @@ impl<F: Field> SumcheckFunction<F> for MulGate {
 
     const KINDS: Self::Mles<EvalKind> = kinds();
 
-    fn function<V: Var<F>, E: Env<F, V, Self::Idx, Self::ChallIdx>>(
-        env: E,
-        _challs: &Self::Challs,
-    ) -> V {
+    fn function<V: Var<F>, E: Env<F, V, Self::Idx, Self::ChallIdx>>(env: E) -> V {
         let a = env.get(1);
         let b = env.get(2);
         let c = env.get(3);

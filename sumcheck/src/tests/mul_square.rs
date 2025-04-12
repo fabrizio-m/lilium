@@ -71,10 +71,7 @@ impl SumcheckFunction<Fr> for MulGate {
 
     const KINDS: Self::Mles<EvalKind> = kinds();
 
-    fn function<V: Var<Fr>, E: Env<Fr, V, Self::Idx, Self::ChallIdx>>(
-        env: E,
-        _challs: &NoChallenges<Fr>,
-    ) -> V {
+    fn function<V: Var<Fr>, E: Env<Fr, V, Self::Idx, Self::ChallIdx>>(env: E) -> V {
         let a = env.get(0);
         let b = env.get(1);
         let c = env.get(2);
@@ -107,10 +104,7 @@ impl SumcheckFunction<Fr> for SquareGate {
 
     const KINDS: Self::Mles<EvalKind> = kinds();
 
-    fn function<V: Var<Fr>, E: Env<Fr, V, Self::Idx, Self::ChallIdx>>(
-        env: E,
-        _challs: &NoChallenges<Fr>,
-    ) -> V {
+    fn function<V: Var<Fr>, E: Env<Fr, V, Self::Idx, Self::ChallIdx>>(env: E) -> V {
         let a = env.get(0);
         a.clone() * a
     }
