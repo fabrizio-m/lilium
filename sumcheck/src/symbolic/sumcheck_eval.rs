@@ -6,11 +6,12 @@ use crate::{
         compute::MvPoly,
         evaluate::{MvEvaluator, MvIr},
         expression::{compute_mv_poly, ExpEnv, Expression, VarOrChall},
+        id_map::IdMap,
         message_eval::MessageEvaluator,
     },
 };
 use ark_ff::Field;
-use std::{collections::BTreeMap, iter::successors};
+use std::collections::BTreeMap;
 
 pub struct SumcheckEvaluator<F: Field, S>
 where
@@ -18,6 +19,7 @@ where
 {
     inner: MessageEvaluator<F, u8>,
     var_map: Vec<S::Idx>,
+    chall_map: Vec<S::ChallIdx>,
     message_len: usize,
     /// initial stack value for accumulator, 0s.
     accumulator_init: Vec<F>,
@@ -31,8 +33,6 @@ where
 {
     pub fn new() -> Self {
         let env = ExpEnv;
-        ///TODO: challenges are being treated as constants, which will result in them
-        ///becoming coefficients, fix that.
         // Build expression tree.
         let exp: Expression<F, S::Idx, S::ChallIdx> = S::function(env);
         // Evaluate tree into MV polynomial.
@@ -41,7 +41,7 @@ where
         let evaluator = MvEvaluator::new(poly);
         let program: &[MvIr<F, Var<F, S>>] = evaluator.program();
         // Modify program, translating indices to u8.
-        let (ir, var_map) = Self::transpile(program);
+        let (ir, var_map, chall_map) = Self::transpile(program);
         let message_len = Self::message_len();
         // Create message evaluator, main stack machine with a concrete and
         // optimized instruction set.
@@ -51,6 +51,7 @@ where
         Self {
             inner,
             var_map,
+            chall_map,
             message_len,
             accumulator_init,
         }
@@ -60,7 +61,13 @@ where
     /// `u8` -> `Var<F,S>`.
     /// Also adds an extra `MvIr::Add` instruction at the end to accumulate the result
     /// into some previous result present at the start of the stack.
-    fn transpile(program: &[MvIr<F, Var<F, S>>]) -> (Vec<MvIr<F, u8>>, Vec<S::Idx>) {
+    fn transpile(
+        program: &[MvIr<F, Var<F, S>>],
+    ) -> (
+        Vec<MvIr<F, VarOrChall<u8, u8>>>,
+        Vec<S::Idx>,
+        Vec<S::ChallIdx>,
+    ) {
         // Using KINDS as a way of getting a default value.
         let kinds = S::KINDS;
         // assign a temporal integer id to each eval;
@@ -73,54 +80,56 @@ where
 
         // For the true ids, done this way so that indices are provided
         // in the same order in which they are read in the program.
-        let mut next_id = successors(Some(0u8), |x| x.checked_add(1));
-        let mut true_ids: BTreeMap<usize, u8> = BTreeMap::new();
+        let mut true_ids = IdMap::new();
+        let mut chall_ids = IdMap::new();
         let ir = program.iter().map(|instruction| {
             let instruction: &MvIr<F, Var<F, S>> = instruction;
             let mut map_var = |var: S::Idx| {
                 let temp_id = *ids.index(var);
                 // Overwriting as (k,v) should be the same.
                 let _ = lookup.insert(temp_id, var);
-                let id = true_ids
-                    .entry(temp_id)
-                    .or_insert_with(|| next_id.next().unwrap());
-                *id
+                let id = true_ids.get_id(temp_id);
+                let id = u8::try_from(id).unwrap();
+                VarOrChall::Var(id)
             };
             let mut map_var = |var: Var<F, S>| match var {
                 VarOrChall::Var(var) => map_var(var),
                 VarOrChall::Challenge(chall) => {
-                    //TODO: have to handle challenges
-                    todo!()
+                    let id = chall_ids.get_id(chall);
+                    let id = u8::try_from(id).unwrap();
+                    VarOrChall::Challenge(id)
                 }
             };
             match instruction {
                 MvIr::PushChild(coeff, var) => MvIr::PushChild(*coeff, map_var(*var)),
                 MvIr::Add => MvIr::Add,
                 MvIr::Mul(var) => MvIr::Mul(map_var(*var)),
+                MvIr::AddConstantTerm(coeff) => MvIr::AddConstantTerm(*coeff),
             }
         });
         // adding an extra Add at the end to accumulate results.
-        let ir: Vec<MvIr<F, u8>> = ir.chain([MvIr::Add]).collect();
+        let ir: Vec<MvIr<F, VarOrChall<u8, u8>>> = ir.chain([MvIr::Add]).collect();
         // Invert and merge mapping into u8 -> S::Idx.
-        let lookup: BTreeMap<u8, S::Idx> = true_ids
+        let lookup = true_ids
+            .finish()
             .into_iter()
-            .map(|(temp_id, true_id)| {
-                let var: S::Idx = *lookup.get(&temp_id).unwrap();
-                (true_id, var)
-            })
+            .map(|temp_id| *lookup.get(&temp_id).unwrap())
             .collect();
-        // Turn it into a Vec with the u8 index implicit.
-        let lookup_len: u8 = lookup.len().try_into().unwrap();
-        let lookup: Vec<S::Idx> = (0_u8..lookup_len)
-            .map(|i| *lookup.get(&i).unwrap())
-            .collect();
-        (ir, lookup)
+        let chall_lookup = chall_ids.finish();
+        (ir, lookup, chall_lookup)
     }
     fn message_len() -> usize {
         let env = DegreeEnv::new();
         let degree = S::function(env);
         // as a degree d polynomial requires d + 1 evaluations.
         degree.0 + 1
+    }
+    fn set_challs(&mut self, challs: &S::Challs) {
+        for i in 0..self.chall_map.len() {
+            let index: S::ChallIdx = self.chall_map[i];
+            let chall = challs[index];
+            self.inner.set_chall(i, chall);
+        }
     }
     fn eval_accumulate(&mut self, evals: [&S::Mles<F>; 2]) {
         let [left, right] = evals;
@@ -134,8 +143,9 @@ where
         self.inner.eval();
     }
     /// Creates accumulator.
-    pub fn accumulator(&mut self) -> EvalAccumulator<F, S> {
+    pub fn accumulator(&mut self, challenges: &S::Challs) -> EvalAccumulator<F, S> {
         self.inner.set_stack(&self.accumulator_init);
+        self.set_challs(challenges);
         EvalAccumulator(self)
     }
 }

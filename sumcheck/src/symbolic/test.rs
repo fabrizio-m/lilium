@@ -110,6 +110,7 @@ fn count_ops(evaluator: &Evaluator) {
             MvIr::PushChild(_, _) => "*",
             MvIr::Add => "+",
             MvIr::Mul(_) => "*",
+            MvIr::AddConstantTerm(_) => "+",
         };
         if op == "*" {
             muls += 1;

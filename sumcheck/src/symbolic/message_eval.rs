@@ -4,37 +4,64 @@
 //! It does not utilize the abstraction in `automata`, as generalizing
 //! them for this unique use case would add too much complexity.
 
-use crate::symbolic::evaluate::MvIr;
+use crate::symbolic::{evaluate::MvIr, expression::VarOrChall};
 use ark_ff::Field;
 use std::cmp::Ord;
 
 /// Instruction set optimized for univariate polynomials
 /// (in evaluation form) as operands.
+#[derive(Debug)]
 enum Instruction<V> {
     Add,
     Mul,
     Load(V),
     Eval,
     EvalWithCoeff,
+    LoadChall(V),
+    LoadChallWithCoeff(V),
+    AddCoeff,
 }
 
 /// Translate instruction set, also extracting coeffcients into a
 /// Vec<F>.
-fn translate<F, V>(program: Vec<MvIr<F, V>>) -> (Vec<Instruction<V>>, Vec<F>) {
+fn translate<F: Field, V>(
+    program: Vec<MvIr<F, VarOrChall<V, V>>>,
+) -> (Vec<Instruction<V>>, Vec<F>) {
     use Instruction::*;
-    let mut instructions = vec![];
+    let mut instructions: Vec<Instruction<V>> = vec![];
     let mut coeffs = vec![];
     for instruction in program {
         match instruction {
             MvIr::PushChild(coeff, var) => {
-                coeffs.push(coeff);
-                instructions.extend([Load(var), EvalWithCoeff]);
+                // if coeff = 1 we can just skip the multiplication.
+                let coeff_one: bool = coeff.is_one();
+                coeffs.extend((!coeff_one).then_some(coeff));
+                match var {
+                    VarOrChall::Var(var) => {
+                        instructions.push(Load(var));
+                        instructions.push(if coeff_one { Eval } else { EvalWithCoeff });
+                    }
+                    VarOrChall::Challenge(chall) => {
+                        let c1 = coeff_one;
+                        let load = if c1 { LoadChall } else { LoadChallWithCoeff };
+                        instructions.push(load(chall));
+                    }
+                }
             }
             MvIr::Add => {
                 instructions.push(Add);
             }
-            MvIr::Mul(var) => {
-                instructions.extend([Load(var), Eval, Mul]);
+            MvIr::Mul(var) => match var {
+                VarOrChall::Var(var) => {
+                    instructions.extend([Load(var), Eval, Mul]);
+                }
+                VarOrChall::Challenge(chall) => {
+                    instructions.extend([LoadChall(chall), Mul]);
+                }
+            },
+            MvIr::AddConstantTerm(coeff) => {
+                coeffs.push(coeff);
+                instructions.push(AddCoeff);
             }
         }
     }
@@ -71,31 +98,36 @@ pub(crate) struct MessageEvaluator<F, V> {
     program: Vec<Instruction<V>>,
     coefficients: Vec<F>,
     vars: Vec<(F, F)>,
+    challenges: Vec<F>,
     stack: Vec<F>,
     message_len: usize,
 }
 
 /// Could be implemented for a bigger integer than u8.
 impl<F: Field> MessageEvaluator<F, u8> {
-    pub(crate) fn new(ir: Vec<MvIr<F, u8>>, message_len: usize) -> Self {
+    pub(crate) fn new(ir: Vec<MvIr<F, VarOrChall<u8, u8>>>, message_len: usize) -> Self {
         let (program, coefficients) = translate(ir);
-        let (bound, vars) = Self::analyze(&program, message_len);
+        let (bound, vars, challs) = Self::analyze(&program, message_len);
         let vars = vec![(F::zero(), F::zero()); vars as usize + 1];
-        let stack = Vec::with_capacity(bound);
+        let challenges = vec![F::zero(); challs as usize + 1];
+        // Add space for an extra message, the accumulated value.
+        let stack = Vec::with_capacity(bound + message_len);
         Self {
             program,
             coefficients,
             vars,
+            challenges,
             stack,
             message_len,
         }
     }
-    /// Returns (stack_bound, highest_var).
-    fn analyze(program: &[Instruction<u8>], message_size: usize) -> (usize, u8) {
+    /// Returns (stack_bound, highest_var, highest_chall).
+    fn analyze(program: &[Instruction<u8>], message_size: usize) -> (usize, u8, u8) {
         use Instruction::*;
         let mut bound = 0;
         let mut stack = 0;
         let mut highest_var = 0;
+        let mut highest_chall = 0;
         for instruction in program {
             let instruction: &Instruction<u8> = instruction;
             stack = match instruction {
@@ -104,22 +136,31 @@ impl<F: Field> MessageEvaluator<F, u8> {
                     highest_var = Ord::max(highest_var, *var);
                     stack + 2
                 }
+                LoadChall(chall) | LoadChallWithCoeff(chall) => {
+                    highest_chall = Ord::max(highest_chall, *chall);
+                    stack + message_size
+                }
                 Eval | EvalWithCoeff => (stack - 2) + message_size,
+                AddCoeff => stack,
             };
             bound = Ord::max(bound, stack);
         }
-        (bound, highest_var)
+        (bound, highest_var, highest_chall)
     }
     /// Eval leaving the result as the only elements in the stack.
     /// Before call, variables should be set, and stack must be empty.
     pub(crate) fn eval(&mut self) {
         let mut stack = &mut self.stack;
+        println!("message len: {}", self.message_len);
+        println!("starting stack len: {}", stack.len());
         let mut coeffs = self.coefficients.iter();
         let message_len = self.message_len;
         let memory = &self.vars;
+        let challenges = &self.challenges;
 
         for instruction in &self.program {
             let instruction: &Instruction<u8> = instruction;
+            println!("running: {:?}", instruction);
             match instruction {
                 Instruction::Add => {
                     let [left, right] = pop_2(&mut stack, message_len);
@@ -140,6 +181,17 @@ impl<F: Field> MessageEvaluator<F, u8> {
                     stack.push(e0);
                     stack.push(e1);
                 }
+                Instruction::LoadChall(chall_idx) => {
+                    let chall = challenges[*chall_idx as usize];
+                    let original_len = stack.len();
+                    stack.resize(original_len + message_len, chall);
+                }
+                Instruction::LoadChallWithCoeff(chall_idx) => {
+                    let coeff: &F = coeffs.next().unwrap();
+                    let chall: F = challenges[*chall_idx as usize];
+                    let original_len = stack.len();
+                    stack.resize(original_len + message_len, chall * coeff);
+                }
                 Instruction::Eval => {
                     let e1 = stack.pop().unwrap();
                     let e0 = stack.pop().unwrap();
@@ -147,12 +199,21 @@ impl<F: Field> MessageEvaluator<F, u8> {
                 }
                 Instruction::EvalWithCoeff => {
                     let coeff: &F = coeffs.next().unwrap();
-                    let mut e2 = stack.pop().unwrap();
                     let mut e1 = stack.pop().unwrap();
+                    let mut e0 = stack.pop().unwrap();
+                    e0 *= coeff;
                     e1 *= coeff;
-                    e2 *= coeff;
+                    eval(e0, e1, &mut stack, message_len);
+                }
+                Instruction::AddCoeff => {
+                    let coeff: &F = coeffs.next().unwrap();
+                    let [_, right] = pop_2(&mut stack, message_len);
+                    for x in right.into_iter() {
+                        *x += coeff;
+                    }
                 }
             }
+            println!("s = {}", stack.len());
         }
     }
 
@@ -172,5 +233,9 @@ impl<F: Field> MessageEvaluator<F, u8> {
 
     pub(crate) fn set_var(&mut self, idx: usize, eval: (F, F)) {
         self.vars[idx] = eval;
+    }
+
+    pub(crate) fn set_chall(&mut self, idx: usize, chall: F) {
+        self.challenges[idx] = chall;
     }
 }

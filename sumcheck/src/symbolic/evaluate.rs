@@ -1,7 +1,7 @@
 use crate::symbolic::compute::{MvPoly, MvPolyTerm};
 use ark_ff::Field;
 use automata::memory_machine::Memory;
-use std::{collections::BTreeMap, iter::Iterator};
+use std::{collections::BTreeMap, fmt::Debug, iter::Iterator};
 
 /// A representation of a multivariate polynomial optimized for evaluation,
 /// as such it doesn't support any operation.
@@ -24,8 +24,10 @@ pub enum MvIr<F, V> {
     PushChild(F, V),
     // pop 2, push 1
     Add,
-    /// pop 1, push 1
+    // pop 1, push 1
     Mul(V),
+    // pop 1, push 1
+    AddConstantTerm(F),
 }
 
 #[derive(Clone, Debug)]
@@ -38,9 +40,10 @@ type Term<F, V> = (MvPolyTerm<V>, F);
 
 impl<F: Field, V> MvEvaluator<F, V>
 where
-    V: Eq + Ord + Clone,
+    V: Eq + Ord + Clone + Debug,
 {
     pub fn new(poly: MvPoly<F, V>) -> MvEvaluator<F, V> {
+        let (poly, constant_term) = poly.extract_constant_term();
         let top_level_nodes = Self::build_nodes(poly.terms);
         // take some random var
         let dummy_var = match &top_level_nodes[0] {
@@ -50,20 +53,23 @@ where
         let root = EvalTree::Parent(dummy_var, top_level_nodes);
 
         let mut program = vec![];
-        Self::tree_operations2(&mut program, root);
+        Self::tree_operations(&mut program, root);
         match program.pop().unwrap() {
             MvIr::Mul(_) => {}
             _ => panic!("last operation should be Mul"),
         }
+        if let Some(coeff) = constant_term {
+            program.push(MvIr::AddConstantTerm(coeff));
+        }
         Self { program }
     }
 
-    fn tree_operations2(operations: &mut Vec<MvIr<F, V>>, tree: EvalTree<F, V>) {
+    fn tree_operations(operations: &mut Vec<MvIr<F, V>>, tree: EvalTree<F, V>) {
         match tree {
             EvalTree::Parent(var, children) => {
                 let mut nodes = 0;
                 for child in children.into_iter() {
-                    Self::tree_operations2(operations, child);
+                    Self::tree_operations(operations, child);
                     nodes += 1;
                 }
                 let adds = nodes - 1;
@@ -160,6 +166,11 @@ where
                     let a = stack.pop().unwrap();
                     let b = vars.read(*var);
                     stack.push(a * b);
+                }
+                MvIr::AddConstantTerm(coeff) => {
+                    let a = stack.pop().unwrap();
+                    let b = coeff;
+                    stack.push(a + b);
                 }
             }
         }
