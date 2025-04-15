@@ -7,7 +7,7 @@ use ark_ff::Field;
 use std::ops::{Add, AddAssign, Index, Mul, MulAssign, Sub};
 use transcript::params::ParamResolver;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Message<F: Field>(Vec<F>);
 
 impl<F: Field> transcript::Message<F> for Message<F> {
@@ -22,6 +22,9 @@ impl<F: Field> transcript::Message<F> for Message<F> {
 }
 
 impl<F: Field> Message<F> {
+    pub(crate) fn new(evals: Vec<F>) -> Self {
+        Self(evals)
+    }
     pub(crate) fn new_degree_n(eval_at_0: F, eval_at_1: F, degree: usize) -> Self {
         assert!(degree >= 1, "degree should be >= 0");
         // e0, e1
