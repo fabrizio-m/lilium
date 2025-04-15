@@ -152,8 +152,6 @@ impl<F: Field> MessageEvaluator<F, u8> {
     /// Before call, variables should be set, and stack must be empty.
     pub(crate) fn eval(&mut self) {
         let mut stack = &mut self.stack;
-        println!("message len: {}", self.message_len);
-        println!("starting stack len: {}", stack.len());
         let mut coeffs = self.coefficients.iter();
         let message_len = self.message_len;
         let memory = &self.vars;
@@ -161,7 +159,6 @@ impl<F: Field> MessageEvaluator<F, u8> {
 
         for instruction in &self.program {
             let instruction: &Instruction<u8> = instruction;
-            println!("running: {:?}", instruction);
             match instruction {
                 Instruction::Add => {
                     let [left, right] = pop_2(&mut stack, message_len);
@@ -214,7 +211,6 @@ impl<F: Field> MessageEvaluator<F, u8> {
                     }
                 }
             }
-            println!("s = {}", stack.len());
         }
     }
 
