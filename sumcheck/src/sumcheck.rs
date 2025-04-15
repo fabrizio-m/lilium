@@ -4,6 +4,7 @@ use crate::{
     eval_check::EvalCheckEnv,
     message::{Message, MessageEnv},
     polynomials::{Evals, EvalsExt, MultiPoint},
+    symbolic::sumcheck_eval::SumcheckEvaluator,
     SumcheckError,
 };
 use ark_ff::Field;
@@ -102,10 +103,10 @@ impl<F> Index<NoChallIdx> for NoChallenges<F> {
 /// Defines a polynomial used in sumcheck as a function of multilinear
 /// polynomials
 pub trait SumcheckFunction<F: Field> {
-    type Idx: Copy + Ord + Eq;
+    type Idx: Copy + Ord + Eq + Debug;
     type Mles<V: Copy + Debug>: Evals<V, Idx = Self::Idx>;
     type Challs: Index<Self::ChallIdx, Output = F> + Clone + Default;
-    type ChallIdx: Copy + Ord + Eq;
+    type ChallIdx: Copy + Ord + Eq + Debug;
 
     /// Provides a description of how each mle should be evaluated
     const KINDS: Self::Mles<EvalKind>;
@@ -125,9 +126,9 @@ pub fn sumcheck_degree<F: Field, SF: SumcheckFunction<F>>() -> usize {
 }
 
 pub struct SumcheckProver<F: Field, SF: SumcheckFunction<F>> {
-    _phantom: PhantomData<(F, SF)>,
     vars: usize,
     degree: usize,
+    evaluator: SumcheckEvaluator<F, SF>,
 }
 
 pub struct Proof<F: Field, SF: SumcheckFunction<F>> {
@@ -176,10 +177,11 @@ where
 {
     pub fn new(vars: usize) -> Self {
         let degree = Self::degree();
+        let evaluator = SumcheckEvaluator::new();
         Self {
-            _phantom: PhantomData,
             degree,
             vars,
+            evaluator,
         }
     }
     fn degree() -> usize {
@@ -200,6 +202,17 @@ where
         }
         message
     }
+    fn message_symbolic(&self, mle: &[SF::Mles<F>], challs: &SF::Challs) -> Message<F> {
+        let half_len = mle.len() / 2;
+        let (left, right) = mle.split_at(half_len);
+        let mut evaluator = self.evaluator.clone();
+        let mut accumulator = evaluator.accumulator(challs);
+
+        for (left, right) in left.iter().zip(right) {
+            accumulator.eval_accumulate([left, right]);
+        }
+        Message::new(accumulator.finish())
+    }
     pub fn prove<D: Duplex<F>>(
         &self,
         transcript: &mut Transcript<F, D>,
@@ -211,6 +224,29 @@ where
         let _ = (0..self.vars).try_fold(mle, |mle, _| {
             let mle: Vec<SF::Mles<F>> = mle;
             let m = self.message(&mle, challs);
+            let [var] = transcript
+                .send_message(&m)
+                .map_err(SumcheckError::TranscriptError)?;
+            messages.push(m);
+            Ok(EvalsExt::fix_var(mle, var))
+        })?;
+
+        Ok(Proof {
+            messages,
+            _f: PhantomData,
+        })
+    }
+    pub fn prove_symbolic<D: Duplex<F>>(
+        &self,
+        transcript: &mut Transcript<F, D>,
+        mle: Vec<SF::Mles<F>>,
+        challs: &SF::Challs,
+    ) -> Result<Proof<F, SF>, SumcheckError> {
+        let mut messages = Vec::with_capacity(self.vars);
+
+        let _ = (0..self.vars).try_fold(mle, |mle, _| {
+            let mle: Vec<SF::Mles<F>> = mle;
+            let m = self.message_symbolic(&mle, challs);
             let [var] = transcript
                 .send_message(&m)
                 .map_err(SumcheckError::TranscriptError)?;
