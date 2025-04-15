@@ -10,7 +10,7 @@ use std::cmp::Ord;
 
 /// Instruction set optimized for univariate polynomials
 /// (in evaluation form) as operands.
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 enum Instruction<V> {
     Add,
     Mul,
@@ -94,6 +94,7 @@ fn eval<F: Field>(e0: F, e1: F, stack: &mut Vec<F>, message_len: usize) {
 
 /// Stack machine optimized to operate over univariate polynomials, the
 /// sumcheck messages specifically.
+#[derive(Debug, Clone)]
 pub(crate) struct MessageEvaluator<F, V> {
     program: Vec<Instruction<V>>,
     coefficients: Vec<F>,

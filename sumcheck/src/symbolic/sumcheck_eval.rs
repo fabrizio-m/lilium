@@ -13,6 +13,7 @@ use crate::{
 use ark_ff::Field;
 use std::collections::BTreeMap;
 
+#[derive(Debug)]
 pub struct SumcheckEvaluator<F: Field, S>
 where
     S: SumcheckFunction<F>,
@@ -23,6 +24,21 @@ where
     message_len: usize,
     /// initial stack value for accumulator, 0s.
     accumulator_init: Vec<F>,
+}
+
+impl<F: Field + Clone, S> Clone for SumcheckEvaluator<F, S>
+where
+    S: SumcheckFunction<F>,
+{
+    fn clone(&self) -> Self {
+        Self {
+            inner: self.inner.clone(),
+            var_map: self.var_map.clone(),
+            chall_map: self.chall_map.clone(),
+            message_len: self.message_len.clone(),
+            accumulator_init: self.accumulator_init.clone(),
+        }
+    }
 }
 
 type Var<F, S> = VarOrChall<<S as SumcheckFunction<F>>::Idx, <S as SumcheckFunction<F>>::ChallIdx>;
