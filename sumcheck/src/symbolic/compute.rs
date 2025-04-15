@@ -142,4 +142,26 @@ impl<F: Field, V: Eq + Ord> MvPoly<F, V> {
         let terms = vec![(term, coeff)];
         MvPoly { terms }
     }
+    pub fn extract_constant_term(self) -> (Self, Option<F>)
+    where
+        V: Clone,
+    {
+        let Self { mut terms } = self;
+        let constant_terms = terms
+            .iter()
+            .filter_map(|(term, coeff)| match term.degree() {
+                0 => Some(*coeff),
+                _ => None,
+            });
+        let constant_term = constant_terms.fold(None, |acc, t| {
+            if acc.is_none() {
+                Some(t)
+            } else {
+                panic!("multiple constant terms found");
+            }
+        });
+        // remove constant term.
+        terms.retain(|t| t.0.degree() > 0);
+        (Self { terms }, constant_term)
+    }
 }
