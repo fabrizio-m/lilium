@@ -50,10 +50,12 @@ impl<F: Field, const MAX_IO: usize> ConstraintSystem for WitnessGenerator<F, MAX
             self.witness.push(*o);
         }
         if self.check {
-            let check = G::check(i, out);
-            if !check.0.is_zero() {
-                //it may be better to store all errors and report at the end instead of this
-                panic!("constraint evaluates to non zero");
+            let constraints = G::check(i, out);
+            for constraint in constraints {
+                if !constraint.0.is_zero() {
+                    //it may be better to store all errors and report at the end instead of this
+                    panic!("constraint evaluates to non zero");
+                }
             }
         }
         out

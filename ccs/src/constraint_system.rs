@@ -16,17 +16,73 @@ pub trait Var:
     ops::Add<Output = Self> + ops::Mul<Output = Self> + ops::Sub<Output = Self> + Clone + Sized
 {
 }
+
+/// A non-empty list of constraints.
+#[derive(Debug, Clone)]
+pub enum Constraints<V> {
+    Constraint(V),
+    Append(Box<Self>, V),
+}
+
+impl<V> From<V> for Constraints<V> {
+    fn from(value: V) -> Self {
+        Self::Constraint(value)
+    }
+}
+
+impl<V: Copy> Iterator for Constraints<V> {
+    type Item = V;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        match self {
+            Constraints::Constraint(c) => Some(*c),
+            Constraints::Append(constraints, c) => {
+                let c = *c;
+                let dummy = Box::new(Constraints::Constraint(c));
+                let constraints = *std::mem::replace(constraints, dummy);
+                *self = constraints;
+                Some(c)
+            }
+        }
+    }
+}
+
+impl<V, const N: usize> From<[V; N]> for Constraints<V> {
+    fn from(value: [V; N]) -> Self {
+        assert!(N > 0, "must have at least one constraint");
+        let mut values = value.into_iter();
+        let first: Self = values.next().unwrap().into();
+        values.fold(first, |acc, c| Constraints::Append(Box::new(acc), c))
+    }
+}
+
+impl<V> From<Constraints<V>> for Vec<V> {
+    fn from(value: Constraints<V>) -> Self {
+        // Not the most efficient, but it isn't performance critical anyway.
+        match value {
+            Constraints::Constraint(c) => vec![c],
+            Constraints::Append(tail, head) => {
+                let mut constraints: Vec<V> = From::from(*tail);
+                constraints.push(head);
+                constraints
+            }
+        }
+    }
+}
+
 pub trait Gate<const IO: usize, const I: usize, const O: usize>: Sized + 'static {
     //type Inputs: InputTrait + HasInputs<I>;
     //type Outputs: OutputTrait + HasOutputs<O> + AtLeast<IO>;
 
-    ///computes outputs from inputs
+    /// Computes outputs from inputs.
     fn gate<V: Var>(i: [V; I]) -> [V; O];
-    ///the output should be zero when the constraint is satisfied
-    fn check<V: Var>(i: [V; I], o: [V; O]) -> V;
+    /// The output should be zero when the constraint is satisfied.
+    /// use `into()` to convert either `V` or `[V;N]` into required output.
+    fn check<V: Var>(i: [V; I], o: [V; O]) -> Constraints<V>;
 }
 
-fn eval_gate_constraint<G, const IO: usize, const I: usize, const O: usize>() -> Exp<usize>
+fn eval_gate_constraint<G, const IO: usize, const I: usize, const O: usize>(
+) -> Constraints<Exp<usize>>
 where
     G: Gate<IO, I, O>,
 {
@@ -52,7 +108,7 @@ pub mod cs_prototype {
     #[derive(Debug)]
     pub struct GateRegistry {
         //hashmap may not be the best
-        pub(crate) gate_registry: BTreeMap<TypeId, (usize, Exp<usize>)>,
+        pub(crate) gate_registry: BTreeMap<TypeId, (usize, Constraints<Exp<usize>>)>,
         next_selector: usize,
     }
 
@@ -86,9 +142,9 @@ pub mod cs_prototype {
             [a + b]
         }
 
-        fn check<V: Var>(i: [V; 2], o: [V; 1]) -> V {
+        fn check<V: Var>(i: [V; 2], o: [V; 1]) -> Constraints<V> {
             let ([a, b], [c]) = (i, o);
-            a + b - c
+            (a + b - c).into()
         }
     }
     impl Add {
@@ -107,9 +163,9 @@ pub mod cs_prototype {
         fn gate<V: Var>(_: [V; 2]) -> [V; 0] {
             []
         }
-        fn check<V: Var>(i: [V; 2], _: [V; 0]) -> V {
+        fn check<V: Var>(i: [V; 2], _: [V; 0]) -> Constraints<V> {
             let [a, b] = i;
-            a - b
+            (a - b).into()
         }
     }
 }

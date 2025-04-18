@@ -1,8 +1,7 @@
 use crate::constraint_system::{
     cs_prototype::{GateRegistry, Zero},
-    ConstraintSystem, Gate, Var,
+    ConstraintSystem, Constraints, Gate, Var,
 };
-use ark_ff::Field;
 use std::{
     cmp::Ordering,
     collections::BTreeMap,
@@ -93,17 +92,17 @@ impl Ord for MatrixIndex {
         self.order(other)
     }
 }
-pub struct CcsStructure<const IO: usize, const S: usize, F: Field> {
+pub struct CcsStructure<const IO: usize, const S: usize> {
     pub io_matrices: [Matrix; IO],
     pub selector_matrices: [SelectorMatrix; S],
     pub input_len: usize,
-    ///with each multiset representing a term, and with corresponding constant coefficient
-    pub multisets: Vec<(F, MultiSet<MatrixIndex>)>,
+    //with each multiset representing a term, and with corresponding constant coefficient
+    pub gates: Vec<Constraints<Exp<usize>>>,
     /// public_io + witness + 1
     pub trace_len: usize,
 }
 
-impl<const IO: usize, const S: usize, F: Field> CcsStructure<IO, S, F> {
+impl<const IO: usize, const S: usize> CcsStructure<IO, S> {
     /// vars needed to fir the trace
     pub fn vars(&self) -> usize {
         let len_padded = self.trace_len.next_power_of_two();
@@ -118,6 +117,7 @@ struct Constraint<T, const IO: usize> {
     len: usize,
     selector: usize,
 }
+
 pub struct StructureBuilder<const IO: usize> {
     next: usize,
     vars: Vec<usize>,
@@ -125,6 +125,7 @@ pub struct StructureBuilder<const IO: usize> {
     registry: GateRegistry,
     constraints: Vec<Constraint<usize, IO>>,
 }
+
 impl Var for usize {}
 
 impl<const MAX_IO: usize> StructureBuilder<MAX_IO> {
@@ -171,10 +172,7 @@ impl<const MAX_IO: usize> StructureBuilder<MAX_IO> {
         }
         bits
     }*/
-    pub fn build<F: Field, const S: usize>(
-        self,
-        public_io_len: usize,
-    ) -> CcsStructure<MAX_IO, S, F> {
+    pub fn build<const S: usize>(self, public_io_len: usize) -> CcsStructure<MAX_IO, S> {
         let Self {
             registry,
             constraints,
@@ -207,14 +205,15 @@ impl<const MAX_IO: usize> StructureBuilder<MAX_IO> {
             }
         }
 
-        let multisets = registry.multisets(0);
+        let gates = registry.expressions_sorted();
+
         let trace_len = self.vars.len();
         assert_eq!(trace_len, self.next);
         CcsStructure {
             input_len: public_io_len,
             io_matrices,
             selector_matrices,
-            multisets,
+            gates,
             trace_len,
         }
     }
@@ -304,42 +303,7 @@ impl<T: Ord> Mul<Self> for MultiSet<T> {
 }
 
 impl<T: Ord + Clone> Exp<T> {
-    fn to_multisets<F: Field>(self) -> Vec<(F, MultiSet<T>)> {
-        match self {
-            Exp::Atom(i) => {
-                let mut multiset = MultiSet::default();
-                multiset.0.insert(i, 1);
-                vec![(F::one(), multiset)]
-            }
-            Exp::Add(e1, e2) => {
-                let mut multisets = e1.to_multisets();
-                multisets.extend(e2.to_multisets());
-                multisets
-            }
-            Exp::Mul(e1, e2) => {
-                let multisets1 = e1.to_multisets::<F>();
-                let multisets2 = e2.to_multisets::<F>();
-                let mut multisets = Vec::with_capacity(multisets1.len() * multisets2.len());
-                for m1 in multisets1.iter() {
-                    for m2 in multisets2.iter() {
-                        let multiset = (m1.0 * m2.0, m1.1.clone() * m2.1.clone());
-                        multisets.push(multiset);
-                    }
-                }
-                multisets
-            }
-            Exp::Sub(e1, e2) => {
-                let mut multisets = e1.to_multisets();
-                let mut multisets2 = e2.to_multisets::<F>();
-                for m in multisets2.iter_mut() {
-                    m.0 = -m.0;
-                }
-                multisets.extend(multisets2);
-                multisets
-            }
-        }
-    }
-    fn map<V, F>(self, f: &F) -> Exp<V>
+    pub fn map<V, F>(self, f: &F) -> Exp<V>
     where
         F: Fn(T) -> V,
     {
@@ -353,7 +317,7 @@ impl<T: Ord + Clone> Exp<T> {
     }
 }
 
-#[test]
+/*#[test]
 fn exp_to_multiset() {
     use ark_vesta::Fr;
     let a = Exp::Atom(0);
@@ -370,20 +334,16 @@ fn exp_to_multiset() {
     for multiset in multisets {
         println!("{} * {} +", multiset.0, multiset.1);
     }
-}
+}*/
 
 impl GateRegistry {
-    fn multisets<F: Field>(self, _bits: usize) -> Vec<(F, MultiSet<MatrixIndex>)> {
-        let mut multisets = vec![];
-        let mut gates: Vec<(usize, Exp<usize>)> =
-            self.gate_registry.into_iter().map(|x| x.1).collect();
-        gates.sort_by_key(|(i, _)| *i);
-        for (i, exp) in gates.into_iter() {
-            let selector = Exp::Atom(MatrixIndex::Selector(i));
-            let exp = exp.map(&MatrixIndex::Io);
-            let exp = selector * exp;
-            multisets.extend(exp.to_multisets());
+    fn expressions_sorted(self) -> Vec<Constraints<Exp<usize>>> {
+        let mut gates: Vec<(usize, Constraints<Exp<usize>>)> =
+            self.gate_registry.into_values().collect();
+        gates.sort_by_key(|x| x.0);
+        for (i1, (i2, _)) in gates.iter().enumerate() {
+            assert_eq!(i1, *i2, "unexpected index");
         }
-        multisets
+        gates.into_iter().map(|(_, exp)| exp).collect()
     }
 }

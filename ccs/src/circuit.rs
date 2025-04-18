@@ -17,6 +17,7 @@ pub trait Circuit<F: Field, const IN: usize = 0, const OUT: usize = 0, const PRI
     ) -> ([C::V; OUT], [C::V; PRIV_OUT]);
     fn handle_output(out: [F; PRIV_OUT]) -> Self::PrivateOutput;
 }
+
 pub trait BuildStructure<
     F: Field,
     const IN: usize,
@@ -25,7 +26,7 @@ pub trait BuildStructure<
     const IO: usize,
 >: Circuit<F, IN, OUT, PRIV_OUT>
 {
-    fn structure<const S: usize>() -> CcsStructure<IO, S, F> {
+    fn structure<const S: usize>() -> CcsStructure<IO, S> {
         let (mut cs, public_input) = StructureBuilder::<IO>::with_inputs::<IN>();
         cs.reserve_outputs::<OUT>();
         let (public_out, private_out) = Self::circuit(&mut cs, public_input);
@@ -33,7 +34,7 @@ pub trait BuildStructure<
         let _ = private_out;
         cs.link_outputs::<IN, OUT>(public_out);
 
-        let structure = cs.build::<F, S>(IN + OUT);
+        let structure = cs.build::<S>(IN + OUT);
         structure
     }
 }
