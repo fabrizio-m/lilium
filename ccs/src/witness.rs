@@ -3,6 +3,7 @@ use ark_ff::Field;
 use std::ops::{Add, Mul, Sub};
 
 #[derive(Clone, Copy)]
+/// `Field` wrapper which implements `Var`.
 pub struct Fi<F: Field>(F);
 
 impl<F: Field> Add for Fi<F> {
@@ -12,6 +13,7 @@ impl<F: Field> Add for Fi<F> {
         Self(self.0 + rhs.0)
     }
 }
+
 impl<F: Field> Sub for Fi<F> {
     type Output = Self;
 
@@ -19,6 +21,7 @@ impl<F: Field> Sub for Fi<F> {
         Self(self.0 - rhs.0)
     }
 }
+
 impl<F: Field> Mul for Fi<F> {
     type Output = Self;
 
@@ -33,6 +36,7 @@ pub struct WitnessGenerator<F: Field, const IO: usize> {
     witness: Vec<Fi<F>>,
     check: bool,
 }
+
 pub struct Witness<F: Field>(pub Vec<F>);
 
 impl<F: Field, const MAX_IO: usize> ConstraintSystem for WitnessGenerator<F, MAX_IO> {
@@ -67,7 +71,7 @@ impl<F: Field, const MAX_IO: usize> WitnessGenerator<F, MAX_IO> {
         let witness = vec![Fi(F::one())];
         Self { witness, check }
     }
-    // fn with_inputs(check:bool,)
+
     pub fn with_io<const I: usize, const O: usize>(
         check: bool,
         inputs: [F; I],
@@ -79,6 +83,7 @@ impl<F: Field, const MAX_IO: usize> WitnessGenerator<F, MAX_IO> {
         new.witness.extend([Fi(F::zero()); O]);
         (new, input)
     }
+
     pub fn link_outputs<const I: usize, const O: usize>(&mut self, outputs: [Fi<F>; O]) {
         for i in 0..O {
             let b = outputs[i];
@@ -86,10 +91,12 @@ impl<F: Field, const MAX_IO: usize> WitnessGenerator<F, MAX_IO> {
             self.witness[i] = b;
         }
     }
+
     pub fn witness(self) -> Witness<F> {
         Witness(self.witness.into_iter().map(|x| x.0).collect())
     }
 }
+
 pub fn unwrap_output<F: Field, const O: usize>(o: [Fi<F>; O]) -> [F; O] {
     o.map(|x| x.0)
 }

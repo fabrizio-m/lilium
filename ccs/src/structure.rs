@@ -1,5 +1,5 @@
 use crate::constraint_system::{
-    cs_prototype::{GateRegistry, Zero},
+    cs_prototype::{Equality, GateRegistry},
     ConstraintSystem, Constraints, Gate, Var,
 };
 use std::{
@@ -52,12 +52,14 @@ impl Matrix {
         evals
     }
 }
+
 /// considering that each row will either be 0 or 1 just in the first element,
 /// it can be represented with just Vec<bool>
 #[derive(Default)]
 pub struct SelectorMatrix {
     rows: Vec<bool>,
 }
+
 impl SelectorMatrix {
     fn with_capacity(capacity: usize) -> Self {
         Self {
@@ -65,6 +67,7 @@ impl SelectorMatrix {
         }
     }
 }
+
 #[derive(PartialEq, Eq, Clone)]
 pub enum MatrixIndex {
     Io(usize),
@@ -87,11 +90,13 @@ impl PartialOrd for MatrixIndex {
         Some(self.order(other))
     }
 }
+
 impl Ord for MatrixIndex {
     fn cmp(&self, other: &Self) -> Ordering {
         self.order(other)
     }
 }
+
 pub struct CcsStructure<const IO: usize, const S: usize> {
     pub io_matrices: [Matrix; IO],
     pub selector_matrices: [SelectorMatrix; S],
@@ -111,17 +116,19 @@ impl<const IO: usize, const S: usize> CcsStructure<IO, S> {
 }
 
 #[derive(Debug)]
+/// An individual instance of a gate, contains the variables and the id of the gate.
 struct Constraint<T, const IO: usize> {
-    ///it probably better to just fill unused space with zeros than to have a bunch of [Vec]s
+    ///It's probably better to just fill unused space with zeros than to have a bunch of `Vec`s
     io: [T; IO],
+    /// Length of `io`.
     len: usize,
     selector: usize,
 }
 
+/// Builder creates the structure for a circuit through symbolic variables.
 pub struct StructureBuilder<const IO: usize> {
     next: usize,
     vars: Vec<usize>,
-    //hashmap may not be the best
     registry: GateRegistry,
     constraints: Vec<Constraint<usize, IO>>,
 }
@@ -131,7 +138,6 @@ impl Var for usize {}
 impl<const MAX_IO: usize> StructureBuilder<MAX_IO> {
     pub fn new() -> Self {
         let registry = GateRegistry::new();
-        // registry.register_gate::<Add>();
         Self {
             next: 0,
             vars: vec![],
@@ -161,7 +167,7 @@ impl<const MAX_IO: usize> StructureBuilder<MAX_IO> {
         for i in 0..O {
             let a = i + I + 1;
             let b = outputs[i];
-            Self::execute::<Zero, 2, 2, 0>(self, [a, b]);
+            Self::execute::<Equality, 2, 2, 0>(self, [a, b]);
         }
     }
     /*fn bit_decomposition<const BITS: usize>(mut selector: usize) -> [bool; BITS] {
@@ -218,6 +224,7 @@ impl<const MAX_IO: usize> StructureBuilder<MAX_IO> {
         }
     }
 }
+
 impl<const MAX_IO: usize> ConstraintSystem for StructureBuilder<MAX_IO> {
     type V = usize;
 
@@ -278,6 +285,7 @@ impl<T> Sub<Self> for Exp<T> {
         Self::Sub(Box::new(self), Box::new(rhs))
     }
 }
+
 impl<T: Clone> Var for Exp<T> {}
 
 impl<T: Display> Display for MultiSet<T> {

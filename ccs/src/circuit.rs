@@ -5,8 +5,12 @@ use crate::{
 };
 use ark_ff::Field;
 
+/// Circuit definition, with generics for field, public inputs, and public and private outputs.
+/// Private outputs being just a convenience to take value produced in the circuit out.
+/// `Self::PrivateOutput` is to be generated from the private outputs when possible.
 pub trait Circuit<F: Field, const IN: usize = 0, const OUT: usize = 0, const PRIV_OUT: usize = 0> {
     ///() if you don't care
+    /// TODO: not currently usable.
     type PrivateInput;
     ///() if you don't care
     type PrivateOutput;
@@ -58,6 +62,7 @@ pub trait Prove<F: Field, const IN: usize, const OUT: usize, const PRIV_OUT: usi
         (cs.witness(), Self::handle_output(private_out))
     }
 }
+
 impl<T, F: Field, const IN: usize, const OUT: usize, const PRIV_OUT: usize, const IO: usize>
     Prove<F, IN, OUT, PRIV_OUT, IO> for T
 where
@@ -73,6 +78,7 @@ mod test {
     use ark_ff::Field;
 
     struct MyCircuit;
+
     impl<F: Field> Circuit<F, 2, 1, 1> for MyCircuit {
         type PrivateInput = ();
 
@@ -91,6 +97,7 @@ mod test {
             ()
         }
     }
+
     ///composition
     struct MyCircuit2;
     impl<F: Field> Circuit<F, 2, 1, 1> for MyCircuit2
@@ -114,10 +121,4 @@ mod test {
             ()
         }
     }
-    // use super::{structure::CcsStructure, BuildStructure, Prove};
-
-    // fn test<F: Field>() {
-    // let struc: CcsStructure<3, 2, F> = MyCircuit::structure();
-    // let (witness, _private_out) = MyCircuit::witness([F::one(), F::one()], false);
-    // }
 }

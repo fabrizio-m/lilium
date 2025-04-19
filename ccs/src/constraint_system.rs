@@ -70,10 +70,11 @@ impl<V> From<Constraints<V>> for Vec<V> {
     }
 }
 
+/// A gate, which maps inputs to outputs, and defines one or more constraints
+/// between both inputs and outputs.
+/// `Self::gate` deals only with witness generation, while `Self::check` defines
+/// the actual constraints to be enforced.
 pub trait Gate<const IO: usize, const I: usize, const O: usize>: Sized + 'static {
-    //type Inputs: InputTrait + HasInputs<I>;
-    //type Outputs: OutputTrait + HasOutputs<O> + AtLeast<IO>;
-
     /// Computes outputs from inputs.
     fn gate<V: Var>(i: [V; I]) -> [V; O];
     /// The output should be zero when the constraint is satisfied.
@@ -81,7 +82,7 @@ pub trait Gate<const IO: usize, const I: usize, const O: usize>: Sized + 'static
     fn check<V: Var>(i: [V; I], o: [V; O]) -> Constraints<V>;
 }
 
-fn eval_gate_constraint<G, const IO: usize, const I: usize, const O: usize>(
+fn eval_gate_constraints<G, const IO: usize, const I: usize, const O: usize>(
 ) -> Constraints<Exp<usize>>
 where
     G: Gate<IO, I, O>,
@@ -106,8 +107,8 @@ pub mod cs_prototype {
     };
 
     #[derive(Debug)]
+    /// Keeps track of used gates, and assigns a unique id to each of them.
     pub struct GateRegistry {
-        //hashmap may not be the best
         pub(crate) gate_registry: BTreeMap<TypeId, (usize, Constraints<Exp<usize>>)>,
         next_selector: usize,
     }
@@ -116,7 +117,7 @@ pub mod cs_prototype {
         pub fn new() -> Self {
             GateRegistry {
                 gate_registry: BTreeMap::new(),
-                //may reserve 0 for equality
+                //TODO: may reserve 0 for equality
                 next_selector: 0,
             }
         }
@@ -128,13 +129,14 @@ pub mod cs_prototype {
             let entry = self.gate_registry.entry(id);
             let entry = entry.or_insert_with(|| {
                 self.next_selector += 1;
-                let exp = eval_gate_constraint::<G, IO, I, O>();
+                let exp = eval_gate_constraints::<G, IO, I, O>();
                 (self.next_selector, exp)
             });
             entry.0
         }
     }
 
+    /// An addition gate.
     pub struct Add;
     impl Gate<3, 2, 1> for Add {
         fn gate<V: Var>([a, b]: [V; 2]) -> [V; 1] {
@@ -158,8 +160,9 @@ pub mod cs_prototype {
         }
     }
 
-    pub struct Zero;
-    impl Gate<2, 2, 0> for Zero {
+    /// An equality gate.
+    pub struct Equality;
+    impl Gate<2, 2, 0> for Equality {
         fn gate<V: Var>(_: [V; 2]) -> [V; 0] {
             []
         }
