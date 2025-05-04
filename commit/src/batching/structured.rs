@@ -26,7 +26,7 @@ pub struct StructuredBatchEval<F: Field, S: CommmitmentScheme<F>> {
 }
 
 impl<F: Field, S: CommmitmentScheme<F>> StructuredBatchEval<F, S> {
-    pub(crate) fn new(dynamic_batch: BatchEval<F, S>, structure_evals: Vec<F>) -> Self {
+    pub fn new(dynamic_batch: BatchEval<F, S>, structure_evals: Vec<F>) -> Self {
         Self {
             dynamic_batch,
             structure_evals,
