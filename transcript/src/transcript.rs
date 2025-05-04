@@ -106,7 +106,11 @@ impl<'a, F: Field, S: Duplex<F>, P> TranscriptGuard<'a, F, S, P> {
         Self { transcript, proof }
     }
 
-    pub fn new_guard<P2>(&mut self, proof: MessageGuard<P2>) -> TranscriptGuard<F, S, P2> {
+    pub fn new_guard<P2>(
+        &mut self,
+        proof: impl Into<MessageGuard<P2>>,
+    ) -> TranscriptGuard<F, S, P2> {
+        let proof: MessageGuard<P2> = proof.into();
         let proof = proof.0;
         TranscriptGuard {
             transcript: self.transcript,

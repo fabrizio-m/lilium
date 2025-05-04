@@ -140,7 +140,7 @@ where
         let (open_instance, evals) = CommittedStructure::verify_reduction(
             &key.committed_structure,
             instance,
-            transcript.new_guard(().into()),
+            transcript.new_guard(()),
         )?;
 
         let evals = evals.combine(&small_evals, |committed, small| committed.xor(small));
