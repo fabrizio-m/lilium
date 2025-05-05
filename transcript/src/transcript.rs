@@ -134,7 +134,7 @@ impl<'a, F: Field, S: Duplex<F>, P> TranscriptGuard<'a, F, S, P> {
     pub fn receive_message_delayed<M, Q>(&mut self, query: Q) -> MessageGuard<M>
     where
         M: 'static,
-        Q: Fn(&P) -> M,
+        Q: FnOnce(&P) -> M,
     {
         let message = query(&self.proof);
         MessageGuard(message)
