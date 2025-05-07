@@ -7,12 +7,7 @@ pub mod proving;
 pub mod sumcheck_argument;
 
 /// A linearized committed ccs instance
-pub(crate) struct LinearizedInstance<
-    F: Field,
-    C: CommmitmentScheme<F>,
-    const I: usize,
-    const IO: usize,
-> {
+pub struct LinearizedInstance<F: Field, C: CommmitmentScheme<F>, const I: usize, const IO: usize> {
     /// C = commit(w) such that z = (u,x,w), with x = public_inputs
     pub witness_commit: C::Commitment,
     /// first element of the vector to be multiplied with the matrices, formed

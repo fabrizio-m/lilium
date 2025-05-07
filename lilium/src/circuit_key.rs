@@ -21,7 +21,7 @@ pub struct CircuitKey<
 > {
     _circuit: PhantomData<C>,
     pub transcript: TranscriptDescriptor<F, D>,
-    pub ccs_structure: CcsStructure<IO, S, F>,
+    pub ccs_structure: CcsStructure<IO, S>,
     pub spark_structure: [SparkMatrix<F>; IO],
     pub spark_commitments: [CommittedSpark<F, CS, 2>; IO],
     pub committment_scheme: CS,
