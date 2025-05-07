@@ -16,6 +16,12 @@ impl<F: Field> Message<F> for () {
 #[derive(Debug, Clone, Copy)]
 pub struct SingleElement<F>(pub F);
 
+impl<F> SingleElement<F> {
+    pub fn inner(self) -> F {
+        self.0
+    }
+}
+
 impl<F: Field> Message<F> for SingleElement<F> {
     fn len(_vars: usize, _param_resolver: &ParamResolver) -> usize {
         1
