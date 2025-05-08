@@ -30,6 +30,7 @@ fn com_key<F: Field, C: CommmitmentScheme<F>, const IO: usize>(
     todo!()
 }
 
+/// Proof for the LCS -> Linearized reduction.
 pub struct Proof<F: Field, const IO: usize> {
     sumcheck: sumcheck::sumcheck::Proof<F, LcsSumcheck<F, IO, 4>>,
     selector_evals: Vec<F>,
@@ -72,28 +73,35 @@ where
     ) -> Result<Self::B, Self::Error> {
         let vars = key.domain_vars();
 
+        // Unwrap isntance, get challenge for sumcheck.
         let (lcs_instance, [sumcheck_chall]) = transcript.unwrap_guard(instance)?;
         let LcsInstance {
             witness_commit,
             public_inputs,
         } = lcs_instance;
 
+        // Get challenge point for sumcheck's zero-check.
         let r_eq = transcript.point()?;
         let r_eq = MultiPoint::new(r_eq);
         //TODO: add selectors
         let sumcheck_verifier = SumcheckVerifier::<F, LcsSumcheck<F, IO, 4>>::new(vars);
+        // As the expected sum is zero.
         let sumcheck_instance = MessageGuard::new(Sum(F::zero()));
 
+        // Receive sumcheck proof.
         let proof = transcript.receive_message_delayed(|p| p.sumcheck.clone());
+        // Verifying sumcheck proof, reducing instance to point eval check.
         let check: PolyEvalCheck<F> = SumcheckVerifier::verify_reduction(
             &sumcheck_verifier,
             sumcheck_instance,
             transcript.new_guard(proof),
         )?;
 
+        // Point where to evaluate the sumcheck polynomial.
         let check_point = MultiPoint::new(check.vars.clone());
         let key: CommittedStructure<F, LcsSumcheck<F, IO, 4>, C> = com_key();
 
+        // Create instance for evaluation of committed MLEs.
         let instance = transcript.receive_message_delayed(|proof| {
             let point = check_point.clone();
             let commitments_and_evals = vec![(witness_commit.clone(), proof.witness_eval.clone())];
@@ -102,11 +110,14 @@ where
             StructuredBatchEval::new(dynamic_batch, structure_evals)
         });
 
+        // Verify commitment's openings in the point. Reducing to a single
+        // opening instance.
         let instance: MessageGuard<StructuredBatchEval<F, C>> = instance;
-
         let tr = transcript.new_guard(());
+        // The reduction also outputs the claimed evals.
         let (open, committed_evals) = CommittedStructure::verify_reduction(&key, instance, tr)?;
 
+        // Assembling different types of evals into a single one.
         let evals: LcsMles<F, IO, 4> = {
             let small_evals: LcsMles<Option<F>, IO, 4> = LcsMles::<Option<F>, IO, 4>::small_evals(
                 check_point.clone(),
@@ -116,10 +127,13 @@ where
 
             let evals = committed_evals.combine(&small_evals, Option::xor);
 
+            // Matrix evals are just received from the prover, a linearized instace
+            // is create to verify them later.
             let (matrix_evals, []) = transcript.receive_message(|proof| {
                 let matrix_evals = proof.matrix_evals;
                 matrix_evals.map(SingleElement)
             })?;
+
             let matrix_evals: [F; IO] = matrix_evals.map(SingleElement::inner);
 
             let products = LcsMles::new_only_products(matrix_evals);
@@ -128,6 +142,7 @@ where
             evals
         };
 
+        // Instance to be verified for the matrix evals.
         let linearized_instance: LinearizedInstance<F, C, I, IO> = {
             let products: [F; IO] = *evals.products();
             let u = F::one();
@@ -142,10 +157,14 @@ where
             l
         };
 
-        let evals = evals;
-
+        let evals: LcsMles<F, IO, 4> = evals;
         let challs = SingleChall::from(sumcheck_chall);
-        assert!(sumcheck_verifier.check_evals_at_r(evals, check.eval, &challs));
+
+        // Check evaluation on the point.
+        let checks = sumcheck_verifier.check_evals_at_r(evals, check.eval, &challs);
+        if checks {
+            return Err(crate::Error::EvalCheck);
+        }
 
         Ok((linearized_instance, open))
     }
