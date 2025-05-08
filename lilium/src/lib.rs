@@ -1,5 +1,5 @@
 use ark_ff::Field;
-use commit::CommmitmentScheme;
+use commit::{batching::BatchingError, CommmitmentScheme};
 use std::marker::PhantomData;
 use sumcheck::SumcheckError;
 
@@ -21,6 +21,7 @@ pub enum Error<F: Field, C: CommmitmentScheme<F>> {
     /// Polynomial doesn't evaluate to the expected value at the point
     /// given by sumcheck
     EvalCheck,
+    Batching(BatchingError<F, C>),
 }
 
 impl<F: Field, C: CommmitmentScheme<F>> From<transcript::Error> for Error<F, C> {
@@ -34,9 +35,16 @@ impl<F: Field, C: CommmitmentScheme<F>> From<spark::committed_spark::Error<F, C>
         Self::Spark(value)
     }
 }
+
 impl<F: Field, C: CommmitmentScheme<F>> From<SumcheckError> for Error<F, C> {
     fn from(value: SumcheckError) -> Self {
         Self::Sumcheck(value)
+    }
+}
+
+impl<F: Field, C: CommmitmentScheme<F>> From<BatchingError<F, C>> for Error<F, C> {
+    fn from(value: BatchingError<F, C>) -> Self {
+        Self::Batching(value)
     }
 }
 

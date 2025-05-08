@@ -54,7 +54,7 @@ where
 
     type Proof = Proof<F, IO>;
 
-    type Error = ();
+    type Error = crate::Error<F, C>;
 
     fn transcript_pattern(builder: TranscriptBuilder<F>) -> TranscriptBuilder<F> {
         builder
@@ -72,29 +72,26 @@ where
     ) -> Result<Self::B, Self::Error> {
         let vars = key.domain_vars();
 
-        //TODO: handle
-        let (lcs_instance, [sumcheck_chall]) = transcript.unwrap_guard(instance).unwrap();
+        let (lcs_instance, [sumcheck_chall]) = transcript.unwrap_guard(instance)?;
         let LcsInstance {
             witness_commit,
             public_inputs,
         } = lcs_instance;
 
-        //TODO: handle
-        let r_eq = transcript.point().unwrap();
+        let r_eq = transcript.point()?;
         let r_eq = MultiPoint::new(r_eq);
         //TODO: add selectors
         let sumcheck_verifier = SumcheckVerifier::<F, LcsSumcheck<F, IO, 4>>::new(vars);
         let sumcheck_instance = MessageGuard::new(Sum(F::zero()));
-        //TODO: handle
+
         let proof = transcript.receive_message_delayed(|p| p.sumcheck.clone());
         let check: PolyEvalCheck<F> = SumcheckVerifier::verify_reduction(
             &sumcheck_verifier,
             sumcheck_instance,
             transcript.new_guard(proof),
-        )
-        .unwrap();
-        let check_point = MultiPoint::new(check.vars.clone());
+        )?;
 
+        let check_point = MultiPoint::new(check.vars.clone());
         let key: CommittedStructure<F, LcsSumcheck<F, IO, 4>, C> = com_key();
 
         let instance = transcript.receive_message_delayed(|proof| {
@@ -107,9 +104,8 @@ where
 
         let instance: MessageGuard<StructuredBatchEval<F, C>> = instance;
 
-        //TODO: Handle
-        let (open, committed_evals) =
-            CommittedStructure::verify_reduction(&key, instance, transcript.new_guard(())).unwrap();
+        let tr = transcript.new_guard(());
+        let (open, committed_evals) = CommittedStructure::verify_reduction(&key, instance, tr)?;
 
         let evals: LcsMles<F, IO, 4> = {
             let small_evals: LcsMles<Option<F>, IO, 4> = LcsMles::<Option<F>, IO, 4>::small_evals(
@@ -120,13 +116,10 @@ where
 
             let evals = committed_evals.combine(&small_evals, Option::xor);
 
-            //TODO: handle
-            let (matrix_evals, []) = transcript
-                .receive_message(|proof| {
-                    let matrix_evals = proof.matrix_evals;
-                    matrix_evals.map(SingleElement)
-                })
-                .unwrap();
+            let (matrix_evals, []) = transcript.receive_message(|proof| {
+                let matrix_evals = proof.matrix_evals;
+                matrix_evals.map(SingleElement)
+            })?;
             let matrix_evals: [F; IO] = matrix_evals.map(SingleElement::inner);
 
             let products = LcsMles::new_only_products(matrix_evals);
