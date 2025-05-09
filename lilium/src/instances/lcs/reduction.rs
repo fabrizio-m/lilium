@@ -80,6 +80,7 @@ where
         let r_eq = transcript.point()?;
         let r_eq = MultiPoint::new(r_eq);
         //TODO: add selectors
+        //TODO: create once and store in key.
         let sumcheck_verifier = SumcheckVerifier::<F, LcsSumcheck<F, IO, 4>>::new(vars);
         // As the expected sum is zero.
         let sumcheck_instance = MessageGuard::new(Sum(F::zero()));
