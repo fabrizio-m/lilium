@@ -6,6 +6,7 @@ use transcript::Message;
 mod reduction;
 mod sumcheck_argument;
 //mod verifying;
+mod key;
 
 pub struct LcsInstance<F: Field, C: CommmitmentScheme<F>, const I: usize> {
     witness_commit: C::Commitment,

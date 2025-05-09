@@ -2,6 +2,7 @@ use crate::{
     circuit_key::KeySparkStructure,
     instances::{
         lcs::{
+            key::LcsKey,
             sumcheck_argument::{LcsMles, LcsSumcheck, SingleChall},
             LcsInstance, LcsProver,
         },
@@ -25,11 +26,6 @@ use transcript::{
     TranscriptBuilder, TranscriptGuard,
 };
 
-fn com_key<F: Field, C: CommmitmentScheme<F>, const IO: usize>(
-) -> CommittedStructure<F, LcsSumcheck<F, IO, 4>, C> {
-    todo!()
-}
-
 /// Proof for the LCS -> Linearized reduction.
 pub struct Proof<F: Field, const IO: usize> {
     sumcheck: sumcheck::sumcheck::Proof<F, LcsSumcheck<F, IO, 4>>,
@@ -44,7 +40,7 @@ where
     C: CommmitmentScheme<F> + 'static,
     K: KeySparkStructure<F, C, IO>,
 {
-    type Key = K;
+    type Key = LcsKey<F, C, IO>;
 
     type A = LcsInstance<F, C, I>;
 
@@ -71,7 +67,7 @@ where
         instance: MessageGuard<Self::A>,
         mut transcript: TranscriptGuard<F, S, Self::Proof>,
     ) -> Result<Self::B, Self::Error> {
-        let vars = key.domain_vars();
+        let vars = key.domain_vars;
 
         // Unwrap isntance, get challenge for sumcheck.
         let (lcs_instance, [sumcheck_chall]) = transcript.unwrap_guard(instance)?;
@@ -99,7 +95,6 @@ where
 
         // Point where to evaluate the sumcheck polynomial.
         let check_point = MultiPoint::new(check.vars.clone());
-        let key: CommittedStructure<F, LcsSumcheck<F, IO, 4>, C> = com_key();
 
         // Create instance for evaluation of committed MLEs.
         let instance = transcript.receive_message_delayed(|proof| {
@@ -114,6 +109,7 @@ where
         // opening instance.
         let instance: MessageGuard<StructuredBatchEval<F, C>> = instance;
         let tr = transcript.new_guard(());
+        let key = &key.committed_structure;
         // The reduction also outputs the claimed evals.
         let (open, committed_evals) = CommittedStructure::verify_reduction(&key, instance, tr)?;
 

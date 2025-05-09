@@ -90,6 +90,7 @@ where
 {
     fn pcs(&self) -> &C;
 }
+
 pub trait KeySparkStructure<F, C, const IO: usize>: KeyCommitment<F, C>
 where
     F: Field,
