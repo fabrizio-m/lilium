@@ -3,10 +3,10 @@ use commit::CommmitmentScheme;
 use std::marker::PhantomData;
 use transcript::Message;
 
+mod key;
 mod reduction;
 mod sumcheck_argument;
 //mod verifying;
-mod key;
 
 pub struct LcsInstance<F: Field, C: CommmitmentScheme<F>, const I: usize> {
     witness_commit: C::Commitment,
@@ -25,4 +25,4 @@ impl<F: Field, C: CommmitmentScheme<F>, const I: usize> Message<F> for LcsInstan
     }
 }
 
-pub struct LcsProver<K, C, const I: usize, const IO: usize>(PhantomData<(K, C)>);
+pub struct LcsProver<C, const I: usize, const IO: usize>(PhantomData<C>);

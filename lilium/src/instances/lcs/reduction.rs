@@ -34,11 +34,10 @@ pub struct Proof<F: Field, const IO: usize> {
     matrix_evals: [F; IO],
 }
 
-impl<F, K, C, const I: usize, const IO: usize> Reduction<F> for LcsProver<K, C, I, IO>
+impl<F, C, const I: usize, const IO: usize> Reduction<F> for LcsProver<C, I, IO>
 where
     F: Field,
     C: CommmitmentScheme<F> + 'static,
-    K: KeySparkStructure<F, C, IO>,
 {
     type Key = LcsKey<F, C, IO>;
 
