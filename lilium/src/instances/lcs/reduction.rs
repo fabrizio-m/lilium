@@ -27,7 +27,8 @@ use transcript::{
 };
 
 /// Proof for the LCS -> Linearized reduction.
-pub struct Proof<F: Field, const IO: usize> {
+#[derive(Debug, Clone)]
+pub struct LcsReductionProof<F: Field, const IO: usize> {
     sumcheck: sumcheck::sumcheck::Proof<F, LcsSumcheck<F, IO, 4>>,
     selector_evals: Vec<F>,
     witness_eval: F,
@@ -48,7 +49,7 @@ where
         OpenInstance<F, C::Commitment>,
     );
 
-    type Proof = Proof<F, IO>;
+    type Proof = LcsReductionProof<F, IO>;
 
     type Error = crate::Error<F, C>;
 
