@@ -68,10 +68,11 @@ where
     }
 }
 */
-struct LinearizedInstanceReduction<F, K, CS, const I: usize, const IO: usize>(
+pub(crate) struct LinearizedInstanceReduction<F, K, CS, const I: usize, const IO: usize>(
     PhantomData<(F, K, CS)>,
 );
 
+#[derive(Debug, Clone)]
 pub struct LinearizedProof<F: Field, const IO: usize> {
     sumcheck_proof: sumcheck::sumcheck::Proof<F, LinearizedSumcheck<IO>>,
     w_eval: SingleElement<F>,
