@@ -35,7 +35,7 @@ impl<F: Field, S: Duplex<F>> Transcript<F, S> {
         let id = message.type_id();
         let elems = message.to_field_elements();
         for elem in elems.into_iter() {
-            let _ = self.sponge.absorb(elem).map_err(Error::SpongeError)?;
+            self.sponge.absorb(elem).map_err(Error::SpongeError)?;
         }
         let round = self.rounds.next().ok_or(Error::TranscriptFinished)?;
         if round != (id, N) {

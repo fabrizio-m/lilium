@@ -69,7 +69,7 @@ where
     fn from(value: F1) -> Self {
         let bit_diff = F2::BasePrimeField::MODULUS_BIT_SIZE as i32
             - F1::BasePrimeField::MODULUS_BIT_SIZE as i32;
-        let bit_diff = bit_diff.abs() as u32;
+        let bit_diff = bit_diff.unsigned_abs();
         assert!(bit_diff < 8, "fields differ in size in more than a byte");
 
         Self {
