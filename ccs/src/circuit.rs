@@ -38,8 +38,7 @@ pub trait BuildStructure<
         let _ = private_out;
         cs.link_outputs::<IN, OUT>(public_out);
 
-        let structure = cs.build::<S>(IN + OUT);
-        structure
+        cs.build::<S>(IN + OUT)
     }
 }
 
@@ -93,9 +92,7 @@ mod test {
             ([c.clone()], [c])
         }
 
-        fn handle_output(_out: [F; 1]) -> Self::PrivateOutput {
-            ()
-        }
+        fn handle_output(_out: [F; 1]) -> Self::PrivateOutput {}
     }
 
     ///composition
@@ -117,8 +114,6 @@ mod test {
             ([c.clone()], [c])
         }
 
-        fn handle_output(_out: [F; 1]) -> Self::PrivateOutput {
-            ()
-        }
+        fn handle_output(_out: [F; 1]) -> Self::PrivateOutput {}
     }
 }

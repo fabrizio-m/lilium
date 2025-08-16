@@ -85,8 +85,7 @@ impl<F: Field, const MAX_IO: usize> WitnessGenerator<F, MAX_IO> {
     }
 
     pub fn link_outputs<const I: usize, const O: usize>(&mut self, outputs: [Fi<F>; O]) {
-        for i in 0..O {
-            let b = outputs[i];
+        for (i, b) in outputs.into_iter().enumerate() {
             let i = i + I + 1;
             self.witness[i] = b;
         }

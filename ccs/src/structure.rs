@@ -33,14 +33,21 @@ impl Matrix {
     pub fn len(&self) -> usize {
         self.rows.len()
     }
+
+    pub fn is_empty(&self) -> bool {
+        self.rows.len() == 0
+    }
+
     fn with_capacity(capacity: usize) -> Self {
         Matrix {
             rows: Vec::with_capacity(capacity),
         }
     }
+
     fn push_row_single_value(&mut self, idx: usize) {
         self.rows.push(vec![idx])
     }
+
     /// convert to sparse indexed evals as expected by spark
     pub fn to_evals(&self) -> Vec<(usize, usize)> {
         let mut evals = Vec::with_capacity(self.rows.len());
@@ -87,7 +94,7 @@ impl MatrixIndex {
 
 impl PartialOrd for MatrixIndex {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Some(self.order(other))
+        Some(self.cmp(other))
     }
 }
 
@@ -126,6 +133,7 @@ struct Constraint<T, const IO: usize> {
 }
 
 /// Builder creates the structure for a circuit through symbolic variables.
+#[derive(Debug, Default)]
 pub struct StructureBuilder<const IO: usize> {
     next: usize,
     vars: Vec<usize>,
@@ -136,15 +144,6 @@ pub struct StructureBuilder<const IO: usize> {
 impl Var for usize {}
 
 impl<const MAX_IO: usize> StructureBuilder<MAX_IO> {
-    pub fn new() -> Self {
-        let registry = GateRegistry::new();
-        Self {
-            next: 0,
-            vars: vec![],
-            registry,
-            constraints: vec![],
-        }
-    }
     fn var(&mut self) -> usize {
         //in this way 0 is reserved for the 1
         self.next += 1;
@@ -153,7 +152,7 @@ impl<const MAX_IO: usize> StructureBuilder<MAX_IO> {
         v
     }
     pub fn with_inputs<const I: usize>() -> (Self, [usize; I]) {
-        let mut new = Self::new();
+        let mut new = Self::default();
         let inputs = [(); I].map(|_| new.var());
         (new, inputs)
     }
@@ -164,9 +163,8 @@ impl<const MAX_IO: usize> StructureBuilder<MAX_IO> {
         }
     }
     pub fn link_outputs<const I: usize, const O: usize>(&mut self, outputs: [usize; O]) {
-        for i in 0..O {
+        for (i, b) in outputs.into_iter().enumerate() {
             let a = i + I + 1;
-            let b = outputs[i];
             Self::execute::<Equality, 2, 2, 0>(self, [a, b]);
         }
     }
@@ -193,7 +191,7 @@ impl<const MAX_IO: usize> StructureBuilder<MAX_IO> {
             let constraint: Constraint<usize, MAX_IO> = constraint;
             let Constraint { io, len, selector } = constraint;
             for i in 0..len {
-                io_matrices[i].push_row_single_value(io[0]);
+                io_matrices[i].push_row_single_value(io[i]);
             }
             // let selector = Self::bit_decomposition::<S>(selector);
 
@@ -236,14 +234,13 @@ impl<const MAX_IO: usize> ConstraintSystem for StructureBuilder<MAX_IO> {
         G: Gate<IO, I, O> + 'static,
     {
         let mut io = [0; MAX_IO];
-        for i in 0..I {
-            io[i] = inputs[i];
-        }
-        let selector = self.registry.selector::<G, IO, I, O>();
+        io[..I].copy_from_slice(&inputs[..I]);
+
         let output = [(); O].map(|_| self.var());
-        for i in 0..O {
-            io[i + I] = output[i];
-        }
+        io[I..(I + O)].copy_from_slice(&output[..O]);
+
+        let selector = self.registry.selector::<G, IO, I, O>();
+
         let constraint = Constraint {
             io,
             len: IO,
@@ -295,11 +292,11 @@ impl<T: Display> Display for MultiSet<T> {
                 write!(f, "v{i}")?;
             }
         }
-        writeln!(f, "")
+        writeln!(f)
     }
 }
 
-impl<T: Ord> Mul<Self> for MultiSet<T> {
+/*impl<T: Ord> Mul<Self> for MultiSet<T> {
     type Output = Self;
 
     fn mul(mut self, rhs: Self) -> Self::Output {
@@ -308,7 +305,7 @@ impl<T: Ord> Mul<Self> for MultiSet<T> {
         }
         self
     }
-}
+}*/
 
 impl<T: Ord + Clone> Exp<T> {
     pub fn map<V, F>(self, f: &F) -> Exp<V>

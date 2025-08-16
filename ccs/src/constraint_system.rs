@@ -113,14 +113,18 @@ pub mod cs_prototype {
         next_selector: usize,
     }
 
-    impl GateRegistry {
-        pub fn new() -> Self {
-            GateRegistry {
-                gate_registry: BTreeMap::new(),
+    impl Default for GateRegistry {
+        fn default() -> Self {
+            let gate_registry = BTreeMap::new();
+            Self {
+                gate_registry,
                 //TODO: may reserve 0 for equality
                 next_selector: 0,
             }
         }
+    }
+
+    impl GateRegistry {
         pub fn selector<G, const IO: usize, const I: usize, const O: usize>(&mut self) -> usize
         where
             G: Any + Gate<IO, I, O>,
