@@ -1,13 +1,10 @@
-use crate::{
-    circuit_key::KeySparkStructure,
-    instances::{
-        lcs::{
-            key::LcsKey,
-            sumcheck_argument::{LcsMles, LcsSumcheck, SingleChall},
-            LcsInstance, LcsProver,
-        },
-        linearized::LinearizedInstance,
+use crate::instances::{
+    lcs::{
+        key::LcsReductionKey,
+        sumcheck_argument::{LcsMles, LcsSumcheck, SingleChall},
+        LcsInstance,
     },
+    linearized::LinearizedInstance,
 };
 use ark_ff::Field;
 use commit::{
@@ -16,7 +13,7 @@ use commit::{
     CommmitmentScheme, OpenInstance,
 };
 use sponge::sponge::Duplex;
-use std::usize;
+use std::marker::PhantomData;
 use sumcheck::{
     polynomials::{Evals, MultiPoint},
     sumcheck::{Sum, SumcheckFunction, SumcheckVerifier},
@@ -35,12 +32,14 @@ pub struct LcsReductionProof<F: Field, const IO: usize> {
     matrix_evals: [F; IO],
 }
 
-impl<F, C, const I: usize, const IO: usize> Reduction<F> for LcsProver<C, I, IO>
+pub struct LcsReduction<C, const I: usize, const IO: usize>(PhantomData<C>);
+
+impl<F, C, const I: usize, const IO: usize> Reduction<F> for LcsReduction<C, I, IO>
 where
     F: Field,
     C: CommmitmentScheme<F> + 'static,
 {
-    type Key = LcsKey<F, C, IO>;
+    type Key = LcsReductionKey<F, C, IO>;
 
     type A = LcsInstance<F, C, I>;
 
@@ -100,7 +99,7 @@ where
         // Create instance for evaluation of committed MLEs.
         let instance = transcript.receive_message_delayed(|proof| {
             let point = check_point.clone();
-            let commitments_and_evals = vec![(witness_commit.clone(), proof.witness_eval.clone())];
+            let commitments_and_evals = vec![(witness_commit.clone(), proof.witness_eval)];
             let dynamic_batch = BatchEval::new(point, commitments_and_evals);
             let structure_evals = proof.selector_evals.clone();
             StructuredBatchEval::new(dynamic_batch, structure_evals)
@@ -112,7 +111,7 @@ where
         let tr = transcript.new_guard(());
         let key = &key.committed_structure;
         // The reduction also outputs the claimed evals.
-        let (open, committed_evals) = CommittedStructure::verify_reduction(&key, instance, tr)?;
+        let (open, committed_evals) = CommittedStructure::verify_reduction(key, instance, tr)?;
 
         // Assembling different types of evals into a single one.
         let evals: LcsMles<F, IO, 4> = {
@@ -135,8 +134,7 @@ where
 
             let products = LcsMles::new_only_products(matrix_evals);
             let evals = products.combine(&evals, Option::xor);
-            let evals = LcsSumcheck::<F, IO, 4>::map_evals(evals, Option::unwrap);
-            evals
+            LcsSumcheck::<F, IO, 4>::map_evals(evals, Option::unwrap)
         };
 
         // Instance to be verified for the matrix evals.
@@ -144,14 +142,13 @@ where
             let products: [F; IO] = *evals.products();
             let u = F::one();
             let rx = check_point;
-            let l = LinearizedInstance {
+            LinearizedInstance {
                 witness_commit,
                 u,
                 public_inputs,
                 rx,
                 products,
-            };
-            l
+            }
         };
 
         let evals: LcsMles<F, IO, 4> = evals;

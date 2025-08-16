@@ -1,20 +1,13 @@
-use crate::{
-    circuit_key::{CircuitKey, KeySparkStructure},
-    instances::matrix_eval::BatchMatrixEvalInstance,
-    Error,
-};
+use crate::{circuit_key::CircuitKey, instances::matrix_eval::BatchMatrixEvalInstance, Error};
 use ark_ff::Field;
 use commit::{CommmitmentScheme, OpenInstance};
 use spark::committed_spark::{CommittedSpark, CommittedSparkInstance, CommittedSparkProof};
 use sponge::sponge::Duplex;
-use std::marker::PhantomData;
+use std::{marker::PhantomData, rc::Rc};
 use transcript::{
     protocols::{Protocol, Reduction},
     MessageGuard, TranscriptGuard,
 };
-
-// type SparkProof<F> = sumcheck::sumcheck::Proof<F, SparkEvalCheck<2>>;
-// type SparkVerifier<F> = SumcheckVerifier<F, SparkEvalCheck<2>>;
 
 impl<F: Field, T: Duplex<F>, C, CS: CommmitmentScheme<F>, const IO: usize, const S: usize>
     CircuitKey<F, T, C, CS, IO, S>
@@ -119,8 +112,11 @@ impl<F: Field, T: Duplex<F>, C, CS: CommmitmentScheme<F>, const IO: usize, const
         Ok(true)
     }*/
 }
-struct MatrixEvalProtocol<F, K, CS, const IO: usize>(PhantomData<(F, K, CS)>);
-struct MatrixEvalProof<F, CS, const IO: usize>
+
+pub(crate) struct MatrixEvalProtocol<F, CS, const IO: usize>(PhantomData<(F, CS)>);
+
+#[derive(Clone, Debug)]
+pub(crate) struct MatrixEvalProof<F, CS, const IO: usize>
 where
     F: Field,
     CS: CommmitmentScheme<F>,
@@ -129,16 +125,19 @@ where
     open_proofs: [CS::OpenProof; IO],
 }
 
-impl<K, F, CS, const IO: usize> Protocol<F> for MatrixEvalProtocol<F, K, CS, IO>
+pub struct Key<F: Field, CS: CommmitmentScheme<F>, const IO: usize = 0> {
+    pub spark_keys: [CommittedSpark<F, CS, 2>; IO],
+    pub pcs: Rc<CS>,
+}
+
+impl<F, CS, const IO: usize> Protocol<F> for MatrixEvalProtocol<F, CS, IO>
 where
     F: Field,
-    //TODO: check
     CS: CommmitmentScheme<F> + 'static,
-    K: KeySparkStructure<F, CS, IO>,
 {
     type Instance = BatchMatrixEvalInstance<F, IO>;
 
-    type Key = K;
+    type Key = Key<F, CS, IO>;
 
     type Proof = MatrixEvalProof<F, CS, IO>;
 
@@ -176,7 +175,7 @@ where
 
             let proof = spark_proofs.next().unwrap();
 
-            let key = &key.spark_keys()[i];
+            let key = &key.spark_keys[i];
             let reduced =
                 CommittedSpark::verify_reduction(key, instance, transcript.new_guard(proof))?;
 
@@ -195,7 +194,7 @@ where
         // different point.
         // Should be batched, but also spark will be batched making this not an issue.
         for instance in open_instances {
-            let scheme = key.pcs();
+            let scheme = &key.pcs;
             let instance = MessageGuard::new(instance);
             let proof: MessageGuard<CS::OpenProof> = open_proofs.next().unwrap();
 

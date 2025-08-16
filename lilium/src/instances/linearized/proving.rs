@@ -1,13 +1,10 @@
-use crate::{
-    circuit_key::KeySparkStructure,
-    instances::{
-        eval_input_selector, eval_ux,
-        linearized::{
-            sumcheck_argument::{LinearizedMles, LinearizedSumcheck, SingleChall},
-            LinearizedInstance,
-        },
-        matrix_eval::BatchMatrixEvalInstance,
+use crate::instances::{
+    eval_input_selector, eval_ux,
+    linearized::{
+        sumcheck_argument::{LinearizedMles, LinearizedSumcheck, SingleChall},
+        LinearizedInstance,
     },
+    matrix_eval::BatchMatrixEvalInstance,
 };
 use ark_ff::Field;
 use commit::{CommmitmentScheme, OpenInstance};
@@ -68,8 +65,8 @@ where
     }
 }
 */
-pub(crate) struct LinearizedInstanceReduction<F, K, CS, const I: usize, const IO: usize>(
-    PhantomData<(F, K, CS)>,
+pub(crate) struct LinearizedInstanceReduction<F, CS, const I: usize, const IO: usize>(
+    PhantomData<(F, CS)>,
 );
 
 #[derive(Debug, Clone)]
@@ -81,12 +78,11 @@ pub struct LinearizedProof<F: Field, const IO: usize> {
 
 type Sumcheck<F, const IO: usize> = SumcheckVerifier<F, LinearizedSumcheck<IO>>;
 
-impl<F, K, CS, const I: usize, const IO: usize> Reduction<F>
-    for LinearizedInstanceReduction<F, K, CS, I, IO>
+impl<F, CS, const I: usize, const IO: usize> Reduction<F>
+    for LinearizedInstanceReduction<F, CS, I, IO>
 where
     F: Field,
     CS: CommmitmentScheme<F> + 'static,
-    K: KeySparkStructure<F, CS, IO>,
 {
     type A = LinearizedInstance<F, CS, I, IO>;
 
@@ -95,7 +91,7 @@ where
         OpenInstance<F, CS::Commitment>,
     );
 
-    type Key = K;
+    type Key = super::Key<F, CS, IO>;
 
     type Proof = LinearizedProof<F, IO>;
 
@@ -126,7 +122,7 @@ where
             products,
         } = instance;
 
-        let n_vars = key.domain_vars();
+        let n_vars = key.domain_vars;
 
         // Starting from 0 as expected from the zero check for
         // the inputs.
@@ -152,10 +148,10 @@ where
 
         // Get claimed unverfied evals of each matrix in (rx, open_point), to
         // be checked later as one of the instances produced in this reduction.
-        let (matrix_evals, []) = transcript.receive_message(|proof| proof.matrix_evals.clone())?;
+        let (matrix_evals, []) = transcript.receive_message(|proof| proof.matrix_evals)?;
         let matrix_evals = matrix_evals.map(|x| x.0);
         // Evals M(rx,r) * w(r)
-        let products = matrix_evals.clone().map(|m| m * w_eval);
+        let products = matrix_evals.map(|m| m * w_eval);
         let r_eq = r_eq.eval_as_eq(&open_point);
         let ux_eval = eval_ux(&vars, u, &public_inputs);
         let input_selector = eval_input_selector(&open_point, public_inputs.len());

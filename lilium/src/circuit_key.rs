@@ -51,10 +51,9 @@ where
             SparkMatrix::<F>::new(evals)
         });
         let committment_scheme = CS::new(8);
-        let spark_commitments = spark_structure.each_ref().map(|s| {
-            let commitment = CommittedSpark::new(s, &committment_scheme);
-            commitment
-        });
+        let spark_commitments = spark_structure
+            .each_ref()
+            .map(|s| CommittedSpark::new(s, &committment_scheme));
 
         // This assumes IO is selected properly, which should be fine as it
         // can be higher than needed but not lower.

@@ -1,39 +1,97 @@
+use super::reduction::LcsReductionProof;
 use crate::{
-    circuit_key::KeySparkStructure,
-    instances::lcs::{LcsInstance, LcsProver},
+    instances::{
+        lcs::{key::LcsProvingKey, reduction::LcsReduction, LcsInstance, LcsProver},
+        linearized::proving::{LinearizedInstanceReduction, LinearizedProof},
+    },
+    proving::matrix_eval::{MatrixEvalProof, MatrixEvalProtocol},
 };
 use ark_ff::Field;
 use commit::CommmitmentScheme;
-use transcript::{protocols::Protocol, MessageGuard, TranscriptBuilder, TranscriptGuard};
+use transcript::{
+    protocols::{Protocol, Reduction},
+    MessageGuard, TranscriptBuilder, TranscriptGuard,
+};
 
-impl<F, K, C, const I: usize, const IO: usize> Protocol<F> for LcsProver<K, C, I, IO>
+pub struct LcsProof<F: Field, C: CommmitmentScheme<F>, const IO: usize> {
+    reduction_proof: LcsReductionProof<F, IO>,
+    linearized_proof: LinearizedProof<F, IO>,
+    matrix_eval_proof: MatrixEvalProof<F, C, IO>,
+    open_proofs: [C::Proof; 2],
+}
+
+impl<F, C, const I: usize, const IO: usize> Protocol<F> for LcsProver<C, I, IO>
 where
     F: Field,
-    C: CommmitmentScheme<F>,
-    K: KeySparkStructure<F, C, IO>,
+    C: CommmitmentScheme<F> + 'static,
 {
-    type Key = K;
+    type Key = LcsProvingKey<F, C, IO>;
 
     //TODO: add input size
-    type Instance = LcsInstance<F, C, 5>;
+    type Instance = LcsInstance<F, C, I>;
 
-    type Proof = ();
+    type Proof = LcsProof<F, C, IO>;
 
     type Error = ();
 
     fn transcript_pattern(builder: TranscriptBuilder<F>) -> TranscriptBuilder<F> {
-        todo!()
+        builder
+            .add_reduction_patter::<LcsReduction<C, I, IO>>()
+            .add_reduction_patter::<LinearizedInstanceReduction<F, C, I, IO>>()
+            .add_protocol_patter::<MatrixEvalProtocol<F, C, IO>>()
+            .add_protocol_patter::<C>()
+            .add_protocol_patter::<C>()
     }
 
-    fn prove(instance: Self::Instance) -> Self::Proof {
+    fn prove(_instance: Self::Instance) -> Self::Proof {
         todo!()
     }
 
     fn verify<S: sponge::sponge::Duplex<F>>(
         key: &Self::Key,
         instance: MessageGuard<Self::Instance>,
-        tanscript: TranscriptGuard<F, S, Self::Proof>,
+        mut transcript: TranscriptGuard<F, S, Self::Proof>,
     ) -> Result<(), Self::Error> {
-        todo!()
+        let lcs_reduction_proof =
+            transcript.receive_message_delayed(|proof| proof.reduction_proof.clone());
+        let reduced = LcsReduction::verify_reduction(
+            &key.lcs_reduction_key,
+            instance,
+            transcript.new_guard(lcs_reduction_proof),
+        )
+        .unwrap();
+        let (linearized_instance, open_instance1) = reduced;
+
+        let linearized_instance = MessageGuard::new(linearized_instance);
+        let linearized_proof =
+            transcript.receive_message_delayed(|proof| proof.linearized_proof.clone());
+        let proof = linearized_proof;
+        let reduced = LinearizedInstanceReduction::verify_reduction(
+            &key.linearized_reduction_key,
+            linearized_instance,
+            transcript.new_guard(proof),
+        )
+        .unwrap();
+        let (matrix_eval_instance, open_instance2) = reduced;
+
+        let matrix_eval_instance = MessageGuard::new(matrix_eval_instance);
+        let proof = transcript.receive_message_delayed(|proof| proof.matrix_eval_proof.clone());
+        MatrixEvalProtocol::verify(
+            &key.matrix_eval_key,
+            matrix_eval_instance,
+            transcript.new_guard(proof),
+        )
+        .unwrap();
+
+        let scheme = &key.pcs;
+
+        let proof = transcript.receive_message_delayed(|proof| proof.open_proofs[0].clone());
+        let instance = MessageGuard::new(open_instance1);
+        C::verify(scheme, instance, transcript.new_guard(proof)).unwrap();
+
+        let proof = transcript.receive_message_delayed(|proof| proof.open_proofs[1].clone());
+        let instance = MessageGuard::new(open_instance2);
+        C::verify(scheme, instance, transcript.new_guard(proof)).unwrap();
+        Ok(())
     }
 }

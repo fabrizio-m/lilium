@@ -1,5 +1,6 @@
 use ark_ff::Field;
 use commit::CommmitmentScheme;
+use std::marker::PhantomData;
 use sumcheck::polynomials::MultiPoint;
 use transcript::{params::ParamResolver, Message};
 
@@ -19,6 +20,13 @@ pub struct LinearizedInstance<F: Field, C: CommmitmentScheme<F>, const I: usize,
     pub rx: MultiPoint<F>,
     /// the sum of the resulting vector from each matrix multiplication
     pub products: [F; IO],
+}
+
+pub struct Key<F: Field, C: CommmitmentScheme<F>, const IO: usize> {
+    // spark_structure: [SparkMatrix<F>; IO],
+    // spark_keys: [CommittedSpark<F, C, 2>; IO],
+    domain_vars: usize,
+    _phantom: PhantomData<(F, C)>,
 }
 
 impl<F, C, const I: usize, const IO: usize> Message<F> for LinearizedInstance<F, C, I, IO>
