@@ -35,13 +35,22 @@ where
             inner: self.inner.clone(),
             var_map: self.var_map.clone(),
             chall_map: self.chall_map.clone(),
-            message_len: self.message_len.clone(),
+            message_len: self.message_len,
             accumulator_init: self.accumulator_init.clone(),
         }
     }
 }
 
 type Var<F, S> = VarOrChall<<S as SumcheckFunction<F>>::Idx, <S as SumcheckFunction<F>>::ChallIdx>;
+
+impl<F: Field, S> Default for SumcheckEvaluator<F, S>
+where
+    S: SumcheckFunction<F>,
+{
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 impl<F: Field, S> SumcheckEvaluator<F, S>
 where
@@ -77,6 +86,7 @@ where
     /// `u8` -> `Var<F,S>`.
     /// Also adds an extra `MvIr::Add` instruction at the end to accumulate the result
     /// into some previous result present at the start of the stack.
+    #[allow(clippy::type_complexity)]
     fn transpile(
         program: &[MvIr<F, Var<F, S>>],
     ) -> (
@@ -172,7 +182,7 @@ pub struct EvalAccumulator<'a, F: Field, S>(&'a mut SumcheckEvaluator<F, S>)
 where
     S: SumcheckFunction<F>;
 
-impl<'a, F: Field, S> EvalAccumulator<'a, F, S>
+impl<F: Field, S> EvalAccumulator<'_, F, S>
 where
     S: SumcheckFunction<F>,
 {

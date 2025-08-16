@@ -45,6 +45,7 @@ impl Sub<&Self> for Degree {
 impl Mul for Degree {
     type Output = Degree;
 
+    #[allow(clippy::suspicious)]
     fn mul(self, rhs: Self) -> Self::Output {
         let Degree(a) = self;
         let Degree(b) = rhs;

@@ -9,7 +9,7 @@ impl<T: Evals<V> + Copy, V, const N: usize> Evals<V> for [T; N] {
     }
 
     fn combine<C: Fn(V, V) -> V>(&self, other: &Self, f: C) -> Self {
-        let mut res: [T; N] = self.clone();
+        let mut res: [T; N] = *self;
         for i in 0..N {
             res[i] = self[i].combine(&other[i], &f);
         }

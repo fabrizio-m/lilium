@@ -18,13 +18,12 @@ pub(crate) struct BarycentricWeights<F: Field> {
 impl<F: Field> BarycentricWeights<F> {
     /// computes the weights for the inplicit domain 0..n
     pub(crate) fn compute(degree: u32) -> Self {
-        let domain: Vec<F> = (0..=degree).into_iter().map(F::from).collect();
+        let domain: Vec<F> = (0..=degree).map(F::from).collect();
         let neg_domain: Vec<F> = domain.iter().cloned().map(|x| -x).collect();
         let degree = degree as usize;
 
         let mut weights = Vec::with_capacity(degree + 1);
-        for i in 0..=degree {
-            let x = &domain[i];
+        for (i, x) in domain[0..=degree].iter().enumerate() {
             let weight = neg_domain
                 .iter()
                 .enumerate()

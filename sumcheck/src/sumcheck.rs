@@ -157,7 +157,7 @@ impl<F: Field, SF: SumcheckFunction<F>> Clone for Proof<F, SF> {
     fn clone(&self) -> Self {
         Self {
             messages: self.messages.clone(),
-            _f: self._f.clone(),
+            _f: self._f,
         }
     }
 }

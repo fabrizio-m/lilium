@@ -84,7 +84,7 @@ where
     /// Turn terms into trees
     fn build_nodes(terms: Vec<Term<F, V>>) -> Vec<EvalTree<F, V>> {
         let (degree_1, rest): (_, Vec<Term<F, V>>) =
-            terms.to_vec().into_iter().partition(|t| t.0.degree() == 1);
+            terms.into_iter().partition(|t| t.0.degree() == 1);
         let mut nodes: Vec<EvalTree<F, V>> = degree_1
             .into_iter()
             .map(|x: Term<F, V>| {
@@ -135,7 +135,7 @@ where
     fn count_vars(terms: &[Term<F, V>]) -> BTreeMap<V, usize> {
         let mut var_count = BTreeMap::new();
         for term in terms {
-            for (var, _) in &term.0.vars {
+            for var in term.0.vars.keys() {
                 let var: V = var.clone();
                 let var_count = var_count.entry(var).or_insert(0);
                 *var_count += 1;

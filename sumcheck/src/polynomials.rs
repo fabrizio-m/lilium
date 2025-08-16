@@ -126,7 +126,6 @@ pub trait EvalsExt<F: Field>: Evals<F> + Sized {
     // subset of the evaluations are needed.
     /// Fast iterative O(n) evaluation.
     fn eval(mles: &[Self], point: MultiPoint<F>) -> Self {
-        let point = point;
         use std::iter::Iterator;
         assert_eq!(
             mles.len().ilog2() as usize,
@@ -220,9 +219,9 @@ pub mod simple_eval {
         }
 
         fn combine<C: Fn(V, V) -> V>(&self, other: &Self, f: C) -> Self {
-            let mut res = self.0.clone();
-            for i in 0..N {
-                res[i] = f(res[i], other.0[i]);
+            let mut res = self.0;
+            for (i, res) in res.iter_mut().enumerate() {
+                *res = f(*res, other.0[i]);
             }
             Self(res)
         }

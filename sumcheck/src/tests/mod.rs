@@ -27,9 +27,7 @@ where
     let mut resolver = ParamResolver::new();
     resolver.set::<DegreeParam>(degree);
     let transcript_builder = TranscriptBuilder::new(vars, resolver);
-    let transcript_descriptor =
-        SumcheckVerifier::<F, SF>::transcript_pattern(transcript_builder).finish();
-    transcript_descriptor
+    SumcheckVerifier::<F, SF>::transcript_pattern(transcript_builder).finish()
 }
 
 /// Creates a prove with the mle and tries to verify it.
@@ -52,9 +50,7 @@ where
     let mut transcript = transcript_desc.instanciate();
     let check = {
         let transcript = TranscriptGuard::new(&mut transcript, proof);
-
-        let check = SumcheckVerifier::verify_reduction(&verifier, instance, transcript).unwrap();
-        check
+        SumcheckVerifier::verify_reduction(&verifier, instance, transcript).unwrap()
     };
     transcript.finish().unwrap();
 

@@ -36,7 +36,7 @@ impl<F: Field> Message<F> {
         //as x is 0..d multiplication is unnecessary
         for _ in 0..=degree {
             message.push(last + eval_at_0);
-            last = last + diff;
+            last += diff;
         }
         Message(message)
     }
@@ -175,7 +175,7 @@ impl<'a, E, C> MessageEnv<'a, E, C> {
     }
 }
 
-impl<'a, I1, I2, F, E, C> Env<F, Message<F>, I1, I2> for MessageEnv<'a, E, C>
+impl<I1, I2, F, E, C> Env<F, Message<F>, I1, I2> for MessageEnv<'_, E, C>
 where
     I1: Copy,
     F: Field,
@@ -185,8 +185,7 @@ where
     fn get(&self, i: I1) -> Message<F> {
         let e0 = self.evals_left.index(i);
         let e1 = self.evals_right.index(i);
-        let message = Message::new_degree_n(*e0, *e1, self.degree);
-        message
+        Message::new_degree_n(*e0, *e1, self.degree)
     }
     fn get_chall(&self, chall_idx: I2) -> Message<F> {
         let chall = self.challs[chall_idx];

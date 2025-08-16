@@ -56,6 +56,7 @@ impl<V: Eq + Ord + Clone> MvPolyTerm<V> {
 impl<V: Eq + Clone + Ord> Mul for &MvPolyTerm<V> {
     type Output = MvPolyTerm<V>;
 
+    #[allow(clippy::suspicious)]
     fn mul(self, rhs: Self) -> Self::Output {
         let mut product: BTreeMap<V, usize> = self.vars.clone();
         for (var, power) in rhs.vars.iter() {
@@ -89,6 +90,7 @@ where
 {
     type Output = Self;
 
+    #[allow(clippy::suspicious)]
     fn mul(self, rhs: Self) -> Self::Output {
         let mut product = MvPoly::default();
         for (lterm, lconst) in self.terms.into_iter() {

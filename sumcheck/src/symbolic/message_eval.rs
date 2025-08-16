@@ -88,7 +88,7 @@ fn eval<F: Field>(e0: F, e1: F, stack: &mut Vec<F>, message_len: usize) {
     for e in evals {
         let e: &mut F = e;
         *e += last;
-        last = last + diff;
+        last += diff;
     }
 }
 
@@ -151,7 +151,7 @@ impl<F: Field> MessageEvaluator<F, u8> {
     /// Eval leaving the result as the only elements in the stack.
     /// Before call, variables should be set, and stack must be empty.
     pub(crate) fn eval(&mut self) {
-        let mut stack = &mut self.stack;
+        let stack = &mut self.stack;
         let mut coeffs = self.coefficients.iter();
         let message_len = self.message_len;
         let memory = &self.vars;
@@ -161,15 +161,15 @@ impl<F: Field> MessageEvaluator<F, u8> {
             let instruction: &Instruction<u8> = instruction;
             match instruction {
                 Instruction::Add => {
-                    let [left, right] = pop_2(&mut stack, message_len);
-                    for (a, b) in left.into_iter().zip(right) {
-                        *a += b;
+                    let [left, right] = pop_2(stack, message_len);
+                    for (a, b) in left.iter_mut().zip(right) {
+                        a.add_assign(b)
                     }
                     stack.truncate(stack.len() - message_len);
                 }
                 Instruction::Mul => {
-                    let [left, right] = pop_2(&mut stack, message_len);
-                    for (a, b) in left.into_iter().zip(right) {
+                    let [left, right] = pop_2(stack, message_len);
+                    for (a, b) in left.iter_mut().zip(right) {
                         *a *= b;
                     }
                     stack.truncate(stack.len() - message_len);
@@ -193,7 +193,7 @@ impl<F: Field> MessageEvaluator<F, u8> {
                 Instruction::Eval => {
                     let e1 = stack.pop().unwrap();
                     let e0 = stack.pop().unwrap();
-                    eval(e0, e1, &mut stack, message_len);
+                    eval(e0, e1, stack, message_len);
                 }
                 Instruction::EvalWithCoeff => {
                     let coeff: &F = coeffs.next().unwrap();
@@ -201,12 +201,12 @@ impl<F: Field> MessageEvaluator<F, u8> {
                     let mut e0 = stack.pop().unwrap();
                     e0 *= coeff;
                     e1 *= coeff;
-                    eval(e0, e1, &mut stack, message_len);
+                    eval(e0, e1, stack, message_len);
                 }
                 Instruction::AddCoeff => {
                     let coeff: &F = coeffs.next().unwrap();
-                    let [_, right] = pop_2(&mut stack, message_len);
-                    for x in right.into_iter() {
+                    let [_, right] = pop_2(stack, message_len);
+                    for x in right.iter_mut() {
                         *x += coeff;
                     }
                 }
