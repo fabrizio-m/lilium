@@ -117,6 +117,14 @@ pub trait SumcheckFunction<F: Field> {
         M: Fn(A) -> B;
     ///computes the arbitrary degree polynomial as a function of multilinear polynomials
     fn function<V: Var<F>, E: Env<F, V, Self::Idx, Self::ChallIdx>>(env: E) -> V;
+    // TODO: unify both methods and make everything symbolic.
+    /// Same as `Self::function` but allows runtime configuration through `&self`.
+    fn symbolic_function<V: Var<F>, E: Env<F, V, Self::Idx, Self::ChallIdx>>(
+        &self,
+        _env: E,
+    ) -> Option<V> {
+        None
+    }
 }
 
 pub fn sumcheck_degree<F: Field, SF: SumcheckFunction<F>>() -> usize {
