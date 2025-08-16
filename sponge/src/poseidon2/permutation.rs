@@ -12,6 +12,7 @@ pub trait InternalMatrix<F: Field, const N: usize> {
 }
 
 /// Poseidon2 permutation
+#[derive(Debug)]
 pub struct PoseidonPermutation<
     F,
     const S: usize,
@@ -29,6 +30,26 @@ pub struct PoseidonPermutation<
     external_first_half: [[F; S]; HER],
     internal_constants: [F; IR],
     external_second_half: [[F; S]; HER],
+}
+
+impl<
+        F: Default,
+        const S: usize,
+        E: Default,
+        I: Default,
+        const HER: usize,
+        const IR: usize,
+        const SBOX: u8,
+    > Default for PoseidonPermutation<F, S, E, I, HER, IR, SBOX>
+where
+    F: Field,
+    E: ExternalMatrix<F, S>,
+    I: InternalMatrix<F, S>,
+    F: PrimeField,
+{
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl<F, const S: usize, E, I, const HER: usize, const IR: usize, const SBOX: u8>

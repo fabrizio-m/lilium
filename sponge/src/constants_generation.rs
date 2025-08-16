@@ -1,7 +1,7 @@
 use crate::grain::Grain;
 use ark_ff::{BigInteger, PrimeField};
 use automata::FiniteAutomaton;
-use std::{cmp::Ordering, marker::PhantomData, u16, u64};
+use std::{cmp::Ordering, marker::PhantomData};
 
 pub enum Field {
     Prime,
@@ -32,7 +32,7 @@ fn bound<const N: usize>(x: u16) {
 }
 
 impl PoseidonEncoding {
-    fn to_init(self) -> (u64, u16) {
+    fn into_init(self) -> (u64, u16) {
         let mut low = 0u64;
         let Self {
             field,
@@ -106,7 +106,7 @@ impl FiniteAutomaton for BitMachine {
     type Output = bool;
 
     fn init(init: Self::Init) -> Self {
-        let init = init.to_init();
+        let init = init.into_init();
         let mut grain = Grain::init(init);
         // discard first 160
         for _ in 0..160 {
@@ -119,11 +119,8 @@ impl FiniteAutomaton for BitMachine {
         loop {
             let first = self.grain.transition_mut(());
             let second = self.grain.transition_mut(());
-            match first {
-                true => {
-                    return second;
-                }
-                false => {}
+            if first {
+                return second;
             }
         }
     }
@@ -174,11 +171,8 @@ impl FiniteAutomaton for FieldMachine {
 
     fn transition_mut(&mut self, _input: Self::Input) -> Self::Output {
         loop {
-            match self.try_field() {
-                Some(x) => {
-                    return x;
-                }
-                None => {}
+            if let Some(x) = self.try_field() {
+                return x;
             }
         }
     }
@@ -290,7 +284,6 @@ impl<F: PrimeField> ConstantGenerator<F> {
     pub fn constant(&mut self) -> F {
         let bits = self.machine.transition_mut(());
         //shouldn't fail
-        let constant = F::from_bigint(F::BigInt::from_bits_be(&bits)).unwrap();
-        constant
+        F::from_bigint(F::BigInt::from_bits_be(&bits)).unwrap()
     }
 }

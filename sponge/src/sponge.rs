@@ -10,9 +10,12 @@ pub(crate) enum Pattern {
     Absorb(u32),
     Squeeze(u32),
 }
+
+#[derive(Debug, Default)]
 pub struct SpongeBuilder {
     pattern: Vec<Pattern>,
 }
+
 // duplex sponge
 pub struct Sponge<F: Field, P: Permutation<F, T>, const R: usize, const C: usize, const T: usize> {
     pattern: Vec<Pattern>,
@@ -127,8 +130,7 @@ impl SpongeBuilder {
         let n = F::from(elems.len() as u32);
         state[0] += n;
         let mut i = 1;
-        let mut elems = elems.iter();
-        while let Some(elem) = elems.next() {
+        for elem in elems.iter() {
             if i == R {
                 permutation.permute_mut(&mut state);
                 i = 0;
@@ -297,7 +299,7 @@ where
         let pattern = init.pattern.clone();
         //TODO: avoiding this may prove desirable in the future
         let permutation = P::new();
-        let state = init.state.clone();
+        let state = init.state;
         Sponge {
             pattern,
             running_pattern: vec![],
