@@ -65,7 +65,7 @@ impl<V: Copy> Evals<V> for DimensionEval<V> {
 
     fn index(&self, index: Self::Idx) -> &V {
         match index {
-            DimensionIndex::Lookup(lookup_idx) => &self.lookup.index(lookup_idx),
+            DimensionIndex::Lookup(lookup_idx) => self.lookup.index(lookup_idx),
             DimensionIndex::EqEval => &self.eq_eval,
             DimensionIndex::Dimension => &self.dimension_index,
             DimensionIndex::EqLookup => &self.eq_lookups,
@@ -122,11 +122,10 @@ impl<V: Copy, const D: usize> Evals<V> for SparkEval<V, D> {
     type Idx = SparkIndex;
 
     fn combine<C: Fn(V, V) -> V>(&self, other: &Self, f: C) -> Self {
-        let mut dimensions = self.dimensions.clone();
-        for i in 0..D {
-            let dim = dimensions[i];
+        let mut dimensions = self.dimensions;
+        for (i, dim) in dimensions.iter_mut().enumerate() {
             let comb = dim.combine(&other.dimensions[i], &f);
-            dimensions[i] = comb;
+            *dim = comb;
         }
         let normal_index = f(self.normal_index, other.normal_index);
         let val = f(self.val, other.val);
@@ -144,7 +143,7 @@ impl<V: Copy, const D: usize> Evals<V> for SparkEval<V, D> {
 
     fn index(&self, index: Self::Idx) -> &V {
         match index {
-            SparkIndex::Dimension(i, dim) => &self.dimensions[i].index(dim),
+            SparkIndex::Dimension(i, dim) => self.dimensions[i].index(dim),
             SparkIndex::NormalIndex => &self.normal_index,
             SparkIndex::Val => &self.val,
             SparkIndex::ZeroEq => &self.zero_eq,
@@ -246,7 +245,6 @@ impl<F: Field> DimensionEval<F> {
             .zip(lookup)
             .zip(&structure.lookups_field)
             .map(|x| {
-                let x = x;
                 let (((eq_eval, eq_lookups), lookup), dimension_index) = x;
                 Self {
                     lookup,
@@ -331,8 +329,7 @@ impl<F: Field, const D: usize> SparkEval<F, D> {
         let dimensions = structure.dimensions.each_ref().map(|struc| {
             let normal_index = &structure.normal_index;
             let point = points.next().unwrap();
-            let evals = DimensionEval::evals(point, struc, &normal_index, &challenges);
-            evals
+            DimensionEval::evals(point, struc, normal_index, &challenges)
         });
 
         let zero_eq = eq::eq(&zero_check_point);
@@ -343,10 +340,10 @@ impl<F: Field, const D: usize> SparkEval<F, D> {
             .normal_index
             .iter()
             .zip(&structure.val)
-            .zip(zero_eq.into_iter())
+            .zip(zero_eq)
             .map(|x| {
                 let ((normal_index, val), zero_eq) = x;
-                let dimensions = (&mut d).each_mut().map(|x| x.next().unwrap());
+                let dimensions = d.each_mut().map(|x| x.next().unwrap());
                 SparkEval {
                     normal_index: *normal_index,
                     val: *val,

@@ -78,10 +78,7 @@ impl<F: Field, const D: usize> SparkStructure<F, D> {
         let dimensions = counts
             .into_iter()
             .zip(lookups)
-            .map(|(counts, lookups)| {
-                let dim = DimensionStructure::new(counts, lookups);
-                dim
-            })
+            .map(|(counts, lookups)| DimensionStructure::new(counts, lookups))
             .collect::<Vec<_>>()
             .try_into()
             .unwrap();
