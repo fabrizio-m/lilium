@@ -29,10 +29,10 @@ fn sample_poly<F: Field, R: Rng>(rng: &mut R) -> Vec<(usize, F)> {
     while non_zero_elements.len() < len {
         let key: usize = rng.gen();
         let key = key % (len * len);
-        if !non_zero_elements.contains_key(&key) {
+        non_zero_elements.entry(key).or_insert_with(|| {
             let eval: F = F::rand(rng);
-            non_zero_elements.insert(key, eval);
-        }
+            eval
+        });
     }
     non_zero_elements.into_iter().collect()
 }
@@ -51,7 +51,7 @@ fn dense_poly<F: Field>(samples: &[(usize, F)]) -> Vec<SingleEval<F>> {
 /// being mostly a collection of smaller dense polynomials.
 fn sparse_poly<F: Field>(samples: &[(usize, F)]) -> SparkStructure<F, 2> {
     let evals = samples
-        .into_iter()
+        .iter()
         .map(|(index, val)| {
             let i_low = index & ((1 << HALF_VARS) - 1);
             let i_high = index >> HALF_VARS;

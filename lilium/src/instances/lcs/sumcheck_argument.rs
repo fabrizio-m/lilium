@@ -134,7 +134,7 @@ impl<V: Clone + Copy, const IO: usize, const S: usize> Evals<V> for LcsMles<V, I
     }
 
     fn combine<C: Fn(V, V) -> V>(&self, other: &Self, f: C) -> Self {
-        let mut products = self.products.clone();
+        let mut products = self.products;
         products.iter_mut().zip(other.products).for_each(|(a, b)| {
             *a = f(*a, b);
         });
@@ -143,7 +143,7 @@ impl<V: Clone + Copy, const IO: usize, const S: usize> Evals<V> for LcsMles<V, I
         let inputs = f(self.inputs, other.inputs);
         let input_selector = f(self.input_selector, other.input_selector);
 
-        let mut gate_selectors = self.gate_selectors.clone();
+        let mut gate_selectors = self.gate_selectors;
         gate_selectors
             .iter_mut()
             .zip(other.gate_selectors)
@@ -278,7 +278,7 @@ impl<F: Field, const IO: usize, const S: usize> SumcheckFunction<F> for LcsSumch
         let w = env.get(Index::W);
 
         let inputs_check = {
-            ///TODO: may not be needed
+            //TODO: may not be needed
             let inputs = env.get(Index::Inputs);
             let input_selec = env.get(Index::InputsSelector);
             // equality enforced with the public inputs in the

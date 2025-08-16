@@ -64,7 +64,7 @@ impl<V: Clone + Copy, const IO: usize> Evals<V> for LinearizedMles<V, IO> {
     }
 
     fn combine<C: Fn(V, V) -> V>(&self, other: &Self, f: C) -> Self {
-        let mut products = self.products.clone();
+        let mut products = self.products;
         products.iter_mut().zip(other.products).for_each(|(a, b)| {
             *a = f(*a, b);
         });

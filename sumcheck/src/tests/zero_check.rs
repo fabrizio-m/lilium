@@ -64,12 +64,11 @@ fn test<F: Field>() {
     let zero_eq = crate::eq::eq(&zero_check_point);
 
     let mut evals = vec![];
-    for i in 0..EVALS {
+    for zero in zero_eq.iter().take(EVALS) {
         let a = elem();
         let b = elem();
         let c = a * b;
-        let zero = zero_eq[i];
-        let eval = [zero, a, b, c];
+        let eval = [*zero, a, b, c];
         evals.push(SimpleEval::new(eval));
     }
 

@@ -41,7 +41,6 @@ fn high_degree<R: Rng>(rng: &mut R) -> Poly {
 fn full_poly<R: Rng>(rng: &mut R) -> Poly {
     let init = high_degree(rng);
     (0..20)
-        .into_iter()
         .map(|_| high_degree(rng))
         .fold(init, |acc, t| acc + t)
 }

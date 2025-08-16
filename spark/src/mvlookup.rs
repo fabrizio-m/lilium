@@ -234,8 +234,7 @@ mod test {
             let comb_chall = env.get_chall(ChallIdx::CombinationChallenge);
             let checks = c1.0;
             let checks = (checks * comb_chall.clone()) + c2.0;
-            let checks = (checks * comb_chall) + c3.0;
-            checks
+            (checks * comb_chall) + c3.0
         }
 
         fn map_evals<A, B, M>(evals: Self::Mles<A>, f: M) -> Self::Mles<B>
