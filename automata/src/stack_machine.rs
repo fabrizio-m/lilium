@@ -47,7 +47,7 @@ impl<'a, S: StackMachine> PopableStack<'a, S> {
 /// expected.
 pub struct End(());
 
-impl<'a, T, const N: usize> PushableStack<'a, T, N> {
+impl<T, const N: usize> PushableStack<'_, T, N> {
     /// Pushes N elements, gives back `End` needed to return from transition.
     pub fn push(self, elems: [T; N]) -> End {
         self.stack.extend(elems);
@@ -55,12 +55,11 @@ impl<'a, T, const N: usize> PushableStack<'a, T, N> {
     }
 }
 
-impl<'a, T> Input<'a, T> {
+impl<T> Input<'_, T> {
     /// Take an input element
     pub fn take(self) -> T {
         // There should always be enough input
-        let elem = self.input.next().expect("no more input");
-        elem
+        self.input.next().expect("no more input")
     }
 }
 
@@ -79,7 +78,7 @@ pub trait StackMachine: Sized {
     /// same time determining how many elements will be pushed.
     /// Finally, this function must return `End`, which can only be obtained
     /// by pushing the defined number of elements.
-    fn transition<'a>(instruction: &Self::Instruction, stack: PopableStack<'a, Self>) -> End;
+    fn transition(instruction: &Self::Instruction, stack: PopableStack<Self>) -> End;
     /// Runs instructions, returning final stack.
     fn run_program(
         program: &[Self::Instruction],
