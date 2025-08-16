@@ -19,10 +19,7 @@ fn curve_equation_rhs<C: SWCurveConfig>(x: F<C>) -> F<C> {
 }
 
 fn is_square<F: Field>(x: F) -> bool {
-    match x.legendre() {
-        ark_ff::LegendreSymbol::QuadraticResidue => true,
-        _ => false,
-    }
+    matches!(x.legendre(), ark_ff::LegendreSymbol::QuadraticResidue)
 }
 
 fn check_z<C: SWCurveConfig>(z_candidate: F<C>) -> bool {
@@ -48,11 +45,7 @@ fn check_z<C: SWCurveConfig>(z_candidate: F<C>) -> bool {
     } else {
         let z_half = (-z) / F::<C>::from(2_u8);
         let gz_half = curve_equation_rhs::<C>(z_half);
-        if is_square(gz_half) {
-            true
-        } else {
-            false
-        }
+        is_square(gz_half)
     }
 }
 fn find_z<C: SWCurveConfig>() -> Option<F<C>> {
@@ -82,12 +75,19 @@ where
     C::BaseField: Debug,
 {
     fn clone(&self) -> Self {
-        Self { z: self.z.clone() }
+        Self { z: self.z }
     }
 }
 
 fn sgn0_is_even<F: PrimeField>(x: F) -> bool {
     x.into_bigint().is_even()
+}
+
+impl<C: SWCurveConfig> Default for SvdwMap<C> {
+    fn default() -> Self {
+        let z = find_z::<C>().unwrap();
+        Self { z }
+    }
 }
 
 impl<C: SWCurveConfig> SvdwMap<C>
@@ -98,6 +98,7 @@ where
         let z = find_z::<C>().unwrap();
         Self { z }
     }
+
     pub fn map(&self, u: F<C>) -> Affine<C> {
         let [one, two, three, four] = [1_u8, 2, 3, 4].map(F::<C>::from);
         let z = self.z;
