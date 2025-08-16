@@ -95,7 +95,7 @@ where
         assert_eq!(structure_evals.len(), key.structure.len());
 
         let evals = PointEvals {
-            instance: commitments_and_evals.iter().map(|x| x.1.clone()).collect(),
+            instance: commitments_and_evals.iter().map(|x| x.1).collect(),
             structure: structure_evals.clone(),
         };
 
@@ -105,7 +105,7 @@ where
         let mut iter = commitments_and_evals.into_iter();
         let first: (S::Commitment, F) = iter.next().unwrap();
 
-        let (commit, eval) = iter.into_iter().chain(structure).fold(first, |acc, e| {
+        let (commit, eval) = iter.chain(structure).fold(first, |acc, e| {
             let (commit, eval) = acc;
             let commit = commit * chall + &e.0;
             let eval = eval * chall + eval;

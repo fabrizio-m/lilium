@@ -47,7 +47,7 @@ where
         let mut iter = commitments_and_evals.into_iter();
         let first = iter.next().unwrap();
 
-        let (commit, eval) = iter.into_iter().fold(first, |acc, e| {
+        let (commit, eval) = iter.fold(first, |acc, e| {
             let (commit, eval) = acc;
             let commit = commit * chall + &e.0;
             let eval = eval * chall + eval;

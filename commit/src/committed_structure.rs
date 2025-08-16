@@ -109,7 +109,7 @@ where
             mles.len(),
             "unexpected number of mles to commit to"
         );
-        let commitments = mles.into_iter().map(|mle| scheme.commit_mle(mle)).collect();
+        let commitments = mles.iter().map(|mle| scheme.commit_mle(mle)).collect();
         MultiCommit {
             commitments,
             _f: PhantomData,
@@ -119,9 +119,8 @@ where
     /// Filter for instance mles, a zero is added just to match the types.
     fn instance_evals_filter() -> SF::Mles<(F, bool)> {
         let kinds = SF::KINDS;
-        let evals = SF::map_evals(kinds, |kind| match kind {
-            EvalKind::Committed(CommitType::Instance) => true,
-            _ => false,
+        let evals = SF::map_evals(kinds, |kind| {
+            matches!(kind, EvalKind::Committed(CommitType::Instance))
         });
         SF::map_evals(evals, |x| (F::zero(), x))
     }
@@ -189,14 +188,12 @@ where
 
     /// Combines committed mles into a single one using the challenge provided.
     fn combine_mles(mles: &[SF::Mles<F>], chall: F) -> Vec<F> {
-        let strucutre_filter = SF::map_evals(SF::KINDS, |kind| match kind {
-            EvalKind::Committed(CommitType::Structure) => true,
-            _ => false,
+        let strucutre_filter = SF::map_evals(SF::KINDS, |kind| {
+            matches!(kind, EvalKind::Committed(CommitType::Structure))
         });
         let structure_filter: Vec<bool> = strucutre_filter.flatten_vec();
-        let instance_filter = SF::map_evals(SF::KINDS, |kind| match kind {
-            EvalKind::Committed(CommitType::Structure) => true,
-            _ => false,
+        let instance_filter = SF::map_evals(SF::KINDS, |kind| {
+            matches!(kind, EvalKind::Committed(CommitType::Structure))
         });
         let instance_filter: Vec<bool> = instance_filter.flatten_vec();
 

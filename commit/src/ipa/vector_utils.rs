@@ -53,7 +53,7 @@ pub fn challenge_combinations<F: Field>(challs: &[F], challs_inv: &[F]) -> Vec<F
 pub fn combine_rec<F: Field>(flips: &[F], zero: F, vec: &mut [F]) {
     assert!(vec.len().is_power_of_two());
     let half_len = vec.len() / 2;
-    if flips.len() == 0 {
+    if flips.is_empty() {
         vec[0] = zero;
     } else {
         let (low, high) = vec.split_at_mut(half_len);
