@@ -25,6 +25,7 @@ impl<F: Field> Message<F> {
     pub(crate) fn new(evals: Vec<F>) -> Self {
         Self(evals)
     }
+
     pub(crate) fn new_degree_n(eval_at_0: F, eval_at_1: F, degree: usize) -> Self {
         assert!(degree >= 1, "degree should be >= 0");
         // e0, e1
@@ -40,6 +41,7 @@ impl<F: Field> Message<F> {
         }
         Message(message)
     }
+
     pub(crate) fn degree(&self) -> usize {
         self.0.len() - 1
     }

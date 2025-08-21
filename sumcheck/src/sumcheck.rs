@@ -192,9 +192,11 @@ where
             evaluator,
         }
     }
+
     fn degree() -> usize {
         sumcheck_degree::<F, SF>()
     }
+
     fn message(&self, mle: &[SF::Mles<F>], challs: &SF::Challs) -> Message<F> {
         let half_len = mle.len() / 2;
         let (left, right) = mle.split_at(half_len);
@@ -210,6 +212,7 @@ where
         }
         message
     }
+
     fn message_symbolic(&self, mle: &[SF::Mles<F>], challs: &SF::Challs) -> Message<F> {
         let half_len = mle.len() / 2;
         let (left, right) = mle.split_at(half_len);
@@ -221,6 +224,7 @@ where
         }
         Message::new(accumulator.finish())
     }
+
     pub fn prove<D: Duplex<F>>(
         &self,
         transcript: &mut Transcript<F, D>,
@@ -244,6 +248,7 @@ where
             _f: PhantomData,
         })
     }
+
     pub fn prove_symbolic<D: Duplex<F>>(
         &self,
         transcript: &mut Transcript<F, D>,
