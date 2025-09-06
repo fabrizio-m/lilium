@@ -6,7 +6,7 @@ use std::{
     cmp::Ordering,
     collections::BTreeMap,
     fmt::Display,
-    ops::{Add, Mul, Sub},
+    ops::{Add, Index, Mul, Sub},
 };
 
 ///with key being the variable and the value the number of times it appears (or its exponent)
@@ -57,6 +57,14 @@ impl Matrix {
             }
         }
         evals
+    }
+}
+
+impl Index<usize> for Matrix {
+    type Output = [usize];
+
+    fn index(&self, index: usize) -> &Self::Output {
+        &self.rows[index]
     }
 }
 

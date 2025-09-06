@@ -1,6 +1,9 @@
-use crate::constraint_system::{ConstraintSystem, Gate, Var};
+use crate::{
+    constraint_system::{ConstraintSystem, Gate, Var},
+    structure::Matrix,
+};
 use ark_ff::Field;
-use std::ops::{Add, Mul, Sub};
+use std::ops::{Add, Index, Mul, Sub};
 
 #[derive(Clone, Copy)]
 /// `Field` wrapper which implements `Var`.
@@ -98,4 +101,80 @@ impl<F: Field, const MAX_IO: usize> WitnessGenerator<F, MAX_IO> {
 
 pub fn unwrap_output<F: Field, const O: usize>(o: [Fi<F>; O]) -> [F; O] {
     o.map(|x| x.0)
+}
+
+/// Representation of all linear combinations from N tables.
+/// Can be used to compute linear combinations with a witness.
+pub struct LinearCombinations<const N: usize> {
+    /// As length-value sequences
+    combinations: Vec<usize>,
+}
+
+impl<const N: usize> LinearCombinations<N> {
+    pub fn from_tables(matrices: [&Matrix; N]) -> Self {
+        let mut combinations = vec![];
+        let len = matrices[0].len();
+        for matrix in matrices {
+            //TODO: Maybe allow skiping empty rows
+            assert_eq!(matrix.len(), len);
+        }
+        for i in 0..len {
+            for matrix in matrices {
+                let row = &matrix[i];
+                combinations.push(row.len());
+                combinations.extend_from_slice(row);
+            }
+        }
+
+        Self { combinations }
+    }
+
+    /// Compute linear combinations with given witness.
+    pub fn compute<'a, F>(&'a self, witness: &'a [F]) -> WitnessLcIter<'a, F, N> {
+        WitnessLcIter {
+            combinations: self,
+            witness,
+            next: 0,
+        }
+    }
+}
+
+impl<const N: usize> Index<usize> for LinearCombinations<N> {
+    type Output = usize;
+
+    fn index(&self, index: usize) -> &Self::Output {
+        &self.combinations[index]
+    }
+}
+
+/// Iterator over rows of linear combinations
+pub struct WitnessLcIter<'a, F, const N: usize> {
+    combinations: &'a LinearCombinations<N>,
+    witness: &'a [F],
+    next: usize,
+}
+
+impl<F, const N: usize> Iterator for WitnessLcIter<'_, F, N>
+where
+    F: Field,
+{
+    type Item = [F; N];
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let mut i = self.next;
+        let _ = self.combinations.combinations.get(i)?;
+
+        let mut res = [F::zero(); N];
+        for c in res.iter_mut() {
+            let n = self.combinations[i];
+            i += 1;
+            for _ in 0..n {
+                c.add_assign(self.witness[self.combinations[i]]);
+                i += 1;
+            }
+        }
+        self.next = i;
+
+        Some(res)
+    }
 }
