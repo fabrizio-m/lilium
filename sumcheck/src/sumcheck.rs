@@ -36,6 +36,8 @@ pub trait Var<F: Field>:
 {
 }
 
+type SumcheckResult<T> = Result<T, crate::SumcheckError>;
+
 // TODO: With symbolic evaluation now available, Env can move into a
 // concrete type supportting only symbolic expressions. And all other
 // environments be replaced with expression evaluation algorithms.
@@ -230,10 +232,10 @@ where
         transcript: &mut Transcript<F, D>,
         mle: Vec<SF::Mles<F>>,
         challs: &SF::Challs,
-    ) -> Result<Proof<F, SF>, SumcheckError> {
+    ) -> SumcheckResult<(Proof<F, SF>, SF::Mles<F>)> {
         let mut messages = Vec::with_capacity(self.vars);
 
-        let _ = (0..self.vars).try_fold(mle, |mle, _| {
+        let mles = (0..self.vars).try_fold(mle, |mle, _| {
             let mle: Vec<SF::Mles<F>> = mle;
             let m = self.message(&mle, challs);
             let [var] = transcript
@@ -242,11 +244,16 @@ where
             messages.push(m);
             Ok(EvalsExt::fix_var(mle, var))
         })?;
+        debug_assert_eq!(mles.len(), 1);
+        let evals = mles[0].clone();
 
-        Ok(Proof {
-            messages,
-            _f: PhantomData,
-        })
+        Ok((
+            Proof {
+                messages,
+                _f: PhantomData,
+            },
+            evals,
+        ))
     }
 
     pub fn prove_symbolic<D: Duplex<F>>(
@@ -254,7 +261,7 @@ where
         transcript: &mut Transcript<F, D>,
         mle: Vec<SF::Mles<F>>,
         challs: &SF::Challs,
-    ) -> Result<Proof<F, SF>, SumcheckError> {
+    ) -> SumcheckResult<Proof<F, SF>> {
         let mut messages = Vec::with_capacity(self.vars);
 
         let _ = (0..self.vars).try_fold(mle, |mle, _| {
@@ -298,12 +305,7 @@ impl<F: Field, SF: SumcheckFunction<F>> SumcheckVerifier<F, SF> {
     }
     /// Verifies sumcheck, leaving it up to the caller to evaluate the polynomial
     /// in the point r and check that c = P(r) for Ok(c) the return value
-    pub fn verify(
-        &self,
-        r: &MultiPoint<F>,
-        proof: Proof<F, SF>,
-        sum: F,
-    ) -> Result<F, SumcheckError> {
+    pub fn verify(&self, r: &MultiPoint<F>, proof: Proof<F, SF>, sum: F) -> SumcheckResult<F> {
         assert_eq!(self.vars, r.vars());
         let Proof { messages, _f } = proof;
         let mut point = r.clone();

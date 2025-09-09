@@ -112,7 +112,7 @@ fn test<F: Field>() {
     // instanciating the transcript for the prover
     let mut transcript: Transcript<F, TestSponge<F>> = transcript_desc.instanciate();
     // making a proof
-    let proof = prover.prove(&mut transcript, mle.clone(), challs).unwrap();
+    let (proof, _) = prover.prove(&mut transcript, mle.clone(), challs).unwrap();
     // finishing transcript as it is no longer used
     transcript.finish().unwrap();
 
