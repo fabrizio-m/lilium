@@ -36,7 +36,7 @@ pub trait Var<F: Field>:
 {
 }
 
-type SumcheckResult<T> = Result<T, crate::SumcheckError>;
+//type SumcheckResult<T> = Result<T, crate::SumcheckError>;
 
 // TODO: With symbolic evaluation now available, Env can move into a
 // concrete type supportting only symbolic expressions. And all other
@@ -180,6 +180,18 @@ impl<F: Field, SF: SumcheckFunction<F>> transcript::Message<F> for Proof<F, SF> 
     }
 }
 
+pub struct ProverOutput<F, SF>
+where
+    F: Field,
+    SF: SumcheckFunction<F>,
+{
+    /// Point where to evaluate the sumcheck polynomial.
+    pub point: MultiPoint<F>,
+    pub proof: Proof<F, SF>,
+    /// Evaluation of each MLE in the point.
+    pub evals: SF::Mles<F>,
+}
+
 impl<F, SF> SumcheckProver<F, SF>
 where
     F: Field,
@@ -232,9 +244,10 @@ where
         transcript: &mut Transcript<F, D>,
         mle: Vec<SF::Mles<F>>,
         challs: &SF::Challs,
-    ) -> SumcheckResult<(Proof<F, SF>, SF::Mles<F>)> {
+    ) -> Result<ProverOutput<F, SF>, SumcheckError> {
         let mut messages = Vec::with_capacity(self.vars);
 
+        let mut vars = vec![];
         let mles = (0..self.vars).try_fold(mle, |mle, _| {
             let mle: Vec<SF::Mles<F>> = mle;
             let m = self.message(&mle, challs);
@@ -242,18 +255,24 @@ where
                 .send_message(&m)
                 .map_err(SumcheckError::TranscriptError)?;
             messages.push(m);
+            vars.push(var);
             Ok(EvalsExt::fix_var(mle, var))
         })?;
+
+        let point = MultiPoint::new(vars);
         debug_assert_eq!(mles.len(), 1);
         let evals = mles[0].clone();
 
-        Ok((
-            Proof {
-                messages,
-                _f: PhantomData,
-            },
+        let proof = Proof {
+            messages,
+            _f: PhantomData,
+        };
+
+        Ok(ProverOutput {
+            point,
+            proof,
             evals,
-        ))
+        })
     }
 
     pub fn prove_symbolic<D: Duplex<F>>(
@@ -261,22 +280,34 @@ where
         transcript: &mut Transcript<F, D>,
         mle: Vec<SF::Mles<F>>,
         challs: &SF::Challs,
-    ) -> SumcheckResult<Proof<F, SF>> {
+    ) -> Result<ProverOutput<F, SF>, SumcheckError> {
         let mut messages = Vec::with_capacity(self.vars);
 
-        let _ = (0..self.vars).try_fold(mle, |mle, _| {
+        let mut vars = vec![];
+        let mles = (0..self.vars).try_fold(mle, |mle, _| {
             let mle: Vec<SF::Mles<F>> = mle;
             let m = self.message_symbolic(&mle, challs);
             let [var] = transcript
                 .send_message(&m)
                 .map_err(SumcheckError::TranscriptError)?;
             messages.push(m);
+            vars.push(var);
             Ok(EvalsExt::fix_var(mle, var))
         })?;
 
-        Ok(Proof {
+        let point = MultiPoint::new(vars);
+        debug_assert_eq!(mles.len(), 1);
+        let evals = mles[0].clone();
+
+        let proof = Proof {
             messages,
             _f: PhantomData,
+        };
+
+        Ok(ProverOutput {
+            point,
+            proof,
+            evals,
         })
     }
 }
@@ -305,7 +336,12 @@ impl<F: Field, SF: SumcheckFunction<F>> SumcheckVerifier<F, SF> {
     }
     /// Verifies sumcheck, leaving it up to the caller to evaluate the polynomial
     /// in the point r and check that c = P(r) for Ok(c) the return value
-    pub fn verify(&self, r: &MultiPoint<F>, proof: Proof<F, SF>, sum: F) -> SumcheckResult<F> {
+    pub fn verify(
+        &self,
+        r: &MultiPoint<F>,
+        proof: Proof<F, SF>,
+        sum: F,
+    ) -> Result<F, SumcheckError> {
         assert_eq!(self.vars, r.vars());
         let Proof { messages, _f } = proof;
         let mut point = r.clone();

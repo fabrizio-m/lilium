@@ -42,7 +42,10 @@ where
 
     let prover = SumcheckProver::<F, SF>::new(vars);
     let mut transcript: Transcript<F, TestSponge<F>> = transcript_desc.instanciate();
-    let (proof, _) = prover.prove(&mut transcript, mle.clone(), &challs).unwrap();
+    let proof = prover
+        .prove(&mut transcript, mle.clone(), &challs)
+        .unwrap()
+        .proof;
     transcript.finish().unwrap();
 
     let instance = MessageGuard::new(Sum(sum));
