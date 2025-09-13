@@ -96,6 +96,21 @@ impl<V, const IO: usize, const S: usize> LcsMles<V, IO, S> {
             gate_selectors: [None; S],
         }
     }
+
+    pub fn set_instance_witness_evals(
+        &mut self,
+        products: [V; IO],
+        r_eq: V,
+        w: V,
+        inputs: Option<V>,
+    ) {
+        self.products = products;
+        self.r_eq = r_eq;
+        self.w = w;
+        if let Some(inputs) = inputs {
+            self.inputs = inputs;
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, PartialOrd, Eq, Ord)]
@@ -213,6 +228,7 @@ const fn kinds<const IO: usize, const S: usize>() -> LcsMles<EvalKind, IO, S> {
 }
 
 #[derive(Debug, Default, Clone, Copy)]
+//TODO: get from sumcheck crate
 pub struct SingleChall<F>(F);
 
 impl<F> From<F> for SingleChall<F> {
