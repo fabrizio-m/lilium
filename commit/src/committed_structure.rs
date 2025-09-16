@@ -44,6 +44,20 @@ where
     _f: PhantomData<SF>,
 }
 
+impl<F, SF, CS> MultiCommit<F, SF, CS>
+where
+    F: Field,
+    SF: SumcheckFunction<F>,
+    CS: CommmitmentScheme<F>,
+{
+    pub fn new_empty() -> Self {
+        Self {
+            commitments: vec![],
+            _f: PhantomData,
+        }
+    }
+}
+
 impl<F, SF, CS> CommittedStructure<F, SF, CS>
 where
     F: Field,

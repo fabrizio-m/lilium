@@ -5,6 +5,7 @@ use crate::{
 use ark_ff::Field;
 use sponge::sponge::Duplex;
 use std::marker::PhantomData;
+use sumcheck::polynomials::MultiPoint;
 use transcript::{protocols::Reduction, Message, MessageGuard, TranscriptBuilder, TranscriptGuard};
 
 /// To batch many open instances and redeuce them into a single one, additionally
@@ -27,6 +28,14 @@ pub struct StructuredBatchEval<F: Field, S: CommmitmentScheme<F>> {
 
 impl<F: Field, S: CommmitmentScheme<F>> StructuredBatchEval<F, S> {
     pub fn new(dynamic_batch: BatchEval<F, S>, structure_evals: Vec<F>) -> Self {
+        Self {
+            dynamic_batch,
+            structure_evals,
+        }
+    }
+
+    pub fn new_only_strucutre(structure_evals: Vec<F>, point: MultiPoint<F>) -> Self {
+        let dynamic_batch = BatchEval::new(point, vec![]);
         Self {
             dynamic_batch,
             structure_evals,
