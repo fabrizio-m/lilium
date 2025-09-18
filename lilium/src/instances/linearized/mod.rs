@@ -1,35 +1,45 @@
 use ark_ff::Field;
-use commit::CommmitmentScheme;
-use std::marker::PhantomData;
+use commit::{committed_structure::CommittedStructure, CommmitmentScheme};
 use sumcheck::polynomials::MultiPoint;
 use transcript::{params::ParamResolver, Message};
+
+use crate::instances::lcs::LcsSumcheck;
 
 pub mod proving;
 pub mod sumcheck_argument;
 
 /// A linearized committed ccs instance
-pub struct LinearizedInstance<F: Field, C: CommmitmentScheme<F>, const I: usize, const IO: usize> {
+pub struct LinearizedInstance<
+    F: Field,
+    C: CommmitmentScheme<F>,
+    const I: usize,
+    const IO: usize,
+    const S: usize,
+> {
     /// C = commit(w) such that z = (u,x,w), with x = public_inputs
     pub witness_commit: C::Commitment,
-    /// first element of the vector to be multiplied with the matrices, formed
+    /// First element of the vector to be multiplied with the matrices, formed
     /// by this, the public inputs and the witness. It's 1 in trivial cases.
     pub u: F,
     /// x
     pub public_inputs: [F; I],
-    /// random point eq(rx,y) to indirectly eval the matrices.
+    /// Random point eq(rx,y) to indirectly eval the matrices.
     pub rx: MultiPoint<F>,
-    /// the sum of the resulting vector from each matrix multiplication
+    /// The sum of the resulting vector from each matrix multiplication.
     pub products: [F; IO],
+    /// Evals of selectors to be checked.
+    pub selector_evals: [F; S],
 }
 
-pub struct Key<F: Field, C: CommmitmentScheme<F>, const IO: usize> {
+pub struct Key<F: Field, C: CommmitmentScheme<F>, const IO: usize, const S: usize> {
     // spark_structure: [SparkMatrix<F>; IO],
     // spark_keys: [CommittedSpark<F, C, 2>; IO],
     domain_vars: usize,
-    _phantom: PhantomData<(F, C)>,
+    selector_commitments: CommittedStructure<F, LcsSumcheck<F, IO, S>, C>,
 }
 
-impl<F, C, const I: usize, const IO: usize> Message<F> for LinearizedInstance<F, C, I, IO>
+impl<F, C, const I: usize, const IO: usize, const S: usize> Message<F>
+    for LinearizedInstance<F, C, I, IO, S>
 where
     F: Field,
     C: CommmitmentScheme<F>,

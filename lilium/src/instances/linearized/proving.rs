@@ -1,5 +1,6 @@
 use crate::instances::{
     eval_input_selector, eval_ux,
+    lcs::LcsSumcheck,
     linearized::{
         sumcheck_argument::{LinearizedMles, LinearizedSumcheck, SingleChall},
         LinearizedInstance,
@@ -7,7 +8,10 @@ use crate::instances::{
     matrix_eval::BatchMatrixEvalInstance,
 };
 use ark_ff::Field;
-use commit::{CommmitmentScheme, OpenInstance};
+use commit::{
+    batching::structured::StructuredBatchEval, committed_structure::CommittedStructure,
+    CommmitmentScheme, OpenInstance,
+};
 use std::marker::PhantomData;
 use sumcheck::{
     polynomials::MultiPoint,
@@ -65,9 +69,13 @@ where
     }
 }
 */
-pub(crate) struct LinearizedInstanceReduction<F, CS, const I: usize, const IO: usize>(
-    PhantomData<(F, CS)>,
-);
+pub(crate) struct LinearizedInstanceReduction<
+    F,
+    CS,
+    const I: usize,
+    const IO: usize,
+    const S: usize,
+>(PhantomData<(F, CS)>);
 
 #[derive(Debug, Clone)]
 pub struct LinearizedProof<F: Field, const IO: usize> {
@@ -78,20 +86,20 @@ pub struct LinearizedProof<F: Field, const IO: usize> {
 
 type Sumcheck<F, const IO: usize> = SumcheckVerifier<F, LinearizedSumcheck<IO>>;
 
-impl<F, CS, const I: usize, const IO: usize> Reduction<F>
-    for LinearizedInstanceReduction<F, CS, I, IO>
+impl<F, CS, const I: usize, const IO: usize, const S: usize> Reduction<F>
+    for LinearizedInstanceReduction<F, CS, I, IO, S>
 where
     F: Field,
     CS: CommmitmentScheme<F> + 'static,
 {
-    type A = LinearizedInstance<F, CS, I, IO>;
+    type A = LinearizedInstance<F, CS, I, IO, S>;
 
     type B = (
         BatchMatrixEvalInstance<F, IO>,
-        OpenInstance<F, CS::Commitment>,
+        [OpenInstance<F, CS::Commitment>; 2],
     );
 
-    type Key = super::Key<F, CS, IO>;
+    type Key = super::Key<F, CS, IO, S>;
 
     type Proof = LinearizedProof<F, IO>;
 
@@ -108,10 +116,10 @@ where
             .round::<[SingleElement<F>; IO], 0>()
     }
 
-    fn verify_reduction<S: sponge::sponge::Duplex<F>>(
+    fn verify_reduction<D: sponge::sponge::Duplex<F>>(
         key: &Self::Key,
         instance: transcript::MessageGuard<Self::A>,
-        mut transcript: transcript::TranscriptGuard<F, S, Self::Proof>,
+        mut transcript: transcript::TranscriptGuard<F, D, Self::Proof>,
     ) -> Result<Self::B, Self::Error> {
         let (instance, [chall]) = transcript.unwrap_guard(instance)?;
         let LinearizedInstance {
@@ -120,6 +128,7 @@ where
             public_inputs,
             rx,
             products,
+            selector_evals,
         } = instance;
 
         let n_vars = key.domain_vars;
@@ -164,13 +173,31 @@ where
         }
 
         // rx was given by the instance, and the second dimension results from sumcheck.
-        let point = [rx, MultiPoint::new(vars)];
+        let point = [rx.clone(), MultiPoint::new(vars)];
+
+        // Proving evaluations of selectors at rx.
+        let structure_open_instance: StructuredBatchEval<F, CS> =
+            StructuredBatchEval::new_only_strucutre(selector_evals.to_vec(), rx);
+        let instance = MessageGuard::new(structure_open_instance);
+        //TODO: handle
+        let (open_instance_2, evals) =
+            CommittedStructure::<F, LcsSumcheck<F, IO, S>, CS>::verify_reduction(
+                &key.selector_commitments,
+                instance,
+                transcript.new_guard(()),
+            )
+            .unwrap();
+
+        for i in 0..S {
+            debug_assert_eq!(evals.products()[i].unwrap(), selector_evals[i]);
+        }
+
         Ok((
             BatchMatrixEvalInstance {
                 matrix_evals,
                 point,
             },
-            open_instance,
+            [open_instance, open_instance_2],
         ))
     }
 }
