@@ -112,6 +112,7 @@ where
             .round::<Self::A, 1>()
             .point()
             .add_reduction_patter::<Sumcheck<F, IO>>()
+            .add_reduction_patter::<CommittedStructure<F, LcsSumcheck<F, IO, S>, CS>>()
             .round::<SingleElement<F>, 0>()
             .round::<[SingleElement<F>; IO], 0>()
     }
@@ -150,37 +151,12 @@ where
         )?;
         let PolyEvalCheck { vars, eval } = reduced;
 
-        // this eval will have to be verified with the commitment
-        let (SingleElement(w_eval), []) = transcript.receive_message(|proof| proof.w_eval).unwrap();
-        let open_point = MultiPoint::new(vars.clone());
-        let open_instance = OpenInstance::new(witness_commit, open_point.clone(), w_eval);
-
-        // Get claimed unverfied evals of each matrix in (rx, open_point), to
-        // be checked later as one of the instances produced in this reduction.
-        let (matrix_evals, []) = transcript.receive_message(|proof| proof.matrix_evals)?;
-        let matrix_evals = matrix_evals.map(|x| x.0);
-        // Evals M(rx,r) * w(r)
-        let products = matrix_evals.map(|m| m * w_eval);
-        let r_eq = r_eq.eval_as_eq(&open_point);
-        let ux_eval = eval_ux(&vars, u, &public_inputs);
-        let input_selector = eval_input_selector(&open_point, public_inputs.len());
-        let evals = LinearizedMles::new(products, r_eq, w_eval, ux_eval, input_selector);
-
-        let chall = SingleChall(chall);
-        let checks = sumcheck_verifier.check_evals_at_r(evals, eval, &chall);
-        if !checks {
-            return Err(crate::Error::EvalCheck);
-        }
-
-        // rx was given by the instance, and the second dimension results from sumcheck.
-        let point = [rx.clone(), MultiPoint::new(vars)];
-
         // Proving evaluations of selectors at rx.
         let structure_open_instance: StructuredBatchEval<F, CS> =
-            StructuredBatchEval::new_only_strucutre(selector_evals.to_vec(), rx);
+            StructuredBatchEval::new_only_strucutre(selector_evals.to_vec(), rx.clone());
         let instance = MessageGuard::new(structure_open_instance);
         //TODO: handle
-        let (open_instance_2, evals) =
+        let (open_instance_rx, evals) =
             CommittedStructure::<F, LcsSumcheck<F, IO, S>, CS>::verify_reduction(
                 &key.selector_commitments,
                 instance,
@@ -192,12 +168,37 @@ where
             debug_assert_eq!(eval.unwrap(), selector_evals[i]);
         }
 
+        // this eval will have to be verified with the commitment
+        let (SingleElement(w_eval), []) = transcript.receive_message(|proof| proof.w_eval).unwrap();
+        let ry = MultiPoint::new(vars.clone());
+        let open_instance_ry = OpenInstance::new(witness_commit, ry.clone(), w_eval);
+
+        // Get claimed unverfied evals of each matrix in (rx, open_point), to
+        // be checked later as one of the instances produced in this reduction.
+        let (matrix_evals, []) = transcript.receive_message(|proof| proof.matrix_evals)?;
+        let matrix_evals = matrix_evals.map(|x| x.0);
+        // Evals M(rx,r) * w(r)
+        let products = matrix_evals.map(|m| m * w_eval);
+        let r_eq = r_eq.eval_as_eq(&ry);
+        let ux_eval = eval_ux(&vars, u, &public_inputs);
+        let input_selector = eval_input_selector(&ry, public_inputs.len());
+        let evals = LinearizedMles::new(products, r_eq, w_eval, ux_eval, input_selector);
+
+        let chall = SingleChall(chall);
+        let checks = sumcheck_verifier.check_evals_at_r(evals, eval, &chall);
+        if !checks {
+            return Err(crate::Error::EvalCheck);
+        }
+
+        // rx was given by the instance, and the second dimension results from sumcheck.
+        let point = [rx, ry];
+
         Ok((
             BatchMatrixEvalInstance {
                 matrix_evals,
                 point,
             },
-            [open_instance, open_instance_2],
+            [open_instance_rx, open_instance_ry],
         ))
     }
 }
