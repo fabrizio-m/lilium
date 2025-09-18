@@ -188,8 +188,8 @@ where
             )
             .unwrap();
 
-        for i in 0..S {
-            debug_assert_eq!(evals.products()[i].unwrap(), selector_evals[i]);
+        for (i, eval) in evals.gate_selectors().iter().enumerate() {
+            debug_assert_eq!(eval.unwrap(), selector_evals[i]);
         }
 
         Ok((
