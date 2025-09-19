@@ -5,8 +5,11 @@ use transcript::Message;
 
 mod key;
 mod reduction;
+mod reduction_proving;
 mod sumcheck_argument;
-mod verifying;
+pub mod verifying;
+
+pub(crate) use sumcheck_argument::LcsSumcheck;
 
 pub struct LcsInstance<F: Field, C: CommmitmentScheme<F>, const I: usize> {
     witness_commit: C::Commitment,

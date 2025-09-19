@@ -62,12 +62,24 @@ impl<V, const IO: usize, const S: usize> LcsMles<V, IO, S> {
         &self.products
     }
 
+    pub fn gate_selectors(&self) -> &[V; S] {
+        &self.gate_selectors
+    }
+
     /// Create eval with provided products and everything else set to `None`.
     pub fn new_only_products(products: [V; IO]) -> LcsMles<Option<V>, IO, S> {
         let products = products.map(Option::Some);
         LcsMles {
             products,
             ..LcsMles::default()
+        }
+    }
+
+    pub fn from_committed_evals(w: V, selector_evals: [V; S]) -> LcsMles<Option<V>, IO, S> {
+        LcsMles {
+            w: Some(w),
+            gate_selectors: selector_evals.map(Some),
+            ..Default::default()
         }
     }
 

@@ -37,7 +37,7 @@ where
     fn transcript_pattern(builder: TranscriptBuilder<F>) -> TranscriptBuilder<F> {
         builder
             .add_reduction_patter::<LcsReduction<C, I, IO>>()
-            .add_reduction_patter::<LinearizedInstanceReduction<F, C, I, IO>>()
+            .add_reduction_patter::<LinearizedInstanceReduction<F, C, I, IO, 4>>()
             .add_protocol_patter::<MatrixEvalProtocol<F, C, IO>>()
             .add_protocol_patter::<C>()
             .add_protocol_patter::<C>()
@@ -60,7 +60,7 @@ where
             transcript.new_guard(lcs_reduction_proof),
         )
         .unwrap();
-        let (linearized_instance, open_instance1) = reduced;
+        let linearized_instance = reduced;
 
         let linearized_instance = MessageGuard::new(linearized_instance);
         let linearized_proof =
@@ -72,7 +72,7 @@ where
             transcript.new_guard(proof),
         )
         .unwrap();
-        let (matrix_eval_instance, open_instance2) = reduced;
+        let (matrix_eval_instance, open_instances) = reduced;
 
         let matrix_eval_instance = MessageGuard::new(matrix_eval_instance);
         let proof = transcript.receive_message_delayed(|proof| proof.matrix_eval_proof.clone());
@@ -85,6 +85,7 @@ where
 
         let scheme = &key.pcs;
 
+        let [open_instance1, open_instance2] = open_instances;
         let proof = transcript.receive_message_delayed(|proof| proof.open_proofs[0].clone());
         let instance = MessageGuard::new(open_instance1);
         C::verify(scheme, instance, transcript.new_guard(proof)).unwrap();

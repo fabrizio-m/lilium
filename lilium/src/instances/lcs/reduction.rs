@@ -7,11 +7,7 @@ use crate::instances::{
     linearized::LinearizedInstance,
 };
 use ark_ff::Field;
-use commit::{
-    batching::{structured::StructuredBatchEval, BatchEval},
-    committed_structure::CommittedStructure,
-    CommmitmentScheme, OpenInstance,
-};
+use commit::{committed_structure::CommittedStructure, CommmitmentScheme};
 use sponge::sponge::Duplex;
 use std::marker::PhantomData;
 use sumcheck::{
@@ -27,7 +23,7 @@ use transcript::{
 #[derive(Debug, Clone)]
 pub struct LcsReductionProof<F: Field, const IO: usize> {
     sumcheck: sumcheck::sumcheck::Proof<F, LcsSumcheck<F, IO, 4>>,
-    selector_evals: Vec<F>,
+    selector_evals: [F; 4],
     witness_eval: F,
     matrix_evals: [F; IO],
 }
@@ -43,10 +39,7 @@ where
 
     type A = LcsInstance<F, C, I>;
 
-    type B = (
-        LinearizedInstance<F, C, I, IO>,
-        OpenInstance<F, C::Commitment>,
-    );
+    type B = LinearizedInstance<F, C, I, IO, 4>;
 
     type Proof = LcsReductionProof<F, IO>;
 
@@ -96,23 +89,6 @@ where
         // Point where to evaluate the sumcheck polynomial.
         let check_point = MultiPoint::new(check.vars.clone());
 
-        // Create instance for evaluation of committed MLEs.
-        let instance = transcript.receive_message_delayed(|proof| {
-            let point = check_point.clone();
-            let commitments_and_evals = vec![(witness_commit.clone(), proof.witness_eval)];
-            let dynamic_batch = BatchEval::new(point, commitments_and_evals);
-            let structure_evals = proof.selector_evals.clone();
-            StructuredBatchEval::new(dynamic_batch, structure_evals)
-        });
-
-        // Verify commitment's openings in the point. Reducing to a single
-        // opening instance.
-        let instance: MessageGuard<StructuredBatchEval<F, C>> = instance;
-        let tr = transcript.new_guard(());
-        let key = &key.committed_structure;
-        // The reduction also outputs the claimed evals.
-        let (open, committed_evals) = CommittedStructure::verify_reduction(key, instance, tr)?;
-
         // Assembling different types of evals into a single one.
         let evals: LcsMles<F, IO, 4> = {
             let small_evals: LcsMles<Option<F>, IO, 4> = LcsMles::<Option<F>, IO, 4>::small_evals(
@@ -121,9 +97,18 @@ where
                 public_inputs.to_vec(),
             );
 
+            // Committed evals provided by prover and verification deferred
+            // to the linearized instance.
+            let (selector_evals, []) =
+                transcript.receive_message(|proof| proof.selector_evals.map(SingleElement))?;
+            let (w_eval, []) =
+                transcript.receive_message(|proof| SingleElement(proof.witness_eval))?;
+            let committed_evals =
+                LcsMles::from_committed_evals(w_eval.0, selector_evals.map(SingleElement::inner));
+
             let evals = committed_evals.combine(&small_evals, Option::xor);
 
-            // Matrix evals are just received from the prover, a linearized instace
+            // Matrix evals are just received from the prover, a linearized instance
             // is create to verify them later.
             let (matrix_evals, []) = transcript.receive_message(|proof| {
                 let matrix_evals = proof.matrix_evals;
@@ -138,16 +123,18 @@ where
         };
 
         // Instance to be verified for the matrix evals.
-        let linearized_instance: LinearizedInstance<F, C, I, IO> = {
+        let linearized_instance: LinearizedInstance<F, C, I, IO, 4> = {
             let products: [F; IO] = *evals.products();
             let u = F::one();
             let rx = check_point;
+            let selector_evals = *evals.gate_selectors();
             LinearizedInstance {
                 witness_commit,
                 u,
                 public_inputs,
                 rx,
                 products,
+                selector_evals,
             }
         };
 
@@ -160,6 +147,6 @@ where
             return Err(crate::Error::EvalCheck);
         }
 
-        Ok((linearized_instance, open))
+        Ok(linearized_instance)
     }
 }
