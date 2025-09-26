@@ -7,7 +7,7 @@ use crate::instances::{
     linearized::LinearizedInstance,
 };
 use ark_ff::Field;
-use commit::{committed_structure::CommittedStructure, CommmitmentScheme};
+use commit::CommmitmentScheme;
 use sponge::sponge::Duplex;
 use std::marker::PhantomData;
 use sumcheck::{
@@ -50,7 +50,8 @@ where
             .round::<Self::A, 1>()
             .point()
             .add_reduction_patter::<SumcheckVerifier<F, LcsSumcheck<F, IO, 4>>>()
-            .add_reduction_patter::<CommittedStructure<F, LcsSumcheck<F, IO, 4>, C>>()
+            .round::<[SingleElement<F>; 4], 0>()
+            .round::<SingleElement<F>, 0>()
             .round::<[SingleElement<F>; IO], 0>()
     }
 
@@ -128,8 +129,10 @@ where
             let u = F::one();
             let rx = check_point;
             let selector_evals = *evals.gate_selectors();
+            let witness_eval = *evals.w();
             LinearizedInstance {
                 witness_commit,
+                witness_eval,
                 u,
                 public_inputs,
                 rx,
