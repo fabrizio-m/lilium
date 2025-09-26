@@ -9,7 +9,8 @@ use crate::instances::{
 };
 use ark_ff::Field;
 use commit::{
-    batching::structured::StructuredBatchEval, committed_structure::CommittedStructure,
+    batching::{structured::StructuredBatchEval, BatchEval},
+    committed_structure::CommittedStructure,
     CommmitmentScheme, OpenInstance,
 };
 use std::marker::PhantomData;
@@ -125,6 +126,7 @@ where
         let (instance, [chall]) = transcript.unwrap_guard(instance)?;
         let LinearizedInstance {
             witness_commit,
+            witness_eval,
             u,
             public_inputs,
             rx,
@@ -152,9 +154,11 @@ where
         let PolyEvalCheck { vars, eval } = reduced;
 
         // Proving evaluations of selectors at rx.
-        let structure_open_instance: StructuredBatchEval<F, CS> =
-            StructuredBatchEval::new_only_strucutre(selector_evals.to_vec(), rx.clone());
-        let instance = MessageGuard::new(structure_open_instance);
+        let dynamic_batch =
+            BatchEval::new(rx.clone(), vec![(witness_commit.clone(), witness_eval)]);
+        let committed_open_instance: StructuredBatchEval<F, CS> =
+            StructuredBatchEval::new(dynamic_batch, selector_evals.to_vec());
+        let instance = MessageGuard::new(committed_open_instance);
         //TODO: handle
         let (open_instance_rx, evals) =
             CommittedStructure::<F, LcsSumcheck<F, IO, S>, CS>::verify_reduction(

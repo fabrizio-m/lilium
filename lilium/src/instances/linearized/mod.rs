@@ -18,6 +18,7 @@ pub struct LinearizedInstance<
 > {
     /// C = commit(w) such that z = (u,x,w), with x = public_inputs
     pub witness_commit: C::Commitment,
+    pub witness_eval: F,
     /// First element of the vector to be multiplied with the matrices, formed
     /// by this, the public inputs and the witness. It's 1 in trivial cases.
     pub u: F,
@@ -51,10 +52,12 @@ where
 
     fn to_field_elements(&self) -> Vec<F> {
         let mut elems = self.witness_commit.to_field_elements();
+        elems.push(self.witness_eval);
         elems.push(self.u);
         elems.extend_from_slice(&self.public_inputs);
         elems.extend_from_slice(&self.rx.to_field_elements());
         elems.extend_from_slice(&self.products);
+        elems.extend_from_slice(&self.selector_evals);
         elems
     }
 }
