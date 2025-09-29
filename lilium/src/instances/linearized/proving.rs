@@ -22,54 +22,6 @@ use transcript::{
     instances::PolyEvalCheck, messages::SingleElement, protocols::Reduction, MessageGuard,
 };
 
-//TODO: use `CommittedStructure`
-
-/*
-struct LinearizedInstanceProver<F, K, CS, const I: usize, const IO: usize>(PhantomData<(F, K, CS)>);
-
-impl<F, K, CS, const I: usize, const IO: usize> Protocol<F>
-    for LinearizedInstanceProver<F, K, CS, I, IO>
-where
-    F: Field,
-    CS: CommmitmentScheme2<F> + 'static,
-    K: KeySparkStructure<F, CS, IO>,
-{
-    type Key = K;
-
-    type Instance = LinearizedInstance<F, CS, I, IO>;
-
-    type Proof = ();
-
-    type Error = ();
-
-    fn transcript_pattern(
-        builder: transcript::TranscriptBuilder<F>,
-    ) -> transcript::TranscriptBuilder<F> {
-        todo!()
-    }
-
-    fn prove(instance: Self::Instance) -> Self::Proof {
-        todo!()
-    }
-
-    fn verify<S: sponge::sponge::Duplex<F>>(
-        key: &Self::Key,
-        instance: transcript::MessageGuard<Self::Instance>,
-        mut transcript: transcript::TranscriptGuard<F, S, Self::Proof>,
-    ) -> Result<(), Self::Error> {
-        ///handle
-        let (instance, []) = transcript.unwrap_guard(instance).unwrap();
-        let LinearizedInstance {
-            witness_commit,
-            rx,
-            u,
-            public_inputs,
-            matrix_evals,
-        } = instance;
-        todo!()
-    }
-}
-*/
 pub(crate) struct LinearizedInstanceReduction<
     F,
     CS,
