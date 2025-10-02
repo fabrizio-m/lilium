@@ -130,6 +130,16 @@ where
         }
     }
 
+    /// Wraps commits into MultiCommit, panics on wrong length.
+    /// To be used when commits are already available.
+    pub fn instance_commit(&self, commitments: Vec<CS::Commitment>) -> MultiCommit<F, SF, CS> {
+        assert_eq!(self.instance_len, commitments.len());
+        MultiCommit {
+            commitments,
+            _f: PhantomData,
+        }
+    }
+
     /// Filter for instance mles, a zero is added just to match the types.
     fn instance_evals_filter() -> SF::Mles<(F, bool)> {
         let kinds = SF::KINDS;
