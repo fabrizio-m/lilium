@@ -142,6 +142,32 @@ pub trait EvalsExt<F: Field>: Evals<F> + Sized {
             acc.combine(eval, |a, b| a + b * eq_eval)
         })
     }
+
+    fn eval_iter<M>(mut mles: M, point: MultiPoint<F>) -> Self
+    where
+        M: Iterator<Item = Self>,
+    {
+        let mut eq = eq(&point).into_iter();
+
+        let first: Self = mles.next().unwrap();
+        let first_eq = eq.next().unwrap();
+        let mut res = first.combine(&first, |e, _| e * first_eq);
+
+        loop {
+            match (mles.next(), eq.next()) {
+                (None, None) => {
+                    break;
+                }
+                (None, Some(_)) | (Some(_), None) => {
+                    panic!("unexpected number of evaluations")
+                }
+                (Some(e), Some(eq_eval)) => {
+                    res = res.combine(&e, |a, b| a + b * eq_eval);
+                }
+            }
+        }
+        todo!()
+    }
 }
 
 impl<F, T> EvalsExt<F> for T
