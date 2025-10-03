@@ -143,6 +143,9 @@ pub trait EvalsExt<F: Field>: Evals<F> + Sized {
         })
     }
 
+    /// Evaluates MLE given by an iterator.
+    /// Should have the same result as collecting the iterator and calling
+    /// `EvalsExt::eval`.
     fn eval_iter<M>(mut mles: M, point: MultiPoint<F>) -> Self
     where
         M: Iterator<Item = Self>,
