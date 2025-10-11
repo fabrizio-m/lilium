@@ -1,8 +1,8 @@
 use ark_ff::Field;
 use sumcheck::{
     polynomials::Evals,
-    sumcheck::{CommitType, Env, EvalKind, SumcheckFunction, Var},
-    utils::{ZeroCheck, ZeroCheckAvailable},
+    sumcheck::{Env, EvalKind, SumcheckFunction, Var},
+    utils::ZeroCheckAvailable,
 };
 
 /// sumcheck based reduction of linearized instances
@@ -11,22 +11,13 @@ pub struct LinearizedSumcheck<const IO: usize>;
 #[derive(Clone)]
 pub struct LinearizedMles<V, const IO: usize> {
     /// matrix vector products M(x)z(x)
-    products: [V; IO],
-    r_eq: V,
-    w: V,
-    inputs: V,
-    input_selector: V,
+    pub products: [V; IO],
+    pub r_eq: V,
 }
 
 impl<V, const IO: usize> LinearizedMles<V, IO> {
-    pub fn new(products: [V; IO], r_eq: V, w: V, inputs: V, input_selector: V) -> Self {
-        Self {
-            products,
-            r_eq,
-            w,
-            inputs,
-            input_selector,
-        }
+    pub fn new(products: [V; IO], r_eq: V) -> Self {
+        Self { products, r_eq }
     }
 }
 
@@ -36,12 +27,6 @@ pub enum Index {
     Product(usize),
     /// eq(r) on r random point for zero check
     Zeq,
-    /// Witness
-    W,
-    /// Including u at the start.
-    Inputs,
-    /// 1 where input expected, 0 otherwise
-    InputsSelector,
 }
 
 impl ZeroCheckAvailable for Index {
@@ -57,9 +42,6 @@ impl<V: Clone + Copy, const IO: usize> Evals<V> for LinearizedMles<V, IO> {
         match index {
             Index::Product(i) => &self.products[i],
             Index::Zeq => &self.r_eq,
-            Index::W => &self.w,
-            Index::Inputs => &self.inputs,
-            Index::InputsSelector => &self.input_selector,
         }
     }
 
@@ -68,25 +50,13 @@ impl<V: Clone + Copy, const IO: usize> Evals<V> for LinearizedMles<V, IO> {
         products.iter_mut().zip(other.products).for_each(|(a, b)| {
             *a = f(*a, b);
         });
-        let w = f(self.w, other.w);
         let r_eq = f(self.r_eq, other.r_eq);
-        let inputs = f(self.inputs, other.inputs);
-        let input_select = f(self.input_selector, other.input_selector);
-        Self {
-            products,
-            r_eq,
-            w,
-            inputs,
-            input_selector: input_select,
-        }
+        Self { products, r_eq }
     }
 
     fn flatten(self, vec: &mut Vec<V>) {
         vec.extend(self.products);
         vec.push(self.r_eq);
-        vec.push(self.w);
-        vec.push(self.inputs);
-        vec.push(self.input_selector);
     }
 
     fn unflatten(elems: &mut std::vec::IntoIter<V>) -> Self {
@@ -99,30 +69,15 @@ impl<V: Clone + Copy, const IO: usize> Evals<V> for LinearizedMles<V, IO> {
                 }
             }
         };
-        let [r_eq, w, inputs, input_selector] = [elems.next().unwrap(); 4];
-        Self {
-            products,
-            r_eq,
-            w,
-            inputs,
-            input_selector,
-        }
+        let [r_eq] = [elems.next().unwrap(); 1];
+        Self { products, r_eq }
     }
 }
 
 const fn kinds<const IO: usize>() -> LinearizedMles<EvalKind, IO> {
     let products = [EvalKind::Virtual; IO];
     let r_eq = EvalKind::FixedSmall;
-    let w = EvalKind::Committed(CommitType::Instance);
-    let inputs = EvalKind::FixedSmall;
-    let input_selector = EvalKind::FixedSmall;
-    LinearizedMles {
-        products,
-        r_eq,
-        w,
-        inputs,
-        input_selector,
-    }
+    LinearizedMles { products, r_eq }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Default)]
@@ -155,16 +110,7 @@ impl<F: Field, const IO: usize> SumcheckFunction<F> for LinearizedSumcheck<IO> {
     {
         let products = evals.products.map(&f);
         let r_eq = f(evals.r_eq);
-        let w = f(evals.w);
-        let inputs = f(evals.inputs);
-        let input_selector = f(evals.input_selector);
-        Self::Mles {
-            products,
-            r_eq,
-            w,
-            inputs,
-            input_selector,
-        }
+        Self::Mles { products, r_eq }
     }
 
     fn function<V, E>(env: E) -> V
@@ -173,23 +119,16 @@ impl<F: Field, const IO: usize> SumcheckFunction<F> for LinearizedSumcheck<IO> {
         E: Env<F, V, Self::Idx, Self::ChallIdx>,
     {
         let chall = env.get_chall(());
-        let w = env.get(Index::W);
 
-        let inputs_check = {
-            let inputs = env.get(Index::Inputs);
-            let input_selec = env.get(Index::InputsSelector);
-            // equality enforced with the public inputs in the
-            // part of the domain dedicated to them.
-            let zero_check = ZeroCheck(input_selec * &w - inputs);
-            Index::zero_check(&env, zero_check)
-        };
-
-        let mut acc = inputs_check.0;
-        for i in 0..IO {
+        // let mut acc = inputs_check.0;
+        let mut acc = env.get(Index::Product(0));
+        for i in 1..IO {
             acc = acc * &chall;
             let m_eq = env.get(Index::Product(i));
             acc += &m_eq;
         }
-        acc
+        let zeq = env.get(Index::Zeq);
+        //TODO: should it be multiplied to each product? this should be equivalent.
+        acc * zeq
     }
 }

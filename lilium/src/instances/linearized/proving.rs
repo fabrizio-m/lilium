@@ -1,5 +1,4 @@
 use crate::instances::{
-    eval_input_selector, eval_ux,
     lcs::LcsSumcheck,
     linearized::{
         sumcheck_argument::{LinearizedMles, LinearizedSumcheck, SingleChall},
@@ -22,13 +21,9 @@ use transcript::{
     instances::PolyEvalCheck, messages::SingleElement, protocols::Reduction, MessageGuard,
 };
 
-pub(crate) struct LinearizedInstanceReduction<
-    F,
-    CS,
-    const I: usize,
-    const IO: usize,
-    const S: usize,
->(PhantomData<(F, CS)>);
+pub(crate) struct LinearizedInstanceReduction<F, CS, const IO: usize, const S: usize>(
+    PhantomData<(F, CS)>,
+);
 
 #[derive(Debug, Clone)]
 pub struct LinearizedProof<F: Field, const IO: usize> {
@@ -39,13 +34,13 @@ pub struct LinearizedProof<F: Field, const IO: usize> {
 
 type Sumcheck<F, const IO: usize> = SumcheckVerifier<F, LinearizedSumcheck<IO>>;
 
-impl<F, CS, const I: usize, const IO: usize, const S: usize> Reduction<F>
-    for LinearizedInstanceReduction<F, CS, I, IO, S>
+impl<F, CS, const IO: usize, const S: usize> Reduction<F>
+    for LinearizedInstanceReduction<F, CS, IO, S>
 where
     F: Field,
     CS: CommmitmentScheme<F> + 'static,
 {
-    type A = LinearizedInstance<F, CS, I, IO, S>;
+    type A = LinearizedInstance<F, CS, IO, S>;
 
     type B = (
         BatchMatrixEvalInstance<F, IO>,
@@ -79,8 +74,6 @@ where
         let LinearizedInstance {
             witness_commit,
             witness_eval,
-            u,
-            public_inputs,
             rx,
             products,
             selector_evals,
@@ -90,7 +83,9 @@ where
 
         // Starting from 0 as expected from the zero check for
         // the inputs.
-        let sum = products.iter().fold(F::zero(), |acc, m| acc * chall + m);
+        let sum = products[1..]
+            .iter()
+            .fold(products[0], |acc, m| acc * chall + m);
         let sum = MessageGuard::new(Sum(sum));
 
         // Verifying sumcheck reduction to point evaluation check.
@@ -103,7 +98,7 @@ where
             sum,
             transcript.new_guard(proof),
         )?;
-        let PolyEvalCheck { vars, eval } = reduced;
+        // let PolyEvalCheck { vars, eval } = reduced;
 
         // Proving evaluations of selectors at rx.
         let dynamic_batch =
@@ -124,6 +119,7 @@ where
             debug_assert_eq!(eval.unwrap(), selector_evals[i]);
         }
 
+        let PolyEvalCheck { vars, eval } = reduced;
         // this eval will have to be verified with the commitment
         let (SingleElement(w_eval), []) = transcript.receive_message(|proof| proof.w_eval).unwrap();
         let ry = MultiPoint::new(vars.clone());
@@ -136,12 +132,10 @@ where
         // Evals M(rx,r) * w(r)
         let products = matrix_evals.map(|m| m * w_eval);
         let r_eq = r_eq.eval_as_eq(&ry);
-        let ux_eval = eval_ux(&vars, u, &public_inputs);
-        let input_selector = eval_input_selector(&ry, public_inputs.len());
-        let evals = LinearizedMles::new(products, r_eq, w_eval, ux_eval, input_selector);
+        let evals_at_r = LinearizedMles::new(products, r_eq);
 
         let chall = SingleChall(chall);
-        let checks = sumcheck_verifier.check_evals_at_r(evals, eval, &chall);
+        let checks = sumcheck_verifier.check_evals_at_r(evals_at_r, eval, &chall);
         if !checks {
             return Err(crate::Error::EvalCheck);
         }
