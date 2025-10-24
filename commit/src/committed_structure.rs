@@ -264,6 +264,25 @@ where
         let [chall] = transcript.send_message(&instance)?;
         Ok(Self::combine_mles(mles, chall))
     }
+
+    /// Folds instance-witness pair.
+    pub fn prove<S: Duplex<F>>(
+        &self,
+        instance: StructuredBatchEval<F, CS>,
+        mles: &[SF::Mles<F>],
+        transcript: &mut Transcript<F, S>,
+    ) -> (OpenInstance<F, CS::Commitment>, Vec<F>)
+    where
+        CS: 'static,
+    {
+        let [challenge] = transcript.send_message(&instance).unwrap();
+        let instance = self
+            .batch_commitment
+            .fold_with_challenge(instance, challenge);
+        let witness = Self::combine_mles(mles, challenge);
+
+        (instance, witness)
+    }
 }
 
 impl<F, SF, CS> Reduction<F> for CommittedStructure<F, SF, CS>

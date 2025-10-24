@@ -92,43 +92,20 @@ where
         let (instance, [chall]) = transcript
             .unwrap_guard(instance)
             .map_err(BatchingError::Transcript)?;
-        let StructuredBatchEval {
-            dynamic_batch:
-                BatchEval {
-                    point,
-                    commitments_and_evals,
-                },
-            structure_evals,
-        } = instance;
-        // shouldn't fail as the transcript will catch this issue first.
-        assert_eq!(structure_evals.len(), key.structure.len());
 
         let evals = PointEvals {
-            instance: commitments_and_evals.iter().map(|x| x.1).collect(),
-            structure: structure_evals.clone(),
+            instance: instance
+                .dynamic_batch
+                .commitments_and_evals
+                .iter()
+                .map(|x| x.1)
+                .collect(),
+            structure: instance.structure_evals.clone(),
         };
 
-        let structure_commits: Vec<S::Commitment> = key.structure.clone();
-        let structure = structure_commits.into_iter().zip(structure_evals);
+        let open = key.fold_with_challenge(instance, chall);
 
-        let mut iter = commitments_and_evals.into_iter();
-        let first: (S::Commitment, F) = iter.next().unwrap();
-
-        let (commit, eval) = iter.chain(structure).fold(first, |acc, e| {
-            let (commit, eval) = acc;
-            let commit = commit * chall + &e.0;
-            let eval = eval * chall + eval;
-            (commit, eval)
-        });
-
-        Ok((
-            OpenInstance {
-                commit,
-                point,
-                eval,
-            },
-            evals,
-        ))
+        Ok((open, evals))
     }
 }
 
@@ -141,6 +118,42 @@ impl<F: Field, S: CommmitmentScheme<F>> StructuredBatchReduction<F, S> {
         Self {
             _phantom: PhantomData,
             structure,
+        }
+    }
+
+    pub(crate) fn fold_with_challenge(
+        &self,
+        instance: StructuredBatchEval<F, S>,
+        challenge: F,
+    ) -> OpenInstance<F, S::Commitment> {
+        let StructuredBatchEval {
+            dynamic_batch:
+                BatchEval {
+                    point,
+                    commitments_and_evals,
+                },
+            structure_evals,
+        } = instance;
+        // shouldn't fail as the transcript will catch this issue first.
+        assert_eq!(structure_evals.len(), self.structure.len());
+
+        let structure_commits: Vec<S::Commitment> = self.structure.clone();
+        let structure = structure_commits.into_iter().zip(structure_evals);
+
+        let mut iter = commitments_and_evals.into_iter();
+        let first: (S::Commitment, F) = iter.next().unwrap();
+
+        let (commit, eval) = iter.chain(structure).fold(first, |acc, e| {
+            let (commit, eval) = acc;
+            let commit = commit * challenge + &e.0;
+            let eval = eval * challenge + eval;
+            (commit, eval)
+        });
+
+        OpenInstance {
+            commit,
+            point,
+            eval,
         }
     }
 }
