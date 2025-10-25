@@ -26,6 +26,11 @@ impl<F: Field, G> OpenInstance<F, G> {
             eval,
         }
     }
+
+    /// Claimed evaluation at the given point.
+    pub fn eval(&self) -> F {
+        self.eval
+    }
 }
 
 impl<F: Field, G> Message<F> for OpenInstance<F, G>
