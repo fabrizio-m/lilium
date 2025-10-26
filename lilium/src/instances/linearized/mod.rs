@@ -1,4 +1,7 @@
-use crate::instances::{lcs::LcsSumcheck, linearized::sumcheck_argument::LinearizedMles};
+use crate::instances::{
+    lcs::{sumcheck_argument::LcsMles, LcsSumcheck},
+    linearized::sumcheck_argument::LinearizedMles,
+};
 use ark_ff::Field;
 use ccs::witness::LinearCombinations;
 use commit::{committed_structure::CommittedStructure, CommmitmentScheme};
@@ -25,12 +28,12 @@ pub struct LinearizedInstance<F: Field, C: CommmitmentScheme<F>, const IO: usize
 }
 
 pub struct Key<F: Field, C: CommmitmentScheme<F>, const IO: usize, const S: usize> {
-    // spark_structure: [SparkMatrix<F>; IO],
-    // spark_keys: [CommittedSpark<F, C, 2>; IO],
     domain_vars: usize,
     selector_commitments: CommittedStructure<F, LcsSumcheck<F, IO, S>, C>,
     linear_combinations: Rc<LinearCombinations<IO>>,
     structure: Rc<Vec<LinearizedMles<F, IO>>>,
+    lcs_structure: Rc<Vec<LcsMles<F, IO, S>>>,
+    pcs: Rc<C>,
 }
 
 impl<F, C, const IO: usize, const S: usize> Message<F> for LinearizedInstance<F, C, IO, S>

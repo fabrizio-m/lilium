@@ -27,9 +27,9 @@ pub(crate) struct LinearizedInstanceReduction<F, CS, const IO: usize, const S: u
 
 #[derive(Debug, Clone)]
 pub struct LinearizedProof<F: Field, const IO: usize> {
-    sumcheck_proof: sumcheck::sumcheck::Proof<F, LinearizedSumcheck<IO>>,
-    w_eval: SingleElement<F>,
-    matrix_evals: [SingleElement<F>; IO],
+    pub(crate) sumcheck_proof: sumcheck::sumcheck::Proof<F, LinearizedSumcheck<IO>>,
+    pub(crate) w_eval: SingleElement<F>,
+    pub(crate) matrix_evals: [SingleElement<F>; IO],
 }
 
 type Sumcheck<F, const IO: usize> = SumcheckVerifier<F, LinearizedSumcheck<IO>>;
@@ -58,7 +58,6 @@ where
     ) -> transcript::TranscriptBuilder<F> {
         builder
             .round::<Self::A, 1>()
-            .point()
             .add_reduction_patter::<Sumcheck<F, IO>>()
             .add_reduction_patter::<CommittedStructure<F, LcsSumcheck<F, IO, S>, CS>>()
             .round::<SingleElement<F>, 0>()
@@ -91,14 +90,11 @@ where
         // Verifying sumcheck reduction to point evaluation check.
         let sumcheck_verifier = SumcheckVerifier::new(n_vars);
         let proof = transcript.receive_message_delayed(|proof| proof.sumcheck_proof.clone());
-        // Point for zero check.
-        let r_eq = MultiPoint::new(transcript.point()?);
         let reduced = Sumcheck::<F, IO>::verify_reduction(
             &sumcheck_verifier,
             sum,
             transcript.new_guard(proof),
         )?;
-        // let PolyEvalCheck { vars, eval } = reduced;
 
         // Proving evaluations of selectors at rx.
         let dynamic_batch =
@@ -131,8 +127,8 @@ where
         let matrix_evals = matrix_evals.map(|x| x.0);
         // Evals M(rx,r) * w(r)
         let products = matrix_evals.map(|m| m * w_eval);
-        let r_eq = r_eq.eval_as_eq(&ry);
-        let evals_at_r = LinearizedMles::new(products, r_eq);
+        let r_eval = rx.eval_as_eq(&ry);
+        let evals_at_r = LinearizedMles::new(products, r_eval);
 
         let chall = SingleChall(chall);
         let checks = sumcheck_verifier.check_evals_at_r(evals_at_r, eval, &chall);
