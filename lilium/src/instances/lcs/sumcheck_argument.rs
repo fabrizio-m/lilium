@@ -127,6 +127,10 @@ impl<V, const IO: usize, const S: usize> LcsMles<V, IO, S> {
             self.inputs = inputs;
         }
     }
+
+    pub fn set_w(&mut self, w: V) {
+        self.w = w;
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, PartialOrd, Eq, Ord)]
@@ -310,7 +314,6 @@ impl<F: Field, const IO: usize, const S: usize> SumcheckFunction<F> for LcsSumch
         let w = env.get(Index::W);
 
         let inputs_check = {
-            //TODO: may not be needed
             let inputs = env.get(Index::Inputs);
             let input_selec = env.get(Index::InputsSelector);
             // equality enforced with the public inputs in the

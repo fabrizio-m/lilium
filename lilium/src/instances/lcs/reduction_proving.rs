@@ -22,7 +22,7 @@ where
     F: Field,
     C: CommmitmentScheme<F>,
 {
-    pub linearized_instance: LinearizedInstance<F, C, I, IO, 4>,
+    pub linearized_instance: LinearizedInstance<F, C, IO, 4>,
     pub linearized_witness: Vec<F>,
     pub reduction_proof: Proof<F, LcsSumcheck<F, IO, 4>>,
 }
@@ -64,11 +64,9 @@ impl<F: Field, C: CommmitmentScheme<F>, const IO: usize> LcsProvingKey<F, C, IO>
         } = sumcheck_prover.prove(transcript, mles, &challs).unwrap();
         let evals: LcsMles<F, IO, 4> = evals;
 
-        let linearized_instance: LinearizedInstance<F, C, I, IO, 4> = LinearizedInstance {
+        let linearized_instance: LinearizedInstance<F, C, IO, 4> = LinearizedInstance {
             witness_commit: instance.witness_commit,
             witness_eval: *evals.w(),
-            u: F::one(),
-            public_inputs: instance.public_inputs,
             rx: point,
             products: *evals.products(),
             selector_evals: *evals.gate_selectors(),

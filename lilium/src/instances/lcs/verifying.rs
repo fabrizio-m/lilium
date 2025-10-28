@@ -37,7 +37,7 @@ where
     fn transcript_pattern(builder: TranscriptBuilder<F>) -> TranscriptBuilder<F> {
         builder
             .add_reduction_patter::<LcsReduction<C, I, IO>>()
-            .add_reduction_patter::<LinearizedInstanceReduction<F, C, I, IO, 4>>()
+            .add_reduction_patter::<LinearizedInstanceReduction<F, C, IO, 4>>()
             .add_protocol_patter::<MatrixEvalProtocol<F, C, IO>>()
             .add_protocol_patter::<C>()
             .add_protocol_patter::<C>()

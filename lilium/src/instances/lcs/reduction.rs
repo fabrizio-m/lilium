@@ -39,7 +39,7 @@ where
 
     type A = LcsInstance<F, C, I>;
 
-    type B = LinearizedInstance<F, C, I, IO, 4>;
+    type B = LinearizedInstance<F, C, IO, 4>;
 
     type Proof = LcsReductionProof<F, IO>;
 
@@ -72,7 +72,6 @@ where
         // Get challenge point for sumcheck's zero-check.
         let r_eq = transcript.point()?;
         let r_eq = MultiPoint::new(r_eq);
-        //TODO: add selectors
         //TODO: create once and store in key.
         let sumcheck_verifier = SumcheckVerifier::<F, LcsSumcheck<F, IO, 4>>::new(vars);
         // As the expected sum is zero.
@@ -124,17 +123,14 @@ where
         };
 
         // Instance to be verified for the matrix evals.
-        let linearized_instance: LinearizedInstance<F, C, I, IO, 4> = {
+        let linearized_instance: LinearizedInstance<F, C, IO, 4> = {
             let products: [F; IO] = *evals.products();
-            let u = F::one();
             let rx = check_point;
             let selector_evals = *evals.gate_selectors();
             let witness_eval = *evals.w();
             LinearizedInstance {
                 witness_commit,
                 witness_eval,
-                u,
-                public_inputs,
                 rx,
                 products,
                 selector_evals,

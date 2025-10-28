@@ -4,9 +4,10 @@ use std::marker::PhantomData;
 use transcript::Message;
 
 mod key;
+mod proving;
 mod reduction;
 mod reduction_proving;
-mod sumcheck_argument;
+pub(crate) mod sumcheck_argument;
 pub mod verifying;
 
 pub(crate) use sumcheck_argument::LcsSumcheck;
