@@ -14,15 +14,15 @@ use sponge::sponge::Duplex;
 use sumcheck::{eq, polynomials::MultiPoint, sumcheck::SumcheckProver};
 use transcript::{messages::SingleElement, Transcript};
 
-struct ProverOutput<F, C, const IO: usize>
+pub(crate) struct ProverOutput<F, C, const IO: usize>
 where
     F: Field,
     C: CommmitmentScheme<F>,
 {
-    matrix_eval_instance: BatchMatrixEvalInstance<F, IO>,
-    open_instances: [OpenInstance<F, C::Commitment>; 2],
-    open_witnesses: [Vec<F>; 2],
-    proof: LinearizedProof<F, IO>,
+    pub matrix_eval_instance: BatchMatrixEvalInstance<F, IO>,
+    pub open_instances: [OpenInstance<F, C::Commitment>; 2],
+    pub open_witnesses: [Vec<F>; 2],
+    pub proof: LinearizedProof<F, IO>,
 }
 
 impl<F, C, const IO: usize, const S: usize> super::Key<F, C, IO, S>
@@ -30,7 +30,7 @@ where
     F: Field,
     C: CommmitmentScheme<F> + 'static,
 {
-    fn prove<const I: usize, D>(
+    pub(crate) fn prove<const I: usize, D>(
         &self,
         instance: LinearizedInstance<F, C, IO, S>,
         witness: Vec<F>,

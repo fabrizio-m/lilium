@@ -11,7 +11,7 @@ use transcript::{params::ParamResolver, Message};
 
 //TODO: rename as verifying
 pub mod proving;
-mod reduction_proving;
+pub mod reduction_proving;
 pub mod sumcheck_argument;
 
 /// A linearized committed ccs instance
