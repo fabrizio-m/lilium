@@ -18,9 +18,16 @@ use transcript::{
     params::ParamResolver, protocols::Reduction, Message, MessageGuard, TranscriptGuard,
 };
 
+mod prove;
+
+pub use prove::ProverOutput;
+
+//TODO: add prover for the reduction
+
 pub struct CommittedSpark<F: Field, C: CommmitmentScheme<F>, const D: usize> {
     // structure: SparkStructure<F, D>,
     committed_structure: CommittedStructure<F, SparkEvalCheck<D>, C>,
+    structure: Rc<SparkStructure<F, D>>,
     sumcheck_verifier: SumcheckVerifier<F, SparkEvalCheck<D>>,
 }
 
@@ -160,7 +167,7 @@ where
 }
 
 impl<F: Field, C: CommmitmentScheme<F>, const D: usize> CommittedSpark<F, C, D> {
-    pub fn new(structure: &SparkStructure<F, D>, scheme: &C) -> Self {
+    pub fn new(structure: Rc<SparkStructure<F, D>>, scheme: &C) -> Self {
         assert!(structure.val.len().is_power_of_two());
         let vars = structure.val.len().ilog2() as usize;
 
@@ -169,13 +176,14 @@ impl<F: Field, C: CommmitmentScheme<F>, const D: usize> CommittedSpark<F, C, D> 
         let challenges = SparkChallenges::default();
         let zero_check_point = dummy_point;
 
-        let mles = SparkEval::<F, D>::evals(structure, points, challenges, zero_check_point);
+        let mles = SparkEval::<F, D>::evals(&structure, points, challenges, zero_check_point);
 
         let committed_structure = CommittedStructure::new(Rc::new(mles), scheme);
         let sumcheck_verifier: SumcheckVerifier<F, SparkEvalCheck<D>> = SumcheckVerifier::new(vars);
 
         Self {
             committed_structure,
+            structure,
             sumcheck_verifier,
         }
     }
