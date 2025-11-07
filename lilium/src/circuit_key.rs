@@ -6,7 +6,7 @@ use ccs::{
 use commit::CommmitmentScheme;
 use spark::{committed_spark::CommittedSpark, structure::SparkMatrix};
 use sponge::sponge::Duplex;
-use std::marker::PhantomData;
+use std::{marker::PhantomData, rc::Rc};
 use sumcheck::sumcheck::DegreeParam;
 use transcript::{params::ParamResolver, TranscriptBuilder, TranscriptDescriptor};
 
@@ -22,7 +22,7 @@ pub struct CircuitKey<
     _circuit: PhantomData<C>,
     pub transcript: TranscriptDescriptor<F, D>,
     pub ccs_structure: CcsStructure<IO, S>,
-    pub spark_structure: [SparkMatrix<F>; IO],
+    pub spark_structure: [Rc<SparkMatrix<F>>; IO],
     pub spark_commitments: [CommittedSpark<F, CS, 2>; IO],
     pub committment_scheme: CS,
 }
@@ -50,10 +50,11 @@ where
                 .collect();
             SparkMatrix::<F>::new(evals)
         });
+        let spark_structure = spark_structure.map(Rc::new);
         let committment_scheme = CS::new(8);
         let spark_commitments = spark_structure
             .each_ref()
-            .map(|s| CommittedSpark::new(s, &committment_scheme));
+            .map(|s| CommittedSpark::new(Rc::clone(s), &committment_scheme));
 
         // This assumes IO is selected properly, which should be fine as it
         // can be higher than needed but not lower.
@@ -95,7 +96,7 @@ where
     F: Field,
     C: CommmitmentScheme<F>,
 {
-    fn spark_structure(&self) -> &[SparkMatrix<F>; IO];
+    fn spark_structure(&self) -> [Rc<SparkMatrix<F>>; IO];
     fn spark_keys(&self) -> &[CommittedSpark<F, C, 2>; IO];
 }
 
@@ -118,8 +119,8 @@ impl<F: Field, D: Duplex<F>, C, CS: CommmitmentScheme<F>, const IO: usize, const
 impl<F: Field, D: Duplex<F>, C, CS: CommmitmentScheme<F>, const IO: usize, const S: usize>
     KeySparkStructure<F, CS, IO> for CircuitKey<F, D, C, CS, IO, S>
 {
-    fn spark_structure(&self) -> &[SparkMatrix<F>; IO] {
-        &self.spark_structure
+    fn spark_structure(&self) -> [Rc<SparkMatrix<F>>; IO] {
+        self.spark_structure.clone()
     }
 
     fn spark_keys(&self) -> &[CommittedSpark<F, CS, 2>; IO] {
