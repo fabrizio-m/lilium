@@ -6,53 +6,53 @@ use sponge::sponge::Duplex;
 use std::{marker::PhantomData, rc::Rc};
 use transcript::{
     protocols::{Protocol, Reduction},
-    MessageGuard, TranscriptGuard,
+    MessageGuard, Transcript, TranscriptGuard,
 };
+
+type ProverResult<T, F, C> = Result<T, Error<F, C>>;
 
 impl<F: Field, T: Duplex<F>, C, CS: CommmitmentScheme<F>, const IO: usize, const S: usize>
     CircuitKey<F, T, C, CS, IO, S>
 {
-    /*fn prove_matrix_evals(
+    pub(crate) fn prove_matrix_evals(
         &self,
         instance: BatchMatrixEvalInstance<F, IO>,
-    ) -> Result<MatrixEvalProof<F, CS, IO>, Error> {
-        let vars = self.ccs_structure.vars();
-        let mut transcript = self.transcript.instanciate();
-        let prover = SumcheckProver::<F, SparkEvalCheck<2>>::new(vars);
+        transcript: &mut Transcript<F, T>,
+    ) -> ProverResult<MatrixEvalProof<F, CS, IO>, F, CS>
+    where
+        CS: 'static,
+    {
         let mut proofs = Vec::with_capacity(IO);
 
-        let [c1, c2, c3] = transcript
-            .send_message(&instance)
-            .map_err(Error::TranscriptError)?;
-        let challenges = SparkChallenges::new(c1, c2, c3);
-        let zero_check_point = MultiPoint::new(transcript.point().map_err(Error::TranscriptError)?);
-        let r = MultiPoint::new(transcript.point().map_err(Error::TranscriptError)?);
+        // OpenInstance (instance, witness) pairs.
+        let mut open_pairs = [(); IO].map(|_| None);
+        let point = instance.point;
 
         for i in 0..IO {
-            let structure = &self.spark_structure[i];
-            let instance = &instance.matrices[i];
-            let MatrixEvalInstance { point, eval: _ } = instance;
-            let mle = spark::evals::SparkEval::evals(
-                structure,
-                point.clone(),
-                challenges,
-                zero_check_point.clone(),
-            );
-            let proof = prover.prove(&r, mle, &challenges);
+            // let structure = &self.spark_structure[i];
+            let eval = instance.matrix_evals[i];
+            let instance = CommittedSparkInstance::new(point.clone(), eval);
+            let spark::committed_spark::ProverOutput {
+                open_instance,
+                witness,
+                proof,
+            } = self.spark_commitments[i].prove(transcript, instance);
+            open_pairs[i] = Some((open_instance, witness));
             proofs.push(proof);
         }
-        let spark_proofs: [SparkProof<F>; IO] = proofs.try_into().unwrap();
-        let commits = &self.spark_commitments;
-        let scheme = &self.committment_scheme;
-        let open_proofs = commits.each_ref().map(|commits| {
-            let open = commits.eval(scheme, &r);
-            open
+
+        let spark_proofs: [CommittedSparkProof<F, CS, 2>; IO] = proofs.try_into().unwrap();
+        let open_proofs = open_pairs.map(|e| {
+            let (open_instance, witness) = e.unwrap();
+            self.committment_scheme
+                .open_prove(open_instance, &witness, transcript)
+                .unwrap()
         });
         Ok(MatrixEvalProof {
             spark_proofs,
             open_proofs,
         })
-    }*/
+    }
     /*fn verify_matrix_evals(
         &self,
         instance: BatchMatrixEvalInstance<F, IO>,
