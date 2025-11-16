@@ -1,4 +1,4 @@
-use crate::{circuit_key::CircuitKey, instances::matrix_eval::BatchMatrixEvalInstance, Error};
+use crate::{instances::matrix_eval::BatchMatrixEvalInstance, Error};
 use ark_ff::Field;
 use commit::{CommmitmentScheme, OpenInstance};
 use spark::committed_spark::{CommittedSpark, CommittedSparkInstance, CommittedSparkProof};
@@ -11,16 +11,15 @@ use transcript::{
 
 type ProverResult<T, F, C> = Result<T, Error<F, C>>;
 
-impl<F: Field, T: Duplex<F>, C, CS: CommmitmentScheme<F>, const IO: usize, const S: usize>
-    CircuitKey<F, T, C, CS, IO, S>
-{
-    pub(crate) fn prove_matrix_evals(
+impl<F: Field, C: CommmitmentScheme<F>, const IO: usize> Key<F, C, IO> {
+    pub(crate) fn prove<S>(
         &self,
         instance: BatchMatrixEvalInstance<F, IO>,
-        transcript: &mut Transcript<F, T>,
-    ) -> ProverResult<MatrixEvalProof<F, CS, IO>, F, CS>
+        transcript: &mut Transcript<F, S>,
+    ) -> ProverResult<MatrixEvalProof<F, C, IO>, F, C>
     where
-        CS: 'static,
+        C: 'static,
+        S: Duplex<F>,
     {
         let mut proofs = Vec::with_capacity(IO);
 
@@ -36,15 +35,15 @@ impl<F: Field, T: Duplex<F>, C, CS: CommmitmentScheme<F>, const IO: usize, const
                 open_instance,
                 witness,
                 proof,
-            } = self.spark_commitments[i].prove(transcript, instance);
+            } = self.spark_keys[i].prove(transcript, instance);
             open_pairs[i] = Some((open_instance, witness));
             proofs.push(proof);
         }
 
-        let spark_proofs: [CommittedSparkProof<F, CS, 2>; IO] = proofs.try_into().unwrap();
+        let spark_proofs: [CommittedSparkProof<F, C, 2>; IO] = proofs.try_into().unwrap();
         let open_proofs = open_pairs.map(|e| {
             let (open_instance, witness) = e.unwrap();
-            self.committment_scheme
+            self.pcs
                 .open_prove(open_instance, &witness, transcript)
                 .unwrap()
         });
