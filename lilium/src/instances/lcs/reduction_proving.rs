@@ -1,6 +1,7 @@
 use crate::instances::{
     lcs::{
         key::LcsProvingKey,
+        reduction::LcsReductionProof,
         sumcheck_argument::{LcsMles, LcsSumcheck, SingleChall},
         LcsInstance,
     },
@@ -13,7 +14,7 @@ use sponge::sponge::Duplex;
 use sumcheck::{
     eq,
     polynomials::MultiPoint,
-    sumcheck::{Proof, ProverOutput, SumcheckProver},
+    sumcheck::{ProverOutput, SumcheckProver},
 };
 use transcript::{messages::SingleElement, Transcript};
 
@@ -24,12 +25,12 @@ where
 {
     pub linearized_instance: LinearizedInstance<F, C, IO, 4>,
     pub linearized_witness: Vec<F>,
-    pub reduction_proof: Proof<F, LcsSumcheck<F, IO, 4>>,
+    pub reduction_proof: LcsReductionProof<F, IO>,
 }
 
 impl<F: Field, C: CommmitmentScheme<F>, const IO: usize> LcsProvingKey<F, C, IO> {
     pub fn reduce_instance_witness<S, const I: usize>(
-        key: LcsProvingKey<F, C, IO>,
+        &self,
         instance: LcsInstance<F, C, I>,
         witness: Vec<F>,
         transcript: &mut Transcript<F, S>,
@@ -54,15 +55,28 @@ impl<F: Field, C: CommmitmentScheme<F>, const IO: usize> LcsProvingKey<F, C, IO>
 
         let challs = SingleChall::from(sumcheck_chall);
         let inputs = &instance.public_inputs;
-        let mles = fill_mles(&key.mles, &key.linear_combinations, inputs, &witness, r_eq);
+        let mles = fill_mles(
+            &self.mles,
+            &self.linear_combinations,
+            inputs,
+            &witness,
+            r_eq,
+        );
 
         //TODO: handle
         let ProverOutput {
             point,
-            proof: reduction_proof,
+            proof,
             evals,
         } = sumcheck_prover.prove(transcript, mles, &challs).unwrap();
         let evals: LcsMles<F, IO, 4> = evals;
+
+        let reduction_proof = LcsReductionProof::new(
+            proof,
+            *evals.gate_selectors(),
+            *evals.w(),
+            *evals.products(),
+        );
 
         let linearized_instance: LinearizedInstance<F, C, IO, 4> = LinearizedInstance {
             witness_commit: instance.witness_commit,
