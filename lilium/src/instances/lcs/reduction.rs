@@ -25,7 +25,7 @@ pub struct LcsReductionProof<F: Field, const IO: usize> {
     sumcheck: sumcheck::sumcheck::Proof<F, LcsSumcheck<F, IO, 4>>,
     selector_evals: [F; 4],
     witness_eval: F,
-    matrix_evals: [F; IO],
+    products: [F; IO],
 }
 
 pub struct LcsReduction<C, const I: usize, const IO: usize>(PhantomData<C>);
@@ -110,14 +110,14 @@ where
 
             // Matrix evals are just received from the prover, a linearized instance
             // is create to verify them later.
-            let (matrix_evals, []) = transcript.receive_message(|proof| {
-                let matrix_evals = proof.matrix_evals;
-                matrix_evals.map(SingleElement)
+            let (products, []) = transcript.receive_message(|proof| {
+                let products = proof.products;
+                products.map(SingleElement)
             })?;
 
-            let matrix_evals: [F; IO] = matrix_evals.map(SingleElement::inner);
+            let products: [F; IO] = products.map(SingleElement::inner);
 
-            let products = LcsMles::new_only_products(matrix_evals);
+            let products = LcsMles::new_only_products(products);
             let evals = products.combine(&evals, Option::xor);
             LcsSumcheck::<F, IO, 4>::map_evals(evals, Option::unwrap)
         };
