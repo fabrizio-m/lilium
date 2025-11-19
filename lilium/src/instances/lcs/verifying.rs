@@ -20,6 +20,22 @@ pub struct LcsProof<F: Field, C: CommmitmentScheme<F>, const IO: usize> {
     open_proofs: [C::Proof; 2],
 }
 
+impl<F: Field, C: CommmitmentScheme<F>, const IO: usize> LcsProof<F, C, IO> {
+    pub(crate) fn new(
+        reduction_proof: LcsReductionProof<F, IO>,
+        linearized_proof: LinearizedProof<F, IO>,
+        matrix_eval_proof: MatrixEvalProof<F, C, IO>,
+        open_proofs: [C::Proof; 2],
+    ) -> Self {
+        Self {
+            reduction_proof,
+            linearized_proof,
+            matrix_eval_proof,
+            open_proofs,
+        }
+    }
+}
+
 impl<F, C, const I: usize, const IO: usize> Protocol<F> for LcsProver<C, I, IO>
 where
     F: Field,

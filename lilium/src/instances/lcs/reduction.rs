@@ -28,6 +28,22 @@ pub struct LcsReductionProof<F: Field, const IO: usize> {
     products: [F; IO],
 }
 
+impl<F: Field, const IO: usize> LcsReductionProof<F, IO> {
+    pub(crate) fn new(
+        sumcheck: sumcheck::sumcheck::Proof<F, LcsSumcheck<F, IO, 4>>,
+        selector_evals: [F; 4],
+        witness_eval: F,
+        products: [F; IO],
+    ) -> Self {
+        Self {
+            sumcheck,
+            selector_evals,
+            witness_eval,
+            products,
+        }
+    }
+}
+
 pub struct LcsReduction<C, const I: usize, const IO: usize>(PhantomData<C>);
 
 impl<F, C, const I: usize, const IO: usize> Reduction<F> for LcsReduction<C, I, IO>
