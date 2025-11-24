@@ -3,7 +3,7 @@ use commit::CommmitmentScheme;
 use std::marker::PhantomData;
 use transcript::Message;
 
-mod key;
+pub mod key;
 mod proving;
 mod reduction;
 mod reduction_proving;
@@ -15,6 +15,15 @@ pub(crate) use sumcheck_argument::LcsSumcheck;
 pub struct LcsInstance<F: Field, C: CommmitmentScheme<F>, const I: usize> {
     witness_commit: C::Commitment,
     public_inputs: [F; I],
+}
+
+impl<F: Field, C: CommmitmentScheme<F>, const I: usize> LcsInstance<F, C, I> {
+    pub fn new(witness_commit: C::Commitment, public_inputs: [F; I]) -> Self {
+        Self {
+            witness_commit,
+            public_inputs,
+        }
+    }
 }
 
 impl<F: Field, C: CommmitmentScheme<F>, const I: usize> Message<F> for LcsInstance<F, C, I> {
