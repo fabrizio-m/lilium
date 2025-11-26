@@ -68,6 +68,7 @@ impl Index<usize> for Matrix {
     }
 }
 
+/*
 /// considering that each row will either be 0 or 1 just in the first element,
 /// it can be represented with just Vec<bool>
 #[derive(Default)]
@@ -82,6 +83,7 @@ impl SelectorMatrix {
         }
     }
 }
+*/
 
 #[derive(PartialEq, Eq, Clone)]
 pub enum MatrixIndex {
@@ -114,7 +116,8 @@ impl Ord for MatrixIndex {
 
 pub struct CcsStructure<const IO: usize, const S: usize> {
     pub io_matrices: [Matrix; IO],
-    pub selector_matrices: [SelectorMatrix; S],
+    /// Where each entry is in 0..S reprensenting the gate to active.
+    pub gate_selectors: Vec<usize>,
     pub input_len: usize,
     //with each multiset representing a term, and with corresponding constant coefficient
     pub gates: Vec<Constraints<Exp<usize>>>,
@@ -192,8 +195,7 @@ impl<const MAX_IO: usize> StructureBuilder<MAX_IO> {
         } = self;
 
         let mut io_matrices = [(); MAX_IO].map(|_| Matrix::with_capacity(constraints.len()));
-        let mut selector_matrices =
-            [(); S].map(|_| SelectorMatrix::with_capacity(constraints.len()));
+        let mut gate_selectors = vec![];
 
         for constraint in constraints.into_iter() {
             let constraint: Constraint<usize, MAX_IO> = constraint;
@@ -201,19 +203,13 @@ impl<const MAX_IO: usize> StructureBuilder<MAX_IO> {
             for i in 0..len {
                 io_matrices[i].push_row_single_value(io[i]);
             }
+            gate_selectors.push(selector);
             // let selector = Self::bit_decomposition::<S>(selector);
 
             //TODO: for now using simpler linear selectors
 
             if selector >= S {
                 panic!("not enough selectors for all gates, increase S");
-            }
-            let mut selector_row = [false; S];
-            selector_row[selector] = true;
-            let selector = selector_row;
-
-            for i in 0..S {
-                selector_matrices[i].rows.push(selector[i]);
             }
         }
 
@@ -224,7 +220,7 @@ impl<const MAX_IO: usize> StructureBuilder<MAX_IO> {
         CcsStructure {
             input_len: public_io_len,
             io_matrices,
-            selector_matrices,
+            gate_selectors,
             gates,
             trace_len,
         }
