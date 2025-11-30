@@ -11,7 +11,16 @@ use transcript::{
 
 type ProverResult<T, F, C> = Result<T, Error<F, C>>;
 
+pub struct Key<F: Field, C: CommmitmentScheme<F>, const IO: usize = 0> {
+    pub spark_keys: [CommittedSpark<F, C, 2>; IO],
+    pub pcs: Rc<C>,
+}
+
 impl<F: Field, C: CommmitmentScheme<F>, const IO: usize> Key<F, C, IO> {
+    pub fn new(spark_keys: [CommittedSpark<F, C, 2>; IO], pcs: Rc<C>) -> Self {
+        Self { spark_keys, pcs }
+    }
+
     pub(crate) fn prove<S>(
         &self,
         instance: BatchMatrixEvalInstance<F, IO>,
@@ -122,11 +131,6 @@ where
 {
     spark_proofs: [CommittedSparkProof<F, CS, 2>; IO],
     open_proofs: [CS::OpenProof; IO],
-}
-
-pub struct Key<F: Field, CS: CommmitmentScheme<F>, const IO: usize = 0> {
-    pub spark_keys: [CommittedSpark<F, CS, 2>; IO],
-    pub pcs: Rc<CS>,
 }
 
 impl<F, CS, const IO: usize> Protocol<F> for MatrixEvalProtocol<F, CS, IO>
