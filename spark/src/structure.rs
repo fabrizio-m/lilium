@@ -3,7 +3,7 @@
 use ark_ff::Field;
 use std::iter::successors;
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct DimensionStructure<F: Field> {
     /// where the value is how many times the element in such index appears
     /// in lookups
