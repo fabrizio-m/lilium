@@ -19,7 +19,7 @@ impl<T> Default for MultiSet<T> {
     }
 }
 ///sparse matrix
-#[derive(Default, Clone)]
+#[derive(Default, Clone, Debug)]
 pub struct Matrix {
     ///assumes each non zero value to be one, should be enough to represent plonk
     /// considering that most rows will likely have a single 1 the vector represation may be suboptimal
@@ -114,6 +114,7 @@ impl Ord for MatrixIndex {
     }
 }
 
+#[derive(Clone, Debug)]
 pub struct CcsStructure<const IO: usize, const S: usize> {
     pub io_matrices: [Matrix; IO],
     /// Where each entry is in 0..S reprensenting the gate to active.
