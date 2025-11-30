@@ -40,23 +40,19 @@ impl<V, const IO: usize, const S: usize> Default for LcsMles<Option<V>, IO, S> {
 }
 
 impl<V, const IO: usize, const S: usize> LcsMles<V, IO, S> {
-    /*pub fn new(
-        products: [V; IO],
-        r_eq: V,
-        w: V,
-        inputs: V,
-        input_selector: V,
-        gate_selectors: [V; S],
-    ) -> Self {
+    pub fn new_structure(input_selector: V, gate_selectors: [V; S]) -> Self
+    where
+        V: Field,
+    {
         Self {
-            products,
-            r_eq,
-            w,
-            inputs,
+            products: [V::zero(); IO],
+            r_eq: V::zero(),
+            w: V::zero(),
+            inputs: V::zero(),
             input_selector,
             gate_selectors,
         }
-    }*/
+    }
 
     pub fn products(&self) -> &[V; IO] {
         &self.products
