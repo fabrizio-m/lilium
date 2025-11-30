@@ -6,8 +6,9 @@ use crate::{
     proving::matrix_eval,
 };
 use ark_ff::Field;
-use ccs::witness::LinearCombinations;
+use ccs::{structure::Matrix, witness::LinearCombinations};
 use commit::{committed_structure::CommittedStructure, CommmitmentScheme};
+use spark::committed_spark::CommittedSpark;
 use std::rc::Rc;
 
 pub struct LcsReductionKey<F, C, const IO: usize>
@@ -19,17 +20,71 @@ where
     pub domain_vars: usize,
 }
 
+impl<F, C, const IO: usize> LcsReductionKey<F, C, IO>
+where
+    F: Field,
+    C: CommmitmentScheme<F>,
+{
+    // pub fn new<const S: usize>(
+    pub fn new(
+        // structure: Rc<Vec<LcsMles<F, IO, S>>>,
+        structure: Rc<Vec<LcsMles<F, IO, 4>>>,
+        pcs: &C,
+    ) -> Self {
+        let domain_vars = structure.len().next_power_of_two().ilog2() as usize;
+        let committed_structure = CommittedStructure::new(structure, pcs);
+        Self {
+            committed_structure,
+            domain_vars,
+        }
+    }
+}
+
 pub struct LcsProvingKey<F, C, const IO: usize>
 where
     F: Field,
     C: CommmitmentScheme<F>,
 {
     pub lcs_reduction_key: LcsReductionKey<F, C, IO>,
-    pub linear_combinations: LinearCombinations<IO>,
+    pub linear_combinations: Rc<LinearCombinations<IO>>,
     pub linearized_reduction_key: linearized::Key<F, C, IO, 4>,
     pub matrix_eval_key: matrix_eval::Key<F, C, IO>,
     pub pcs: Rc<C>,
     /// MLEs where structure is set as expected and non-structure
     /// MLEs are set to 0.
     pub mles: Rc<Vec<LcsMles<F, IO, 4>>>,
+}
+
+impl<F, C, const IO: usize> LcsProvingKey<F, C, IO>
+where
+    F: Field,
+    C: CommmitmentScheme<F>,
+{
+    pub fn new(
+        pcs: Rc<C>,
+        structure: Rc<Vec<LcsMles<F, IO, 4>>>,
+        matrices: [&Matrix; IO],
+        spark_keys: [CommittedSpark<F, C, 2>; IO],
+    ) -> Self {
+        let lcs_reduction_key = LcsReductionKey::new(Rc::clone(&structure), pcs.as_ref());
+        let domain_vars = lcs_reduction_key.domain_vars;
+        let linear_combinations = LinearCombinations::from_tables(matrices);
+        let linear_combinations = Rc::new(linear_combinations);
+        let linearized_reduction_key = linearized::Key::new(
+            domain_vars,
+            Rc::clone(&linear_combinations),
+            Rc::clone(&structure),
+            Rc::clone(&pcs),
+        );
+        let matrix_eval_key = matrix_eval::Key::new(spark_keys, Rc::clone(&pcs));
+        let mles = structure;
+        Self {
+            lcs_reduction_key,
+            linear_combinations,
+            linearized_reduction_key,
+            matrix_eval_key,
+            pcs,
+            mles,
+        }
+    }
 }
