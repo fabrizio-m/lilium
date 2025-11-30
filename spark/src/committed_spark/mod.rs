@@ -24,6 +24,7 @@ pub use prove::ProverOutput;
 
 //TODO: add prover for the reduction
 
+#[derive(Clone, Debug)]
 pub struct CommittedSpark<F: Field, C: CommmitmentScheme<F>, const D: usize> {
     // structure: SparkStructure<F, D>,
     committed_structure: CommittedStructure<F, SparkEvalCheck<D>, C>,

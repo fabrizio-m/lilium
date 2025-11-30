@@ -10,6 +10,7 @@ use ark_ff::{fields::batch_inversion, Field};
 
 /// Weights that can be used to evaluate polynomials defined by
 /// n evaluation points over the implicit 0..n domain
+#[derive(Clone, Debug)]
 pub(crate) struct BarycentricWeights<F: Field> {
     weights: Vec<F>,
     neg_domain: Vec<F>,

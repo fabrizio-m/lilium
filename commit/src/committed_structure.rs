@@ -20,7 +20,7 @@ use transcript::{protocols::Reduction, Transcript};
 /// to commit to a strucuture based on a [SumcheckFunction] implementor.
 /// Also allows to open all the commitments in a given point and verify
 /// the opening proofs.
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct CommittedStructure<F, SF, CS>
 where
     F: Field,

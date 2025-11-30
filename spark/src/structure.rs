@@ -17,6 +17,7 @@ pub struct DimensionStructure<F: Field> {
     pub lookups_field: Vec<F>,
 }
 
+#[derive(Clone, Debug)]
 pub struct SparkStructure<F: Field, const D: usize> {
     pub dimensions: [DimensionStructure<F>; D],
     // TODO: should be in a more global as it isn't unique to any

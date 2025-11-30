@@ -312,6 +312,7 @@ where
     }
 }
 
+#[derive(Clone, Debug)]
 pub struct SumcheckVerifier<F: Field, SF: SumcheckFunction<F>> {
     vars: usize,
     weights: BarycentricWeights<F>,
