@@ -55,3 +55,29 @@ where
         elems
     }
 }
+
+impl<F: Field, C: CommmitmentScheme<F>, const IO: usize, const S: usize> Key<F, C, IO, S> {
+    pub fn new(
+        domain_vars: usize,
+        linear_combinations: Rc<LinearCombinations<IO>>,
+        lcs_structure: Rc<Vec<LcsMles<F, IO, S>>>,
+        pcs: Rc<C>,
+    ) -> Self {
+        let dummy = LinearizedMles {
+            products: [F::zero(); IO],
+            r_eq: F::zero(),
+        };
+        let mles = vec![dummy; 1 << domain_vars];
+        let structure = Rc::new(mles);
+        let selector_commitments = CommittedStructure::new(Rc::clone(&lcs_structure), pcs.as_ref());
+
+        Self {
+            domain_vars,
+            selector_commitments,
+            linear_combinations,
+            structure,
+            lcs_structure,
+            pcs,
+        }
+    }
+}
