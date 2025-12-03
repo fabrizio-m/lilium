@@ -1,0 +1,49 @@
+use crate::instances::lcs::LcsInstance;
+use crate::{circuit_key::CircuitKey, instances::lcs::verifying::LcsProof};
+use ark_ff::Field;
+use ccs::circuit::Circuit;
+use ccs::circuit::Prove;
+use ccs::witness::Witness;
+use commit::CommmitmentScheme;
+use sponge::sponge::Duplex;
+
+impl<F, T, C, CS, const I: usize, const IO: usize, const S: usize> CircuitKey<F, T, C, CS, I, IO, S>
+where
+    F: Field,
+    T: Duplex<F>,
+    CS: CommmitmentScheme<F> + 'static,
+{
+    /// Creates witness from inputs, commits to it, creates instance and proves it.
+    /// Returns (proof, private_output)
+    pub fn prove_from_inputs<const IN: usize, const OUT: usize, const PRIV_OUT: usize>(
+        &self,
+        inputs: [F; IN],
+    ) -> (LcsProof<F, CS, IO>, C::PrivateOutput)
+    where
+        C: Circuit<F, IN, OUT, PRIV_OUT>,
+    {
+        let (witness, output) = <C as Prove<_, IN, OUT, PRIV_OUT, IO>>::witness(inputs, false);
+        let witness_commit = self.committment_scheme.commit_mle(&witness.0);
+
+        let mut inputs = [F::zero(); I];
+        assert!(witness.0.len() >= I);
+        inputs.copy_from_slice(&witness.0);
+
+        let instance: LcsInstance<F, CS, I> = LcsInstance::new(witness_commit, inputs);
+        let proof = self.prove(instance, witness);
+        (proof, output)
+    }
+
+    /// Proves (instance, witness) pair.
+    pub fn prove(
+        &self,
+        instance: LcsInstance<F, CS, I>,
+        witness: Witness<F>,
+    ) -> LcsProof<F, CS, IO> {
+        let mut transcript = self.transcript.instanciate();
+        let proof = self.lcs_key.prove(instance, witness.0, &mut transcript);
+        //TODO:handle
+        transcript.finish().unwrap();
+        proof
+    }
+}
