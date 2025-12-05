@@ -1,5 +1,6 @@
 use crate::{
-    constraint_system::{ConstraintSystem, Gate, Var},
+    circuit::Var,
+    constraint_system::{ConstraintSystem, Gate, Val},
     structure::Matrix,
 };
 use ark_ff::Field;
@@ -33,7 +34,7 @@ impl<F: Field> Mul for Fi<F> {
     }
 }
 
-impl<F: Field> Var for Fi<F> {}
+impl<F: Field> Val for Fi<F> {}
 
 pub struct WitnessGenerator<F: Field, const IO: usize> {
     witness: Vec<Fi<F>>,
@@ -42,16 +43,15 @@ pub struct WitnessGenerator<F: Field, const IO: usize> {
 
 pub struct Witness<F: Field>(pub Vec<F>);
 
-impl<F: Field, const MAX_IO: usize> ConstraintSystem for WitnessGenerator<F, MAX_IO> {
-    type V = Fi<F>;
-
+impl<F: Field, const MAX_IO: usize> ConstraintSystem<Fi<F>> for WitnessGenerator<F, MAX_IO> {
     fn execute<G, const IO: usize, const I: usize, const O: usize>(
         &mut self,
-        i: [Self::V; I],
-    ) -> [Self::V; O]
+        i: [Var<Fi<F>>; I],
+    ) -> [Var<Fi<F>>; O]
     where
         G: Gate<IO, I, O> + 'static,
     {
+        let i = i.map(Var::unwrap);
         let out = G::gate(i);
         for o in out.iter() {
             self.witness.push(*o);
@@ -65,7 +65,7 @@ impl<F: Field, const MAX_IO: usize> ConstraintSystem for WitnessGenerator<F, MAX
                 }
             }
         }
-        out
+        out.map(Var)
     }
 }
 

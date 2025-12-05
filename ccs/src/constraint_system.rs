@@ -1,18 +1,17 @@
-use crate::structure::Exp;
+use crate::{circuit::Var, structure::Exp};
 use std::ops;
 
-pub trait ConstraintSystem {
-    type V: Var;
-
+pub trait ConstraintSystem<V> {
     fn execute<G, const IO: usize, const I: usize, const O: usize>(
         &mut self,
-        i: [Self::V; I],
-    ) -> [Self::V; O]
+        i: [Var<V>; I],
+    ) -> [Var<V>; O]
     where
-        G: Gate<IO, I, O> + 'static;
+        G: Gate<IO, I, O> + 'static,
+        V: Val;
 }
 
-pub trait Var:
+pub trait Val:
     ops::Add<Output = Self> + ops::Mul<Output = Self> + ops::Sub<Output = Self> + Clone + Sized
 {
 }
@@ -76,10 +75,10 @@ impl<V> From<Constraints<V>> for Vec<V> {
 /// the actual constraints to be enforced.
 pub trait Gate<const IO: usize, const I: usize, const O: usize>: Sized + 'static {
     /// Computes outputs from inputs.
-    fn gate<V: Var>(i: [V; I]) -> [V; O];
+    fn gate<V: Val>(i: [V; I]) -> [V; O];
     /// The output should be zero when the constraint is satisfied.
     /// use `into()` to convert either `V` or `[V;N]` into required output.
-    fn check<V: Var>(i: [V; I], o: [V; O]) -> Constraints<V>;
+    fn check<V: Val>(i: [V; I], o: [V; O]) -> Constraints<V>;
 }
 
 fn eval_gate_constraints<G, const IO: usize, const I: usize, const O: usize>(
@@ -143,20 +142,20 @@ pub mod cs_prototype {
     /// An addition gate.
     pub struct Add;
     impl Gate<3, 2, 1> for Add {
-        fn gate<V: Var>([a, b]: [V; 2]) -> [V; 1] {
+        fn gate<V: Val>([a, b]: [V; 2]) -> [V; 1] {
             //let c = a + b;
             [a + b]
         }
 
-        fn check<V: Var>(i: [V; 2], o: [V; 1]) -> Constraints<V> {
+        fn check<V: Val>(i: [V; 2], o: [V; 1]) -> Constraints<V> {
             let ([a, b], [c]) = (i, o);
             (a + b - c).into()
         }
     }
     impl Add {
-        pub fn add<CS>(cs: &mut CS, a: CS::V, b: CS::V) -> CS::V
+        pub fn add<V: Val, CS>(cs: &mut CS, a: Var<V>, b: Var<V>) -> Var<V>
         where
-            CS: ConstraintSystem,
+            CS: ConstraintSystem<V>,
         {
             //let [c] = Add::run(cs, [a, b]);
             let [c] = cs.execute::<Self, 3, 2, 1>([a, b]);
@@ -167,10 +166,10 @@ pub mod cs_prototype {
     /// An equality gate.
     pub struct Equality;
     impl Gate<2, 2, 0> for Equality {
-        fn gate<V: Var>(_: [V; 2]) -> [V; 0] {
+        fn gate<V: Val>(_: [V; 2]) -> [V; 0] {
             []
         }
-        fn check<V: Var>(i: [V; 2], _: [V; 0]) -> Constraints<V> {
+        fn check<V: Val>(i: [V; 2], _: [V; 0]) -> Constraints<V> {
             let [a, b] = i;
             (a - b).into()
         }

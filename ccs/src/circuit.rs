@@ -1,9 +1,19 @@
 use crate::{
-    constraint_system::ConstraintSystem,
+    constraint_system::{ConstraintSystem, Val},
     structure::{CcsStructure, StructureBuilder},
     witness::{unwrap_output, Witness, WitnessGenerator},
 };
 use ark_ff::Field;
+
+#[derive(Clone, Copy)]
+/// Symbolic circuit variable.
+pub struct Var<V>(pub(crate) V);
+
+impl<F> Var<F> {
+    pub(crate) fn unwrap(self) -> F {
+        self.0
+    }
+}
 
 /// Circuit definition, with generics for field, public inputs, and public and private outputs.
 /// Private outputs being just a convenience to take value produced in the circuit out.
@@ -15,10 +25,10 @@ pub trait Circuit<F: Field, const IN: usize = 0, const OUT: usize = 0, const PRI
     ///() if you don't care
     type PrivateOutput;
 
-    fn circuit<C: ConstraintSystem>(
+    fn circuit<V: Val, C: ConstraintSystem<V>>(
         cs: &mut C,
-        public_input: [C::V; IN],
-    ) -> ([C::V; OUT], [C::V; PRIV_OUT]);
+        public_input: [Var<V>; IN],
+    ) -> ([Var<V>; OUT], [Var<V>; PRIV_OUT]);
     fn handle_output(out: [F; PRIV_OUT]) -> Self::PrivateOutput;
 }
 
@@ -33,10 +43,10 @@ pub trait BuildStructure<
     fn structure<const S: usize>() -> CcsStructure<IO, S> {
         let (mut cs, public_input) = StructureBuilder::<IO>::with_inputs::<IN>();
         cs.reserve_outputs::<OUT>();
-        let (public_out, private_out) = Self::circuit(&mut cs, public_input);
+        let (public_out, private_out) = Self::circuit(&mut cs, public_input.map(Var));
         //unnecessary for this
         let _ = private_out;
-        cs.link_outputs::<IN, OUT>(public_out);
+        cs.link_outputs::<IN, OUT>(public_out.map(Var::unwrap));
 
         cs.build::<S>(IN + OUT)
     }
@@ -54,10 +64,10 @@ pub trait Prove<F: Field, const IN: usize, const OUT: usize, const PRIV_OUT: usi
 {
     fn witness(inputs: [F; IN], check: bool) -> (Witness<F>, Self::PrivateOutput) {
         let (mut cs, public_input) = WitnessGenerator::<F, IO>::with_io::<IN, OUT>(check, inputs);
-        let (public_out, private_out) = Self::circuit(&mut cs, public_input);
-        let private_out = unwrap_output(private_out);
+        let (public_out, private_out) = Self::circuit(&mut cs, public_input.map(Var));
+        let private_out = unwrap_output(private_out.map(Var::unwrap));
 
-        cs.link_outputs::<IN, OUT>(public_out);
+        cs.link_outputs::<IN, OUT>(public_out.map(Var::unwrap));
         (cs.witness(), Self::handle_output(private_out))
     }
 }
@@ -71,8 +81,8 @@ where
 
 mod test {
     use crate::{
-        circuit::Circuit,
-        constraint_system::{cs_prototype::Add, ConstraintSystem},
+        circuit::{Circuit, Var},
+        constraint_system::{cs_prototype::Add, ConstraintSystem, Val},
     };
     use ark_ff::Field;
 
@@ -83,10 +93,10 @@ mod test {
 
         type PrivateOutput = ();
 
-        fn circuit<C: ConstraintSystem>(
+        fn circuit<V: Val, C: ConstraintSystem<V>>(
             cs: &mut C,
-            public_input: [C::V; 2],
-        ) -> ([C::V; 1], [C::V; 1]) {
+            public_input: [super::Var<V>; 2],
+        ) -> ([super::Var<V>; 1], [super::Var<V>; 1]) {
             let [a, b] = public_input;
             let c = Add::add(cs, a, b);
             ([c.clone()], [c])
@@ -95,8 +105,10 @@ mod test {
         fn handle_output(_out: [F; 1]) -> Self::PrivateOutput {}
     }
 
-    ///composition
+    // Composition.
+
     struct MyCircuit2;
+
     impl<F: Field> Circuit<F, 2, 1, 1> for MyCircuit2
     where
         MyCircuit: Circuit<F, 2, 1, 1>,
@@ -105,10 +117,10 @@ mod test {
 
         type PrivateOutput = ();
 
-        fn circuit<C: ConstraintSystem>(
+        fn circuit<V: Val, C: ConstraintSystem<V>>(
             cs: &mut C,
-            public_input: [C::V; 2],
-        ) -> ([C::V; 1], [C::V; 1]) {
+            public_input: [Var<V>; 2],
+        ) -> ([Var<V>; 1], [Var<V>; 1]) {
             let ([c], _) = MyCircuit::circuit(cs, public_input);
 
             ([c.clone()], [c])

@@ -1,6 +1,9 @@
-use crate::constraint_system::{
-    cs_prototype::{Equality, GateRegistry},
-    ConstraintSystem, Constraints, Gate, Var,
+use crate::{
+    circuit::Var,
+    constraint_system::{
+        cs_prototype::{Equality, GateRegistry},
+        ConstraintSystem, Constraints, Gate, Val,
+    },
 };
 use std::{
     cmp::Ordering,
@@ -153,7 +156,7 @@ pub struct StructureBuilder<const IO: usize> {
     constraints: Vec<Constraint<usize, IO>>,
 }
 
-impl Var for usize {}
+impl Val for usize {}
 
 impl<const MAX_IO: usize> StructureBuilder<MAX_IO> {
     fn var(&mut self) -> usize {
@@ -177,7 +180,7 @@ impl<const MAX_IO: usize> StructureBuilder<MAX_IO> {
     pub fn link_outputs<const I: usize, const O: usize>(&mut self, outputs: [usize; O]) {
         for (i, b) in outputs.into_iter().enumerate() {
             let a = i + I + 1;
-            Self::execute::<Equality, 2, 2, 0>(self, [a, b]);
+            Self::execute::<Equality, 2, 2, 0>(self, [a, b].map(Var));
         }
     }
     /*fn bit_decomposition<const BITS: usize>(mut selector: usize) -> [bool; BITS] {
@@ -228,16 +231,15 @@ impl<const MAX_IO: usize> StructureBuilder<MAX_IO> {
     }
 }
 
-impl<const MAX_IO: usize> ConstraintSystem for StructureBuilder<MAX_IO> {
-    type V = usize;
-
+impl<const MAX_IO: usize> ConstraintSystem<usize> for StructureBuilder<MAX_IO> {
     fn execute<G, const IO: usize, const I: usize, const O: usize>(
         &mut self,
-        inputs: [Self::V; I],
-    ) -> [Self::V; O]
+        inputs: [Var<usize>; I],
+    ) -> [Var<usize>; O]
     where
         G: Gate<IO, I, O> + 'static,
     {
+        let inputs = inputs.map(Var::unwrap);
         let mut io = [0; MAX_IO];
         io[..I].copy_from_slice(&inputs[..I]);
 
@@ -252,7 +254,7 @@ impl<const MAX_IO: usize> ConstraintSystem for StructureBuilder<MAX_IO> {
             selector,
         };
         self.constraints.push(constraint);
-        output
+        output.map(Var)
     }
 }
 
@@ -288,7 +290,7 @@ impl<T> Sub<Self> for Exp<T> {
     }
 }
 
-impl<T: Clone> Var for Exp<T> {}
+impl<T: Clone> Val for Exp<T> {}
 
 impl<T: Display> Display for MultiSet<T> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
