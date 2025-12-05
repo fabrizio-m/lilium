@@ -153,20 +153,57 @@ pub struct StructureBuilder<const IO: usize> {
     next: usize,
     vars: Vec<usize>,
     registry: GateRegistry,
-    constraints: Vec<Constraint<usize, IO>>,
+    constraints: Vec<Constraint<WitnessIndex, IO>>,
 }
 
-impl Val for usize {}
+#[derive(Clone, Copy, Debug)]
+/// Variable that points to a position in the witness.
+pub struct WitnessIndex(usize);
+
+impl Add for WitnessIndex {
+    type Output = Self;
+
+    fn add(self, rhs: Self) -> Self::Output {
+        panic!(
+            "tried to add {:?} and {:?}, this type of var should never be added",
+            self, rhs
+        );
+    }
+}
+
+impl Sub for WitnessIndex {
+    type Output = Self;
+
+    fn sub(self, rhs: Self) -> Self::Output {
+        panic!(
+            "tried to subtract {:?} and {:?}, this type of var should never be subtracted",
+            self, rhs
+        );
+    }
+}
+
+impl Mul for WitnessIndex {
+    type Output = Self;
+
+    fn mul(self, rhs: Self) -> Self::Output {
+        panic!(
+            "tried to multiply {:?} and {:?}, this type of var should never be multiplied",
+            self, rhs
+        );
+    }
+}
+
+impl Val for WitnessIndex {}
 
 impl<const MAX_IO: usize> StructureBuilder<MAX_IO> {
-    fn var(&mut self) -> usize {
+    fn var(&mut self) -> WitnessIndex {
         //in this way 0 is reserved for the 1
         self.next += 1;
         let v = self.next;
         self.vars.push(v);
-        v
+        WitnessIndex(v)
     }
-    pub fn with_inputs<const I: usize>() -> (Self, [usize; I]) {
+    pub fn with_inputs<const I: usize>() -> (Self, [WitnessIndex; I]) {
         let mut new = Self::default();
         let inputs = [(); I].map(|_| new.var());
         (new, inputs)
@@ -177,9 +214,9 @@ impl<const MAX_IO: usize> StructureBuilder<MAX_IO> {
             let _ = self.var();
         }
     }
-    pub fn link_outputs<const I: usize, const O: usize>(&mut self, outputs: [usize; O]) {
+    pub fn link_outputs<const I: usize, const O: usize>(&mut self, outputs: [WitnessIndex; O]) {
         for (i, b) in outputs.into_iter().enumerate() {
-            let a = i + I + 1;
+            let a = WitnessIndex(i + I + 1);
             Self::execute::<Equality, 2, 2, 0>(self, [a, b].map(Var));
         }
     }
@@ -202,10 +239,10 @@ impl<const MAX_IO: usize> StructureBuilder<MAX_IO> {
         let mut gate_selectors = vec![];
 
         for constraint in constraints.into_iter() {
-            let constraint: Constraint<usize, MAX_IO> = constraint;
+            let constraint: Constraint<WitnessIndex, MAX_IO> = constraint;
             let Constraint { io, len, selector } = constraint;
             for i in 0..len {
-                io_matrices[i].push_row_single_value(io[i]);
+                io_matrices[i].push_row_single_value(io[i].0);
             }
             gate_selectors.push(selector);
             // let selector = Self::bit_decomposition::<S>(selector);
@@ -231,16 +268,16 @@ impl<const MAX_IO: usize> StructureBuilder<MAX_IO> {
     }
 }
 
-impl<const MAX_IO: usize> ConstraintSystem<usize> for StructureBuilder<MAX_IO> {
+impl<const MAX_IO: usize> ConstraintSystem<WitnessIndex> for StructureBuilder<MAX_IO> {
     fn execute<G, const IO: usize, const I: usize, const O: usize>(
         &mut self,
-        inputs: [Var<usize>; I],
-    ) -> [Var<usize>; O]
+        inputs: [Var<WitnessIndex>; I],
+    ) -> [Var<WitnessIndex>; O]
     where
         G: Gate<IO, I, O> + 'static,
     {
         let inputs = inputs.map(Var::unwrap);
-        let mut io = [0; MAX_IO];
+        let mut io = [WitnessIndex(0); MAX_IO];
         io[..I].copy_from_slice(&inputs[..I]);
 
         let output = [(); O].map(|_| self.var());
