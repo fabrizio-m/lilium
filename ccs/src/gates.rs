@@ -1,4 +1,7 @@
-use crate::constraint_system::{Constraints, Gate, Val};
+use crate::{
+    circuit::Var,
+    constraint_system::{ConstraintSystem, Constraints, Gate, Val},
+};
 
 pub enum AddN<const IO: usize, const I: usize> {}
 
@@ -177,3 +180,82 @@ impl Gate<1, 1, 0> for Binary {
     }
 }
 */
+
+/// Trait providing easier use of standard gates, implemented for any `ConstraintSystem`.
+pub trait StandardGates<V> {
+    /// Makes use of `Add2`
+    fn add(&mut self, a: Var<V>, b: Var<V>) -> Var<V>;
+    /// Makes use of `AddN<IO,I>'
+    fn add_n<const IO: usize, const I: usize>(&mut self, operands: [Var<V>; I]) -> Var<V>;
+    /// Makes use of `Sub2`
+    fn sub(&mut self, a: Var<V>, b: Var<V>) -> Var<V>;
+    /// Makes use of `SubN<IO,I>'
+    fn sub_n<const IO: usize, const I: usize>(&mut self, operands: [Var<V>; I]) -> Var<V>;
+    /// Makes use of `Mul2`
+    fn mul(&mut self, a: Var<V>, b: Var<V>) -> Var<V>;
+    /// Makes use of `MulN<IO,I>'
+    fn mul_n<const IO: usize, const I: usize>(&mut self, operands: [Var<V>; I]) -> Var<V>;
+    /// Makes use of `Equality'
+    fn assert_equals(&mut self, a: Var<V>, b: Var<V>);
+    /// Makes use of `Double'
+    fn double(&mut self, x: Var<V>) -> Var<V>;
+    /// Makes use of `Square'
+    fn square(&mut self, x: Var<V>) -> Var<V>;
+    /// Makes use of `Pow<EXP>'
+    fn pow<const EXP: u8>(&mut self, x: Var<V>) -> Var<V>;
+}
+
+impl<V, T> StandardGates<V> for T
+where
+    T: ConstraintSystem<V>,
+    V: Val,
+{
+    fn add(&mut self, a: Var<V>, b: Var<V>) -> Var<V> {
+        let [res] = self.execute::<Add2, 3, 2, 1>([a, b]);
+        res
+    }
+
+    fn add_n<const IO: usize, const I: usize>(&mut self, operands: [Var<V>; I]) -> Var<V> {
+        let [res] = self.execute::<AddN<IO, I>, IO, I, 1>(operands);
+        res
+    }
+
+    fn sub(&mut self, a: Var<V>, b: Var<V>) -> Var<V> {
+        let [res] = self.execute::<Sub2, 3, 2, 1>([a, b]);
+        res
+    }
+
+    fn sub_n<const IO: usize, const I: usize>(&mut self, operands: [Var<V>; I]) -> Var<V> {
+        let [res] = self.execute::<SubN<IO, I>, IO, I, 1>(operands);
+        res
+    }
+
+    fn mul(&mut self, a: Var<V>, b: Var<V>) -> Var<V> {
+        let [res] = self.execute::<Mul2, 3, 2, 1>([a, b]);
+        res
+    }
+
+    fn mul_n<const IO: usize, const I: usize>(&mut self, operands: [Var<V>; I]) -> Var<V> {
+        let [res] = self.execute::<MulN<IO, I>, IO, I, 1>(operands);
+        res
+    }
+
+    fn assert_equals(&mut self, a: Var<V>, b: Var<V>) {
+        let _ = self.execute::<Equality, 2, 2, 0>([a, b]);
+    }
+
+    fn double(&mut self, x: Var<V>) -> Var<V> {
+        let [res] = self.execute::<Double, 2, 1, 1>([x]);
+        res
+    }
+
+    fn square(&mut self, x: Var<V>) -> Var<V> {
+        let [res] = self.execute::<Square, 2, 1, 1>([x]);
+        res
+    }
+
+    fn pow<const EXP: u8>(&mut self, x: Var<V>) -> Var<V> {
+        let [res] = self.execute::<Pow<EXP>, 2, 1, 1>([x]);
+        res
+    }
+}
