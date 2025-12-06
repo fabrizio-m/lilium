@@ -1,5 +1,7 @@
 use crate::{
-    constants_generation::ConstantGenerator, permutation::Permutation, poseidon2::small_pow,
+    constants_generation::ConstantGenerator,
+    permutation::Permutation,
+    poseidon2::{internal_matrix::InternalMatrix3, small_pow},
 };
 use ark_ff::{Field, PrimeField};
 use std::marker::PhantomData;
@@ -16,10 +18,15 @@ pub trait InternalMatrix<F: Field, const N: usize> {
 pub struct PoseidonPermutation<
     F,
     const S: usize,
+    // External matrix.
     E,
+    // Internal matrix.
     I,
+    // Half external rounds.
     const HER: usize,
+    // Internal rounds.
     const IR: usize,
+    // Sbox degree.
     const SBOX: u8,
 > where
     F: Field,
@@ -51,6 +58,8 @@ where
         Self::new()
     }
 }
+
+pub type PoseidonDefault<F> = PoseidonPermutation<F, 3, InternalMatrix3, InternalMatrix3, 4, 40, 7>;
 
 impl<F, const S: usize, E, I, const HER: usize, const IR: usize, const SBOX: u8>
     PoseidonPermutation<F, S, E, I, HER, IR, SBOX>

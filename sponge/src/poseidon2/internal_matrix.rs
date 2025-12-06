@@ -1,6 +1,5 @@
-use ark_ff::Field;
-
 use super::permutation::{ExternalMatrix, InternalMatrix};
+use ark_ff::Field;
 
 // |2 1 1|
 // |1 2 1|
