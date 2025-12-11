@@ -12,6 +12,7 @@ pub mod verifying;
 
 pub(crate) use sumcheck_argument::LcsSumcheck;
 
+#[derive(Clone, Debug)]
 pub struct LcsInstance<F: Field, C: CommmitmentScheme<F>, const I: usize> {
     witness_commit: C::Commitment,
     public_inputs: [F; I],
