@@ -1,4 +1,4 @@
-use crate::instances::lcs::LcsInstance;
+use crate::instances::lcs::{LcsInstance, LcsProver};
 use crate::{circuit_key::CircuitKey, instances::lcs::verifying::LcsProof};
 use ark_ff::Field;
 use ccs::circuit::Circuit;
@@ -6,6 +6,10 @@ use ccs::circuit::Prove;
 use ccs::witness::Witness;
 use commit::CommmitmentScheme;
 use sponge::sponge::Duplex;
+use transcript::protocols::Protocol;
+use transcript::{MessageGuard, TranscriptGuard};
+
+// TODO: make a proof type that is generic over a given circuit.
 
 impl<F, T, C, CS, const I: usize, const IO: usize, const S: usize> CircuitKey<F, T, C, CS, I, IO, S>
 where
@@ -18,7 +22,7 @@ where
     pub fn prove_from_inputs<const IN: usize, const OUT: usize, const PRIV_OUT: usize>(
         &self,
         inputs: [F; IN],
-    ) -> (LcsProof<F, CS, IO>, C::PrivateOutput)
+    ) -> (LcsInstance<F, CS, I>, LcsProof<F, CS, IO>, C::PrivateOutput)
     where
         C: Circuit<F, IN, OUT, PRIV_OUT>,
     {
@@ -30,8 +34,8 @@ where
         inputs.copy_from_slice(&witness.0);
 
         let instance: LcsInstance<F, CS, I> = LcsInstance::new(witness_commit, inputs);
-        let proof = self.prove(instance, witness);
-        (proof, output)
+        let proof = self.prove(instance.clone(), witness);
+        (instance, proof, output)
     }
 
     /// Proves (instance, witness) pair.
@@ -45,5 +49,20 @@ where
         //TODO:handle
         transcript.finish().unwrap();
         proof
+    }
+
+    // TODO: Move into its own module.
+    pub fn verify(&self, instance: LcsInstance<F, CS, I>, proof: LcsProof<F, CS, IO>) -> bool {
+        let mut transcript = self.transcript.instanciate();
+        let result = {
+            let transcript = TranscriptGuard::new(&mut transcript, proof);
+            let instance = MessageGuard::new(instance);
+            LcsProver::verify(&self.lcs_key, instance, transcript)
+        };
+        transcript.finish().unwrap();
+        match result {
+            Ok(()) => true,
+            Err(()) => false,
+        }
     }
 }
