@@ -7,6 +7,7 @@ pub mod circuit_key;
 mod instances;
 pub mod prove;
 mod proving;
+mod test;
 
 pub struct Prover<F: Field, const IO: usize = 0> {
     _phantom: PhantomData<F>,
