@@ -111,8 +111,9 @@ impl Gate<2, 1, 1> for Double {
     }
 
     fn check<V: Val>(i: [V; 1], o: [V; 1]) -> Constraints<V> {
-        let ([a], [a2]) = (i, o);
-        Constraints::from(a - a2)
+        let ([x], [expected]) = (i, o);
+        let x2 = x.clone() + x;
+        Constraints::from(x2 - expected)
     }
 }
 
@@ -125,8 +126,9 @@ impl Gate<2, 1, 1> for Square {
     }
 
     fn check<V: Val>(i: [V; 1], o: [V; 1]) -> Constraints<V> {
-        let ([a], [aa]) = (i, o);
-        Constraints::from(a - aa)
+        let ([x], [expected]) = (i, o);
+        let xx = x.clone() * x;
+        Constraints::from(xx - expected)
     }
 }
 
