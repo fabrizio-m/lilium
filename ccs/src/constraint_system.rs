@@ -133,7 +133,7 @@ pub mod cs_prototype {
             let entry = entry.or_insert_with(|| {
                 self.next_selector += 1;
                 let exp = eval_gate_constraints::<G, IO, I, O>();
-                (self.next_selector, exp)
+                (self.next_selector - 1, exp)
             });
             entry.0
         }
