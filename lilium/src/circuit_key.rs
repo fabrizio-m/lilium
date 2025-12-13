@@ -10,7 +10,7 @@ use std::{marker::PhantomData, rc::Rc};
 use sumcheck::sumcheck::DegreeParam;
 use transcript::{params::ParamResolver, TranscriptBuilder, TranscriptDescriptor};
 
-use crate::instances::lcs::{key::LcsProvingKey, sumcheck_argument::LcsMles};
+use crate::instances::lcs::{key::LcsProvingKey, sumcheck_argument::LcsMles, LcsProver};
 
 /// key to create and verify proofs for a given circuit
 pub struct CircuitKey<
@@ -41,6 +41,7 @@ where
     pub fn new<const IN: usize, const OUT: usize, const PRIV_OUT: usize>() -> Self
     where
         C: Circuit<F, IN, OUT, PRIV_OUT>,
+        CS: 'static,
     {
         let ccs_structure: CcsStructure<IO, 4> = C::structure();
         let vars = ccs_structure.vars();
@@ -56,8 +57,7 @@ where
             SparkMatrix::<F>::new(evals)
         });
         let spark_structure = spark_structure.map(Rc::new);
-        //TODO: parameterize
-        let committment_scheme = Rc::new(CS::new(8));
+        let committment_scheme = Rc::new(CS::new(vars));
 
         let spark_commitments = spark_structure
             .each_ref()
@@ -67,12 +67,14 @@ where
         // can be higher than needed but not lower.
         // TODO: wrong, IO isn't necessarily the same
         let degree = IO;
-        /// TODO: more params needed
+        // TODO: more params needed
         let mut resolver = ParamResolver::new();
         resolver.set::<DegreeParam>(degree);
         let transcript_builder = TranscriptBuilder::new(vars, resolver);
         //TODO: make transcript
-        let transcript = transcript_builder.finish();
+        let transcript = transcript_builder
+            .add_protocol_patter::<LcsProver<CS, I, IO>>()
+            .finish();
 
         let structure = Rc::new(structure(ccs_structure.clone()));
         let lcs_key = LcsProvingKey::new(
