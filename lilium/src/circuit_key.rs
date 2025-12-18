@@ -46,7 +46,7 @@ where
         let ccs_structure: CcsStructure<IO, 4> = C::structure();
         let vars = ccs_structure.vars();
         let spark_structure = ccs_structure.io_matrices.clone().map(|matrix: Matrix| {
-            let evals = matrix
+            let mut evals: Vec<_> = matrix
                 .to_evals()
                 .into_iter()
                 .map(|index| {
@@ -54,6 +54,7 @@ where
                     ([i, j], F::one())
                 })
                 .collect();
+            evals.resize(1 << vars, ([0, 0], F::zero()));
             SparkMatrix::<F>::new(evals)
         });
         let spark_structure = spark_structure.map(Rc::new);
@@ -99,7 +100,8 @@ where
 fn structure<F: Field, const IO: usize, const S: usize>(
     ccs_structure: CcsStructure<IO, S>,
 ) -> Vec<LcsMles<F, IO, S>> {
-    let mut mles = vec![];
+    let len = ccs_structure.trace_len.next_power_of_two();
+    let mut mles = Vec::with_capacity(len);
     for i in 0..ccs_structure.trace_len {
         let input_selector = if i < ccs_structure.input_len { 1u8 } else { 0 };
         let input_selector = F::from(input_selector);
@@ -111,5 +113,7 @@ fn structure<F: Field, const IO: usize, const S: usize>(
         let row = LcsMles::new_structure(input_selector, gate_selectors);
         mles.push(row)
     }
+    let padding_row = LcsMles::new_structure(F::zero(), [F::zero(); S]);
+    mles.resize(len, padding_row);
     mles
 }
