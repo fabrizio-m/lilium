@@ -10,6 +10,7 @@ use ccs::{structure::Matrix, witness::LinearCombinations};
 use commit::{committed_structure::CommittedStructure, CommmitmentScheme};
 use spark::committed_spark::CommittedSpark;
 use std::rc::Rc;
+use transcript::params::ParamResolver;
 
 pub struct LcsReductionKey<F, C, const IO: usize>
 where
@@ -30,9 +31,10 @@ where
         // structure: Rc<Vec<LcsMles<F, IO, S>>>,
         structure: Rc<Vec<LcsMles<F, IO, 4>>>,
         pcs: &C,
+        params: &mut ParamResolver,
     ) -> Self {
         let domain_vars = structure.len().next_power_of_two().ilog2() as usize;
-        let committed_structure = CommittedStructure::new(structure, pcs);
+        let committed_structure = CommittedStructure::new(structure, pcs, params);
         Self {
             committed_structure,
             domain_vars,
@@ -65,8 +67,9 @@ where
         structure: Rc<Vec<LcsMles<F, IO, 4>>>,
         matrices: [&Matrix; IO],
         spark_keys: [CommittedSpark<F, C, 2>; IO],
+        params: &mut ParamResolver,
     ) -> Self {
-        let lcs_reduction_key = LcsReductionKey::new(Rc::clone(&structure), pcs.as_ref());
+        let lcs_reduction_key = LcsReductionKey::new(Rc::clone(&structure), pcs.as_ref(), params);
         let domain_vars = lcs_reduction_key.domain_vars;
         let linear_combinations = LinearCombinations::from_tables(matrices);
         let linear_combinations = Rc::new(linear_combinations);
@@ -75,6 +78,7 @@ where
             Rc::clone(&linear_combinations),
             Rc::clone(&structure),
             Rc::clone(&pcs),
+            params,
         );
         let matrix_eval_key = matrix_eval::Key::new(spark_keys, Rc::clone(&pcs));
         let mles = structure;

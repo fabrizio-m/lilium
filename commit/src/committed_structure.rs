@@ -1,8 +1,8 @@
 use crate::{
     batching::{
         self,
-        structured::{PointEvals, StructuredBatchEval, StructuredBatchReduction},
-        BatchEval,
+        structured::{PointEvals, StructureLength, StructuredBatchEval, StructuredBatchReduction},
+        BatchEval, CommitsNumber,
     },
     CommmitmentScheme, OpenInstance,
 };
@@ -13,7 +13,7 @@ use sumcheck::{
     polynomials::{Evals, EvalsExt, MultiPoint},
     sumcheck::{CommitType, EvalKind, SumcheckFunction},
 };
-use transcript::{protocols::Reduction, Transcript};
+use transcript::{params::ParamResolver, protocols::Reduction, Transcript};
 
 //TODO: split into prover and verifier to save memory
 /// type generalizing the handling of commitment to structures, allowing
@@ -64,7 +64,7 @@ where
     SF: SumcheckFunction<F>,
     CS: CommmitmentScheme<F>,
 {
-    pub fn new(mles: Rc<Vec<SF::Mles<F>>>, scheme: &CS) -> Self {
+    pub fn new(mles: Rc<Vec<SF::Mles<F>>>, scheme: &CS, params: &mut ParamResolver) -> Self {
         let kinds = SF::KINDS;
         let kinds_flat: Vec<EvalKind> = kinds.flatten_vec();
         let mut structure_len = 0;
@@ -97,6 +97,8 @@ where
             }
         }
         let batch_commitment = StructuredBatchReduction::new(structure_mles, scheme);
+        params.set::<StructureLength>(structure_len);
+        params.set::<CommitsNumber>(instance_len);
         Self {
             mles,
             structure_len,

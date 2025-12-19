@@ -60,22 +60,16 @@ where
         let spark_structure = spark_structure.map(Rc::new);
         let committment_scheme = Rc::new(CS::new(vars));
 
-        let spark_commitments = spark_structure
-            .each_ref()
-            .map(|s| CommittedSpark::new(Rc::clone(s), committment_scheme.as_ref()));
-
         // This assumes IO is selected properly, which should be fine as it
         // can be higher than needed but not lower.
         // TODO: wrong, IO isn't necessarily the same
         let degree = IO;
-        // TODO: more params needed
         let mut resolver = ParamResolver::new();
         resolver.set::<DegreeParam>(degree);
-        let transcript_builder = TranscriptBuilder::new(vars, resolver);
-        //TODO: make transcript
-        let transcript = transcript_builder
-            .add_protocol_patter::<LcsProver<CS, I, IO>>()
-            .finish();
+
+        let spark_commitments = spark_structure
+            .each_ref()
+            .map(|s| CommittedSpark::new(Rc::clone(s), committment_scheme.as_ref(), &mut resolver));
 
         let structure = Rc::new(structure(ccs_structure.clone()));
         let lcs_key = LcsProvingKey::new(
@@ -83,7 +77,13 @@ where
             structure,
             ccs_structure.io_matrices.each_ref(),
             spark_commitments.clone(),
+            &mut resolver,
         );
+
+        let transcript_builder = TranscriptBuilder::new(vars, resolver);
+        let transcript = transcript_builder
+            .add_protocol_patter::<LcsProver<CS, I, IO>>()
+            .finish();
 
         Self {
             _circuit: PhantomData,

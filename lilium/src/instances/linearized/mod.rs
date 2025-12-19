@@ -62,6 +62,7 @@ impl<F: Field, C: CommmitmentScheme<F>, const IO: usize, const S: usize> Key<F, 
         linear_combinations: Rc<LinearCombinations<IO>>,
         lcs_structure: Rc<Vec<LcsMles<F, IO, S>>>,
         pcs: Rc<C>,
+        params: &mut ParamResolver,
     ) -> Self {
         let dummy = LinearizedMles {
             products: [F::zero(); IO],
@@ -69,7 +70,8 @@ impl<F: Field, C: CommmitmentScheme<F>, const IO: usize, const S: usize> Key<F, 
         };
         let mles = vec![dummy; 1 << domain_vars];
         let structure = Rc::new(mles);
-        let selector_commitments = CommittedStructure::new(Rc::clone(&lcs_structure), pcs.as_ref());
+        let selector_commitments =
+            CommittedStructure::new(Rc::clone(&lcs_structure), pcs.as_ref(), params);
 
         Self {
             domain_vars,

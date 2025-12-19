@@ -168,7 +168,11 @@ where
 }
 
 impl<F: Field, C: CommmitmentScheme<F>, const D: usize> CommittedSpark<F, C, D> {
-    pub fn new(structure: Rc<SparkStructure<F, D>>, scheme: &C) -> Self {
+    pub fn new(
+        structure: Rc<SparkStructure<F, D>>,
+        scheme: &C,
+        params: &mut ParamResolver,
+    ) -> Self {
         assert!(structure.val.len().is_power_of_two());
         let vars = structure.val.len().ilog2() as usize;
 
@@ -179,7 +183,7 @@ impl<F: Field, C: CommmitmentScheme<F>, const D: usize> CommittedSpark<F, C, D> 
 
         let mles = SparkEval::<F, D>::evals(&structure, points, challenges, zero_check_point);
 
-        let committed_structure = CommittedStructure::new(Rc::new(mles), scheme);
+        let committed_structure = CommittedStructure::new(Rc::new(mles), scheme, params);
         let sumcheck_verifier: SumcheckVerifier<F, SparkEvalCheck<D>> = SumcheckVerifier::new(vars);
 
         Self {
