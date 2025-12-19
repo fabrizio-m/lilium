@@ -15,12 +15,24 @@ impl ParamResolver {
         }
     }
 
+    /// Sets the given param to the given value, trying to a set second value
+    /// for the same type will panic.
     pub fn set<T: Any>(&mut self, value: usize) {
         let id = TypeId::of::<T>();
-        if let Entry::Vacant(e) = self.map.entry(id) {
-            e.insert(value);
-        } else {
-            panic!("param already set: {}", type_name::<T>());
+        match self.map.entry(id) {
+            Entry::Vacant(e) => {
+                e.insert(value);
+            }
+            Entry::Occupied(e) => {
+                if &value != e.get() {
+                    panic!(
+                        "Tried to set param {} to {} when {} was already set",
+                        type_name::<T>(),
+                        value,
+                        e.get()
+                    );
+                }
+            }
         }
     }
 
