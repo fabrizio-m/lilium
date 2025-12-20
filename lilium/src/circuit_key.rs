@@ -102,13 +102,20 @@ fn structure<F: Field, const IO: usize, const S: usize>(
 ) -> Vec<LcsMles<F, IO, S>> {
     let len = ccs_structure.trace_len.next_power_of_two();
     let mut mles = Vec::with_capacity(len);
+    //TODO: use next_power_of_two(max(trace,constraints))
     for i in 0..ccs_structure.trace_len {
         let input_selector = if i < ccs_structure.input_len { 1u8 } else { 0 };
         let input_selector = F::from(input_selector);
 
-        let mut gate_selectors = [F::zero(); S];
-        let active_selector = ccs_structure.gate_selectors[i];
-        gate_selectors[active_selector] = F::one();
+        let active_selector = ccs_structure.gate_selectors.get(i);
+        let gate_selectors = match active_selector {
+            Some(gate) => {
+                let mut gate_selectors = [F::zero(); S];
+                gate_selectors[*gate] = F::one();
+                gate_selectors
+            }
+            None => [F::zero(); S],
+        };
 
         let row = LcsMles::new_structure(input_selector, gate_selectors);
         mles.push(row)
