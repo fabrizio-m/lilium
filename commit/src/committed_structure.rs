@@ -303,9 +303,7 @@ where
 
     type Error = batching::BatchingError<F, CS>;
 
-    fn transcript_pattern(
-        builder: transcript::TranscriptBuilder<F>,
-    ) -> transcript::TranscriptBuilder<F> {
+    fn transcript_pattern(builder: transcript::TranscriptBuilder) -> transcript::TranscriptBuilder {
         StructuredBatchReduction::<F, CS>::transcript_pattern(builder)
     }
 

@@ -93,13 +93,11 @@ where
 
     type Error = IpaError;
 
-    fn transcript_pattern(
-        builder: transcript::TranscriptBuilder<F>,
-    ) -> transcript::TranscriptBuilder<F> {
+    fn transcript_pattern(builder: transcript::TranscriptBuilder) -> transcript::TranscriptBuilder {
         builder
-            .round::<Self::Instance, 1>()
-            .fold_rounds::<RoundMsg<G>, 1>()
-            .round::<SingleElement<F>, 0>()
+            .round::<F, Self::Instance, 1>()
+            .fold_rounds::<F, RoundMsg<G>, 1>()
+            .round::<F, SingleElement<F>, 0>()
     }
 
     fn prove(_instance: Self::Instance) -> Self::Proof {

@@ -82,7 +82,7 @@ where
 
         let transcript_builder = TranscriptBuilder::new(vars, resolver);
         let transcript = transcript_builder
-            .add_protocol_patter::<LcsProver<CS, I, IO>>()
+            .add_protocol_patter::<F, LcsProver<CS, I, IO>>()
             .finish();
 
         Self {

@@ -104,14 +104,12 @@ where
 
     type Error = Error<F, C>;
 
-    fn transcript_pattern(
-        builder: transcript::TranscriptBuilder<F>,
-    ) -> transcript::TranscriptBuilder<F> {
+    fn transcript_pattern(builder: transcript::TranscriptBuilder) -> transcript::TranscriptBuilder {
         builder
-            .round::<CommittedSparkInstance<F, D>, 3>()
+            .round::<F, CommittedSparkInstance<F, D>, 3>()
             .point()
-            .add_reduction_patter::<SumcheckVerifier<F, SparkEvalCheck<D>>>()
-            .add_reduction_patter::<CommittedStructure<F, SparkEvalCheck<D>, C>>()
+            .add_reduction_patter::<F, SumcheckVerifier<F, SparkEvalCheck<D>>>()
+            .add_reduction_patter::<F, CommittedStructure<F, SparkEvalCheck<D>, C>>()
     }
 
     fn verify_reduction<S: Duplex<F>>(

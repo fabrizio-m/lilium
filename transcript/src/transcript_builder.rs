@@ -6,28 +6,25 @@ use crate::{
 };
 use ark_ff::Field;
 use sponge::sponge::{Duplex, SpongeBuilder};
-use std::{
-    any::{Any, TypeId},
-    marker::PhantomData,
-};
+use std::any::{Any, TypeId};
 
-pub struct TranscriptBuilder<F: Field> {
+pub struct TranscriptBuilder {
     rounds: Vec<(TypeId, usize)>,
     //TODO: can likely be handled through params
     vars: usize,
-    // degree: usize,
     sponge_builder: SpongeBuilder,
     param_resolver: ParamResolver,
-    _f: PhantomData<F>,
 }
 
-impl<F: Field> TranscriptBuilder<F> {
-    pub fn add_protocol_patter<S: Protocol<F>>(self) -> Self {
+impl TranscriptBuilder {
+    pub fn add_protocol_patter<F: Field, S: Protocol<F>>(self) -> Self {
         S::transcript_pattern(self)
     }
-    pub fn add_reduction_patter<S: Reduction<F>>(self) -> Self {
+
+    pub fn add_reduction_patter<F: Field, S: Reduction<F>>(self) -> Self {
         S::transcript_pattern(self)
     }
+
     pub fn new(vars: usize, params: ParamResolver) -> Self {
         let sponge_builder = SpongeBuilder::new();
         Self {
@@ -36,10 +33,11 @@ impl<F: Field> TranscriptBuilder<F> {
             // degree,
             sponge_builder,
             param_resolver: params,
-            _f: PhantomData,
+            // _f: PhantomData,
         }
     }
-    pub fn round<T: Any + Message<F>, const N: usize>(self) -> Self {
+
+    pub fn round<F: Field, T: Any + Message<F>, const N: usize>(self) -> Self {
         let Self {
             mut rounds,
             sponge_builder,
@@ -62,6 +60,7 @@ impl<F: Field> TranscriptBuilder<F> {
             ..self
         }
     }
+
     pub fn point(self) -> Self {
         let Self {
             mut rounds,
@@ -79,21 +78,24 @@ impl<F: Field> TranscriptBuilder<F> {
             ..self
         }
     }
-    fn fold_round_rec<T: Any + Message<F>, const N: usize>(self, left: usize) -> Self {
+
+    fn fold_round_rec<F: Field, T: Any + Message<F>, const N: usize>(self, left: usize) -> Self {
         if left == 0 {
             self
         } else {
-            let builder = self.round::<T, N>();
-            builder.fold_round_rec::<T, N>(left - 1)
+            let builder = self.round::<F, T, N>();
+            builder.fold_round_rec::<F, T, N>(left - 1)
         }
     }
+
     /// Adds V rounds for the V variables in the transcript for split and fold
     /// protocols which send one message per variable.
-    pub fn fold_rounds<T: Any + Message<F>, const N: usize>(self) -> Self {
+    pub fn fold_rounds<F: Field, T: Any + Message<F>, const N: usize>(self) -> Self {
         let vars = self.vars;
-        self.fold_round_rec::<T, N>(vars)
+        self.fold_round_rec::<F, T, N>(vars)
     }
-    pub fn finish<S: Duplex<F>>(self) -> TranscriptDescriptor<F, S> {
+
+    pub fn finish<F: Field, S: Duplex<F>>(self) -> TranscriptDescriptor<F, S> {
         let Self {
             rounds,
             sponge_builder,
@@ -107,6 +109,7 @@ impl<F: Field> TranscriptBuilder<F> {
             vars,
         }
     }
+
     pub fn repeat<const N: usize, M: Fn(Self) -> Self>(self, f: M) -> Self {
         [(); N].iter().fold(self, |acc, _| f(acc))
     }

@@ -146,11 +146,9 @@ where
 
     type Error = Error<F, CS>;
 
-    fn transcript_pattern(
-        builder: transcript::TranscriptBuilder<F>,
-    ) -> transcript::TranscriptBuilder<F> {
+    fn transcript_pattern(builder: transcript::TranscriptBuilder) -> transcript::TranscriptBuilder {
         builder
-            .round::<Self::Instance, 0>()
+            .round::<F, Self::Instance, 0>()
             .repeat::<IO, _>(CommittedSpark::<F, CS, 2>::transcript_pattern)
             .repeat::<IO, _>(CS::transcript_pattern)
     }

@@ -53,15 +53,13 @@ where
 
     type Error = crate::Error<F, CS>;
 
-    fn transcript_pattern(
-        builder: transcript::TranscriptBuilder<F>,
-    ) -> transcript::TranscriptBuilder<F> {
+    fn transcript_pattern(builder: transcript::TranscriptBuilder) -> transcript::TranscriptBuilder {
         builder
-            .round::<Self::A, 1>()
-            .add_reduction_patter::<Sumcheck<F, IO>>()
-            .add_reduction_patter::<CommittedStructure<F, LcsSumcheck<F, IO, S>, CS>>()
-            .round::<SingleElement<F>, 0>()
-            .round::<[SingleElement<F>; IO], 0>()
+            .round::<F, Self::A, 1>()
+            .add_reduction_patter::<F, Sumcheck<F, IO>>()
+            .add_reduction_patter::<F, CommittedStructure<F, LcsSumcheck<F, IO, S>, CS>>()
+            .round::<F, SingleElement<F>, 0>()
+            .round::<F, [SingleElement<F>; IO], 0>()
     }
 
     fn verify_reduction<D: sponge::sponge::Duplex<F>>(

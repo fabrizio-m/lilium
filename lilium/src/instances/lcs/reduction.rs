@@ -61,14 +61,14 @@ where
 
     type Error = crate::Error<F, C>;
 
-    fn transcript_pattern(builder: TranscriptBuilder<F>) -> TranscriptBuilder<F> {
+    fn transcript_pattern(builder: TranscriptBuilder) -> TranscriptBuilder {
         builder
-            .round::<Self::A, 1>()
+            .round::<F, Self::A, 1>()
             .point()
-            .add_reduction_patter::<SumcheckVerifier<F, LcsSumcheck<F, IO, 4>>>()
-            .round::<[SingleElement<F>; 4], 0>()
-            .round::<SingleElement<F>, 0>()
-            .round::<[SingleElement<F>; IO], 0>()
+            .add_reduction_patter::<F, SumcheckVerifier<F, LcsSumcheck<F, IO, 4>>>()
+            .round::<F, [SingleElement<F>; 4], 0>()
+            .round::<F, SingleElement<F>, 0>()
+            .round::<F, [SingleElement<F>; IO], 0>()
     }
 
     fn verify_reduction<S: Duplex<F>>(
