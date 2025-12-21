@@ -17,14 +17,15 @@ impl<F: Field> Circuit<F, 2, 1, 0> for Circuit1 {
         public_input: [Var<V>; 2],
     ) -> ([Var<V>; 1], [Var<V>; 0]) {
         let [mut acc, base] = public_input;
-        let mut exp = 32523u32;
+        let exp = 32523u32;
         for i in (0..32).rev() {
-            let new_acc = if (exp >> i & 0b1) == 0 {
+            let new_acc = if ((exp >> i) & 0b1) == 0 {
+                // println!("b1");
                 acc
             } else {
+                // println!("b2");
                 cs.mul(acc, base.clone())
             };
-            exp >>= 1;
             acc = cs.square(new_acc);
         }
         ([acc], [])
