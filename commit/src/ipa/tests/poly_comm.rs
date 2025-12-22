@@ -31,7 +31,8 @@ fn polynomial_commitment<S: CommmitmentScheme<Fr>>(should_fail: bool) {
     let instance = scheme.open_instance(commit.clone(), point.clone(), &mle);
 
     let params = ParamResolver::new();
-    let transcript_builder = TranscriptBuilder::new(LEN_LOG, params).add_protocol_patter::<Fr, S>();
+    let transcript_builder =
+        TranscriptBuilder::new(LEN_LOG, params).add_protocol_patter::<Fr, S>(&scheme);
     let transcript_desc = transcript_builder.finish::<Fr, TestSponge>();
     let mut transcript = transcript_desc.instanciate();
 

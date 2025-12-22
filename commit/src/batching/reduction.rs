@@ -27,7 +27,7 @@ where
 
     type Error = BatchingError<F, S>;
 
-    fn transcript_pattern(builder: TranscriptBuilder) -> TranscriptBuilder {
+    fn transcript_pattern(_key: &Self, builder: TranscriptBuilder) -> TranscriptBuilder {
         builder.round::<F, BatchEval<F, S>, 1>()
     }
 

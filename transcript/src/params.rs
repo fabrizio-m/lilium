@@ -46,3 +46,37 @@ impl ParamResolver {
         }
     }
 }
+
+#[derive(Default, Debug)]
+pub struct ParamStack {
+    frames: Vec<ParamResolver>,
+}
+
+impl ParamStack {
+    pub fn new(frames: Vec<ParamResolver>) -> Self {
+        Self { frames }
+    }
+
+    pub fn get<T: Any>(&self) -> usize {
+        match self.frames.last() {
+            Some(frame) => frame.get::<T>(),
+            None => {
+                panic!("param get() called on an empty stack");
+            }
+        }
+    }
+
+    pub fn push(&mut self, frame: ParamResolver) {
+        self.frames.push(frame);
+    }
+
+    pub fn pop(&mut self) {
+        if self.frames.pop().is_none() {
+            panic!("param pop() called in empty stack");
+        }
+    }
+
+    pub fn top(&self) -> &ParamResolver {
+        self.frames.last().unwrap()
+    }
+}

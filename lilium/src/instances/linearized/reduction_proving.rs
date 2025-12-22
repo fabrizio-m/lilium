@@ -148,7 +148,7 @@ where
 {
     let mut mles = structure.to_vec();
     let mut combinations = linear_combinations.compute(witness);
-    let r_eq = eq::eq(&r_eq);
+    let r_eq = eq::eq(r_eq);
 
     for i in 0..mles.len() {
         let products: [F; IO] = combinations.next().unwrap();

@@ -101,13 +101,18 @@ fn test<F: Field>() {
     let prover = Prover::<F>::new(HALF_VARS);
     let challs = &challenges;
 
+    // creating a verifier, same as the prover
+    type Verifier<F> = SumcheckVerifier<F, SparkEvalCheck<2>>;
+    let verifier = Verifier::<F>::new(HALF_VARS);
+
     // creating transcript descriptor for sumcheck
     let degree = sumcheck_degree::<F, SparkEvalCheck<2>>();
     let mut resolver = ParamResolver::new();
     resolver.set::<DegreeParam>(degree);
     let transcript_builder = TranscriptBuilder::new(HALF_VARS, resolver);
     let transcript_desc =
-        SumcheckVerifier::<F, SparkEvalCheck<2>>::transcript_pattern(transcript_builder).finish();
+        SumcheckVerifier::<F, SparkEvalCheck<2>>::transcript_pattern(&verifier, transcript_builder)
+            .finish();
 
     // instanciating the transcript for the prover
     let mut transcript: Transcript<F, TestSponge<F>> = transcript_desc.instanciate();
@@ -118,10 +123,6 @@ fn test<F: Field>() {
         .proof;
     // finishing transcript as it is no longer used
     transcript.finish().unwrap();
-
-    // creating a verifier, same as the prover
-    type Verifier<F> = SumcheckVerifier<F, SparkEvalCheck<2>>;
-    let verifier = Verifier::<F>::new(HALF_VARS);
 
     // the instance for sumcheck is just the claimed sum
     let instance = sumcheck::sumcheck::Sum(true_eval.0);

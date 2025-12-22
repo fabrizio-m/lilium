@@ -394,7 +394,10 @@ impl<F: Field, SF: SumcheckFunction<F>> Reduction<F> for SumcheckVerifier<F, SF>
 
     type Error = SumcheckError;
 
-    fn transcript_pattern(builder: transcript::TranscriptBuilder) -> transcript::TranscriptBuilder {
+    fn transcript_pattern(
+        _key: &Self::Key,
+        builder: transcript::TranscriptBuilder,
+    ) -> transcript::TranscriptBuilder {
         builder.fold_rounds::<F, Message<F>, 1>()
     }
 

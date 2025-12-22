@@ -18,7 +18,10 @@ mod zero_check;
 
 pub type TestSponge<F> = Sponge<F, UnsafePermutation<F, 3>, 2, 1, 3>;
 
-pub fn sumcheck_transcript<F, SF>(vars: usize) -> TranscriptDescriptor<F, TestSponge<F>>
+pub fn sumcheck_transcript<F, SF>(
+    key: &SumcheckVerifier<F, SF>,
+    vars: usize,
+) -> TranscriptDescriptor<F, TestSponge<F>>
 where
     F: Field,
     SF: SumcheckFunction<F>,
@@ -27,7 +30,7 @@ where
     let mut resolver = ParamResolver::new();
     resolver.set::<DegreeParam>(degree);
     let transcript_builder = TranscriptBuilder::new(vars, resolver);
-    SumcheckVerifier::<F, SF>::transcript_pattern(transcript_builder).finish()
+    SumcheckVerifier::<F, SF>::transcript_pattern(key, transcript_builder).finish()
 }
 
 /// Creates a prove with the mle and tries to verify it.
@@ -38,7 +41,9 @@ where
 {
     let vars = mle.len().ilog2() as usize;
 
-    let transcript_desc = sumcheck_transcript::<F, SF>(vars);
+    let verifier = SumcheckVerifier::<F, SF>::new(vars);
+
+    let transcript_desc = sumcheck_transcript::<F, SF>(&verifier, vars);
 
     let prover = SumcheckProver::<F, SF>::new(vars);
     let mut transcript: Transcript<F, TestSponge<F>> = transcript_desc.instanciate();
@@ -49,7 +54,6 @@ where
     transcript.finish().unwrap();
 
     let instance = MessageGuard::new(Sum(sum));
-    let verifier = SumcheckVerifier::<F, SF>::new(vars);
     let mut transcript = transcript_desc.instanciate();
     let check = {
         let transcript = TranscriptGuard::new(&mut transcript, proof);

@@ -1,6 +1,6 @@
 use crate::{
     messages::PointRound,
-    params::ParamResolver,
+    params::{ParamResolver, ParamStack},
     protocols::{Protocol, Reduction},
     Message, Transcript,
 };
@@ -13,16 +13,26 @@ pub struct TranscriptBuilder {
     //TODO: can likely be handled through params
     vars: usize,
     sponge_builder: SpongeBuilder,
-    param_resolver: ParamResolver,
+    params: ParamStack,
 }
 
 impl TranscriptBuilder {
-    pub fn add_protocol_patter<F: Field, S: Protocol<F>>(self) -> Self {
-        S::transcript_pattern(self)
+    pub fn with_params<F>(mut self, params: ParamResolver, f: F) -> Self
+    where
+        F: Fn(Self) -> Self,
+    {
+        self.params.push(params);
+        let mut builder = f(self);
+        builder.params.pop();
+        builder
     }
 
-    pub fn add_reduction_patter<F: Field, S: Reduction<F>>(self) -> Self {
-        S::transcript_pattern(self)
+    pub fn add_protocol_patter<F: Field, S: Protocol<F>>(self, key: &S::Key) -> Self {
+        S::transcript_pattern(key, self)
+    }
+
+    pub fn add_reduction_patter<F: Field, S: Reduction<F>>(self, key: &S::Key) -> Self {
+        S::transcript_pattern(key, self)
     }
 
     pub fn new(vars: usize, params: ParamResolver) -> Self {
@@ -30,10 +40,8 @@ impl TranscriptBuilder {
         Self {
             rounds: vec![],
             vars,
-            // degree,
             sponge_builder,
-            param_resolver: params,
-            // _f: PhantomData,
+            params: ParamStack::new(vec![params]),
         }
     }
 
@@ -42,21 +50,20 @@ impl TranscriptBuilder {
             mut rounds,
             sponge_builder,
             vars,
-            // degree,
-            param_resolver,
-            ..
+            params,
         } = self;
         let id = TypeId::of::<T>();
         rounds.push((id, N));
 
+        let resolver = params.top();
         let sponge_builder = sponge_builder
-            .absorb(T::len(vars, &param_resolver).try_into().unwrap())
+            .absorb(T::len(vars, resolver).try_into().unwrap())
             .squeeze(N.try_into().unwrap());
 
         Self {
             rounds,
             sponge_builder,
-            param_resolver,
+            params,
             ..self
         }
     }
@@ -110,8 +117,8 @@ impl TranscriptBuilder {
         }
     }
 
-    pub fn repeat<const N: usize, M: Fn(Self) -> Self>(self, f: M) -> Self {
-        [(); N].iter().fold(self, |acc, _| f(acc))
+    pub fn repeat<const N: usize, M: Fn(Self, usize) -> Self>(self, f: M) -> Self {
+        (0..N).fold(self, f)
     }
 }
 

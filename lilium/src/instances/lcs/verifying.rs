@@ -50,13 +50,15 @@ where
 
     type Error = ();
 
-    fn transcript_pattern(builder: TranscriptBuilder) -> TranscriptBuilder {
+    fn transcript_pattern(key: &Self::Key, builder: TranscriptBuilder) -> TranscriptBuilder {
         builder
-            .add_reduction_patter::<F, LcsReduction<C, I, IO>>()
-            .add_reduction_patter::<F, LinearizedInstanceReduction<F, C, IO, 4>>()
-            .add_protocol_patter::<F, MatrixEvalProtocol<F, C, IO>>()
-            .add_protocol_patter::<F, C>()
-            .add_protocol_patter::<F, C>()
+            .add_reduction_patter::<F, LcsReduction<C, I, IO>>(&key.lcs_reduction_key)
+            .add_reduction_patter::<F, LinearizedInstanceReduction<F, C, IO, 4>>(
+                &key.linearized_reduction_key,
+            )
+            .add_protocol_patter::<F, MatrixEvalProtocol<F, C, IO>>(&key.matrix_eval_key)
+            .add_protocol_patter::<F, C>(&key.pcs)
+            .add_protocol_patter::<F, C>(&key.pcs)
     }
 
     fn prove(_instance: Self::Instance) -> Self::Proof {

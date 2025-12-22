@@ -146,11 +146,16 @@ where
 
     type Error = Error<F, CS>;
 
-    fn transcript_pattern(builder: transcript::TranscriptBuilder) -> transcript::TranscriptBuilder {
+    fn transcript_pattern(
+        key: &Self::Key,
+        builder: transcript::TranscriptBuilder,
+    ) -> transcript::TranscriptBuilder {
         builder
             .round::<F, Self::Instance, 0>()
-            .repeat::<IO, _>(CommittedSpark::<F, CS, 2>::transcript_pattern)
-            .repeat::<IO, _>(CS::transcript_pattern)
+            .repeat::<IO, _>(|builder, i| {
+                CommittedSpark::<F, CS, 2>::transcript_pattern(&key.spark_keys[i], builder)
+            })
+            .repeat::<IO, _>(|builder, _| CS::transcript_pattern(&key.pcs, builder))
     }
 
     fn verify<S: Duplex<F>>(

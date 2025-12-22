@@ -12,7 +12,7 @@ pub trait Protocol<F: Field> {
     type Proof;
     type Error: Debug + Clone;
 
-    fn transcript_pattern(builder: TranscriptBuilder<F>) -> TranscriptBuilder<F>;
+    fn transcript_pattern(key: &Self::Key, builder: TranscriptBuilder) -> TranscriptBuilder;
     fn prove(instance: Self::Instance) -> Self::Proof;
     fn verify<S: Duplex<F>>(
         key: &Self::Key,
@@ -28,7 +28,7 @@ pub trait Reduction<F: Field> {
     type Proof;
     type Error;
 
-    fn transcript_pattern(builder: TranscriptBuilder<F>) -> TranscriptBuilder<F>;
+    fn transcript_pattern(key: &Self::Key, builder: TranscriptBuilder) -> TranscriptBuilder;
     fn verify_reduction<S: Duplex<F>>(
         key: &Self::Key,
         instance: MessageGuard<Self::A>,

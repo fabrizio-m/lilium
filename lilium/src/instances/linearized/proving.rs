@@ -53,11 +53,18 @@ where
 
     type Error = crate::Error<F, CS>;
 
-    fn transcript_pattern(builder: transcript::TranscriptBuilder) -> transcript::TranscriptBuilder {
+    fn transcript_pattern(
+        key: &Self::Key,
+        builder: transcript::TranscriptBuilder,
+    ) -> transcript::TranscriptBuilder {
+        //TODO: create once and store in key.
+        let sumcheck_verifier = SumcheckVerifier::new(key.domain_vars);
         builder
             .round::<F, Self::A, 1>()
-            .add_reduction_patter::<F, Sumcheck<F, IO>>()
-            .add_reduction_patter::<F, CommittedStructure<F, LcsSumcheck<F, IO, S>, CS>>()
+            .add_reduction_patter::<F, Sumcheck<F, IO>>(&sumcheck_verifier)
+            .add_reduction_patter::<F, CommittedStructure<F, LcsSumcheck<F, IO, S>, CS>>(
+                &key.selector_commitments,
+            )
             .round::<F, SingleElement<F>, 0>()
             .round::<F, [SingleElement<F>; IO], 0>()
     }

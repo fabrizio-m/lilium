@@ -303,8 +303,11 @@ where
 
     type Error = batching::BatchingError<F, CS>;
 
-    fn transcript_pattern(builder: transcript::TranscriptBuilder) -> transcript::TranscriptBuilder {
-        StructuredBatchReduction::<F, CS>::transcript_pattern(builder)
+    fn transcript_pattern(
+        key: &Self,
+        builder: transcript::TranscriptBuilder,
+    ) -> transcript::TranscriptBuilder {
+        StructuredBatchReduction::<F, CS>::transcript_pattern(&key.batch_commitment, builder)
     }
 
     fn verify_reduction<S: Duplex<F>>(
