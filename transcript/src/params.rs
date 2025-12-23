@@ -46,6 +46,11 @@ impl ParamResolver {
             }
         }
     }
+
+    fn try_get<T: Any>(&self) -> Option<usize> {
+        let id = TypeId::of::<T>();
+        self.map.get(&id).cloned()
+    }
 }
 
 #[derive(Default, Debug)]
@@ -59,12 +64,15 @@ impl ParamStack {
     }
 
     pub fn get<T: Any>(&self) -> usize {
-        match self.frames.last() {
-            Some(frame) => frame.get::<T>(),
-            None => {
-                panic!("param get() called on an empty stack");
+        if self.frames.is_empty() {
+            panic!("param get() called on an empty stack");
+        }
+        for frame in self.frames.iter().rev() {
+            if let Some(param) = frame.try_get::<T>() {
+                return param;
             }
         }
+        panic!("param {} not set in any frame", type_name::<T>());
     }
 
     pub fn push(&mut self, frame: ParamResolver) {
