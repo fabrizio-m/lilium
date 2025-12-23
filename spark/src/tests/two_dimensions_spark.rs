@@ -107,8 +107,7 @@ fn test<F: Field>() {
 
     // creating transcript descriptor for sumcheck
     let degree = sumcheck_degree::<F, SparkEvalCheck<2>>();
-    let mut resolver = ParamResolver::new();
-    resolver.set::<DegreeParam>(degree);
+    let resolver = ParamResolver::new().set::<DegreeParam>(degree);
     let transcript_builder = TranscriptBuilder::new(HALF_VARS, resolver);
     let transcript_desc =
         SumcheckVerifier::<F, SparkEvalCheck<2>>::transcript_pattern(&verifier, transcript_builder)

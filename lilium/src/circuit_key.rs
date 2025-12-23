@@ -64,8 +64,7 @@ where
         // can be higher than needed but not lower.
         // TODO: wrong, IO isn't necessarily the same
         let degree = IO;
-        let mut resolver = ParamResolver::new();
-        resolver.set::<DegreeParam>(degree);
+        let resolver = ParamResolver::new().set::<DegreeParam>(degree);
 
         let spark_commitments = spark_structure
             .each_ref()

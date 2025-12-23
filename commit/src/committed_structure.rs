@@ -305,9 +305,9 @@ where
         key: &Self,
         builder: transcript::TranscriptBuilder,
     ) -> transcript::TranscriptBuilder {
-        let mut params = ParamResolver::new();
-        params.set::<StructureLength>(key.structure_len);
-        params.set::<CommitsNumber>(key.instance_len);
+        let params = ParamResolver::new()
+            .set::<StructureLength>(key.structure_len)
+            .set::<CommitsNumber>(key.instance_len);
         builder.with_params(params, |builder| {
             StructuredBatchReduction::<F, CS>::transcript_pattern(&key.batch_commitment, builder)
         })

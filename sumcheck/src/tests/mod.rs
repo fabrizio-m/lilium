@@ -27,8 +27,7 @@ where
     SF: SumcheckFunction<F>,
 {
     let degree = crate::sumcheck::sumcheck_degree::<F, SF>();
-    let mut resolver = ParamResolver::new();
-    resolver.set::<DegreeParam>(degree);
+    let resolver = ParamResolver::new().set::<DegreeParam>(degree);
     let transcript_builder = TranscriptBuilder::new(vars, resolver);
     SumcheckVerifier::<F, SF>::transcript_pattern(key, transcript_builder).finish()
 }

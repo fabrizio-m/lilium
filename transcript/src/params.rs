@@ -17,7 +17,7 @@ impl ParamResolver {
 
     /// Sets the given param to the given value, trying to a set second value
     /// for the same type will panic.
-    pub fn set<T: Any>(&mut self, value: usize) {
+    pub fn set<T: Any>(mut self, value: usize) -> Self {
         let id = TypeId::of::<T>();
         match self.map.entry(id) {
             Entry::Vacant(e) => {
@@ -34,6 +34,7 @@ impl ParamResolver {
                 }
             }
         }
+        self
     }
 
     pub fn get<T: Any>(&self) -> usize {
