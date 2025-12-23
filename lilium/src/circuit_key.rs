@@ -69,7 +69,7 @@ where
 
         let spark_commitments = spark_structure
             .each_ref()
-            .map(|s| CommittedSpark::new(Rc::clone(s), committment_scheme.as_ref(), &mut resolver));
+            .map(|s| CommittedSpark::new(Rc::clone(s), committment_scheme.as_ref()));
 
         let structure = Rc::new(structure(ccs_structure.clone()));
         let lcs_key = LcsProvingKey::new(
@@ -77,7 +77,6 @@ where
             structure,
             ccs_structure.io_matrices.each_ref(),
             spark_commitments.clone(),
-            &mut resolver,
         );
 
         let transcript_builder = TranscriptBuilder::new(vars, resolver);

@@ -64,7 +64,7 @@ where
     SF: SumcheckFunction<F>,
     CS: CommmitmentScheme<F>,
 {
-    pub fn new(mles: Rc<Vec<SF::Mles<F>>>, scheme: &CS, params: &mut ParamResolver) -> Self {
+    pub fn new(mles: Rc<Vec<SF::Mles<F>>>, scheme: &CS) -> Self {
         let kinds = SF::KINDS;
         let kinds_flat: Vec<EvalKind> = kinds.flatten_vec();
         let mut structure_len = 0;
@@ -97,8 +97,6 @@ where
             }
         }
         let batch_commitment = StructuredBatchReduction::new(structure_mles, scheme);
-        params.set::<StructureLength>(structure_len);
-        params.set::<CommitsNumber>(instance_len);
         Self {
             mles,
             structure_len,
@@ -307,7 +305,12 @@ where
         key: &Self,
         builder: transcript::TranscriptBuilder,
     ) -> transcript::TranscriptBuilder {
-        StructuredBatchReduction::<F, CS>::transcript_pattern(&key.batch_commitment, builder)
+        let mut params = ParamResolver::new();
+        params.set::<StructureLength>(key.structure_len);
+        params.set::<CommitsNumber>(key.instance_len);
+        builder.with_params(params, |builder| {
+            StructuredBatchReduction::<F, CS>::transcript_pattern(&key.batch_commitment, builder)
+        })
     }
 
     fn verify_reduction<S: Duplex<F>>(
