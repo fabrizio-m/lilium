@@ -61,6 +61,12 @@ impl Matrix {
         }
         evals
     }
+
+    /// Returns a reference to the row in the given position or `None`
+    /// if out of bounds.
+    pub fn get_row(&self, index: usize) -> Option<&[usize]> {
+        self.rows.get(index).map(Vec::as_slice)
+    }
 }
 
 impl Index<usize> for Matrix {

@@ -113,14 +113,11 @@ pub struct LinearCombinations<const N: usize> {
 impl<const N: usize> LinearCombinations<N> {
     pub fn from_tables(matrices: [&Matrix; N]) -> Self {
         let mut combinations = vec![];
-        let len = matrices[0].len();
-        for matrix in matrices {
-            //TODO: Maybe allow skiping empty rows
-            assert_eq!(matrix.len(), len);
-        }
+        let len = *matrices.map(Matrix::len).iter().max().unwrap();
+
         for i in 0..len {
             for matrix in matrices {
-                let row = &matrix[i];
+                let row = matrix.get_row(i).unwrap_or(&[]);
                 combinations.push(row.len());
                 combinations.extend_from_slice(row);
             }
