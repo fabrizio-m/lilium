@@ -324,6 +324,25 @@ impl<F: Field, SF: SumcheckFunction<F>> SumcheckVerifier<F, SF> {
     fn degree() -> u32 {
         sumcheck_degree::<F, SF>() as u32
     }
+
+    fn degree_symbolic(function: &SF) -> usize {
+        let degree_env = DegreeEnv::new();
+        let degree =
+            SF::symbolic_function(function, degree_env).expect("symbolic function not implemented");
+        degree.0
+    }
+
+    pub fn new_symbolic(function: &SF, vars: usize) -> Self {
+        let degree = Self::degree_symbolic(function);
+        let weights = BarycentricWeights::compute(degree as u32);
+        Self {
+            vars,
+            weights,
+            degree,
+            _f: PhantomData,
+        }
+    }
+
     pub fn new(vars: usize) -> Self {
         let degree = Self::degree();
         let weights = BarycentricWeights::compute(degree);
