@@ -15,6 +15,15 @@ pub struct LcsSumcheck<F, const IO: usize, const S: usize> {
     _f: PhantomData<F>,
 }
 
+impl<F, const IO: usize, const S: usize> LcsSumcheck<F, IO, S> {
+    pub fn new(gates: Vec<Vec<Exp<usize>>>) -> Self {
+        Self {
+            gates,
+            _f: PhantomData,
+        }
+    }
+}
+
 #[derive(Clone)]
 pub struct LcsMles<V, const IO: usize, const S: usize> {
     /// matrix vector products M(x)z(x)
@@ -330,7 +339,7 @@ impl<F: Field, const IO: usize, const S: usize> SumcheckFunction<F> for LcsSumch
     }
 }
 
-fn eval_exp<F, V, E>(env: E, exp: Exp<usize>) -> V
+fn eval_exp<F, V, E>(env: &E, exp: Exp<usize>) -> V
 where
     F: Field,
     V: Var<F>,
@@ -339,18 +348,18 @@ where
     match exp {
         Exp::Atom(v) => env.get(Index::Product(v)),
         Exp::Add(exp1, exp2) => {
-            let e1 = eval_exp(&env, *exp1);
-            let e2 = eval_exp(&env, *exp2);
+            let e1 = eval_exp(env, *exp1);
+            let e2 = eval_exp(env, *exp2);
             e1 + e2
         }
         Exp::Mul(exp1, exp2) => {
-            let e1 = eval_exp(&env, *exp1);
-            let e2 = eval_exp(&env, *exp2);
+            let e1 = eval_exp(env, *exp1);
+            let e2 = eval_exp(env, *exp2);
             e1 * e2
         }
         Exp::Sub(exp1, exp2) => {
-            let e1 = eval_exp(&env, *exp1);
-            let e2 = eval_exp(&env, *exp2);
+            let e1 = eval_exp(env, *exp1);
+            let e2 = eval_exp(env, *exp2);
             e1 - e2
         }
     }

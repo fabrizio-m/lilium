@@ -6,11 +6,14 @@ use crate::{
     proving::matrix_eval,
 };
 use ark_ff::Field;
-use ccs::{structure::Matrix, witness::LinearCombinations};
+use ccs::{
+    structure::{Exp, Matrix},
+    witness::LinearCombinations,
+};
 use commit::{committed_structure::CommittedStructure, CommmitmentScheme};
 use spark::committed_spark::CommittedSpark;
 use std::rc::Rc;
-use transcript::params::ParamResolver;
+use sumcheck::sumcheck::SumcheckVerifier;
 
 pub struct LcsReductionKey<F, C, const IO: usize>
 where
@@ -19,6 +22,7 @@ where
 {
     pub committed_structure: CommittedStructure<F, LcsSumcheck<F, IO, 4>, C>,
     pub domain_vars: usize,
+    pub sumcheck_verifier: SumcheckVerifier<F, LcsSumcheck<F, IO, 4>>,
 }
 
 impl<F, C, const IO: usize> LcsReductionKey<F, C, IO>
@@ -30,13 +34,18 @@ where
     pub fn new(
         // structure: Rc<Vec<LcsMles<F, IO, S>>>,
         structure: Rc<Vec<LcsMles<F, IO, 4>>>,
+        gates: Vec<Vec<Exp<usize>>>,
         pcs: &C,
     ) -> Self {
         let domain_vars = structure.len().next_power_of_two().ilog2() as usize;
         let committed_structure = CommittedStructure::new(structure, pcs);
+
+        let f = LcsSumcheck::new(gates);
+        let sumcheck_verifier = SumcheckVerifier::new_symbolic(&f, domain_vars);
         Self {
             committed_structure,
             domain_vars,
+            sumcheck_verifier,
         }
     }
 }
@@ -66,8 +75,9 @@ where
         structure: Rc<Vec<LcsMles<F, IO, 4>>>,
         matrices: [&Matrix; IO],
         spark_keys: [CommittedSpark<F, C, 2>; IO],
+        gates: Vec<Vec<Exp<usize>>>,
     ) -> Self {
-        let lcs_reduction_key = LcsReductionKey::new(Rc::clone(&structure), pcs.as_ref());
+        let lcs_reduction_key = LcsReductionKey::new(Rc::clone(&structure), gates, pcs.as_ref());
         let domain_vars = lcs_reduction_key.domain_vars;
         let linear_combinations = LinearCombinations::from_tables(matrices);
         let linear_combinations = Rc::new(linear_combinations);

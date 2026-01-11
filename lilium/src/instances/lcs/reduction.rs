@@ -62,13 +62,12 @@ where
     type Error = crate::Error<F, C>;
 
     fn transcript_pattern(key: &Self::Key, builder: TranscriptBuilder) -> TranscriptBuilder {
-        //TODO: store in key.
-        let sumcheck_verifier = SumcheckVerifier::<F, LcsSumcheck<F, IO, 4>>::new(key.domain_vars);
+        let sumcheck_verifier = &key.sumcheck_verifier;
         builder
             .round::<F, Self::A, 1>()
             .point()
             .add_reduction_patter::<F, SumcheckVerifier<F, LcsSumcheck<F, IO, 4>>>(
-                &sumcheck_verifier,
+                sumcheck_verifier,
             )
             .round::<F, [SingleElement<F>; 4], 0>()
             .round::<F, SingleElement<F>, 0>()

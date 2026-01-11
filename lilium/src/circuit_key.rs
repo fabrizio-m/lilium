@@ -1,7 +1,7 @@
 use ark_ff::Field;
 use ccs::{
     circuit::{BuildStructure, Circuit},
-    structure::{CcsStructure, Matrix},
+    structure::{CcsStructure, Exp, Matrix},
 };
 use commit::CommmitmentScheme;
 use spark::{committed_spark::CommittedSpark, structure::SparkMatrix};
@@ -71,11 +71,17 @@ where
             .map(|s| CommittedSpark::new(Rc::clone(s), committment_scheme.as_ref()));
 
         let structure = Rc::new(structure(ccs_structure.clone()));
+        let gates = ccs_structure
+            .gates
+            .iter()
+            .map(|gate| Vec::from(gate.clone()))
+            .collect();
         let lcs_key = LcsProvingKey::new(
             Rc::clone(&committment_scheme),
             structure,
             ccs_structure.io_matrices.each_ref(),
             spark_commitments.clone(),
+            gates,
         );
 
         let transcript_builder = TranscriptBuilder::new(vars, resolver);
