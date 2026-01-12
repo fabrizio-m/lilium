@@ -272,7 +272,12 @@ impl<F: PrimeField> ConstantGenerator<F> {
             full_rounds,
             partial_rounds,
         };
-        let bits = (F::MODULUS).to_bits_be();
+        // Removes leading zeros as to_bits_be pads to the limb size.
+        let bits: Vec<bool> = (F::MODULUS)
+            .to_bits_be()
+            .into_iter()
+            .skip_while(|b| !b)
+            .collect();
         assert_eq!(bits.len(), n as usize);
         let init = (encoding, bits);
         let machine = FieldMachine::init(init);
