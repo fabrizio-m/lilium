@@ -43,6 +43,13 @@ pub struct WitnessGenerator<F: Field, const IO: usize> {
 
 pub struct Witness<F: Field>(pub Vec<F>);
 
+impl<F: Field> Witness<F> {
+    pub fn pad_to_power(&mut self) {
+        let len = self.0.len().next_power_of_two();
+        self.0.resize(len, F::zero());
+    }
+}
+
 impl<F: Field, const MAX_IO: usize> ConstraintSystem<Fi<F>> for WitnessGenerator<F, MAX_IO> {
     fn execute<G, const IO: usize, const I: usize, const O: usize>(
         &mut self,
