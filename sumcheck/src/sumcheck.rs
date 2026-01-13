@@ -199,7 +199,24 @@ where
 {
     pub fn new(vars: usize) -> Self {
         let degree = Self::degree();
-        let evaluator = SumcheckEvaluator::new();
+        let evaluator = SumcheckEvaluator::new(None);
+        Self {
+            degree,
+            vars,
+            evaluator,
+        }
+    }
+
+    fn degree_symbolic(function: &SF) -> usize {
+        let degree_env = DegreeEnv::new();
+        let degree =
+            SF::symbolic_function(function, degree_env).expect("symbolic function not implemented");
+        degree.0
+    }
+
+    pub fn new_symbolic(vars: usize, function: &SF) -> Self {
+        let degree = Self::degree_symbolic(function);
+        let evaluator = SumcheckEvaluator::new(Some(function));
         Self {
             degree,
             vars,

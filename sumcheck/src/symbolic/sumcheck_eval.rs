@@ -48,7 +48,7 @@ where
     S: SumcheckFunction<F>,
 {
     fn default() -> Self {
-        Self::new()
+        Self::new(None)
     }
 }
 
@@ -56,10 +56,15 @@ impl<F: Field, S> SumcheckEvaluator<F, S>
 where
     S: SumcheckFunction<F>,
 {
-    pub fn new() -> Self {
+    pub fn new(f: Option<&S>) -> Self {
         let env = ExpEnv;
         // Build expression tree.
-        let exp: Expression<F, S::Idx, S::ChallIdx> = S::function(env);
+        let exp: Expression<F, S::Idx, S::ChallIdx> = {
+            match f {
+                Some(f) => f.symbolic_function(env).unwrap(),
+                None => S::function(env),
+            }
+        };
         // Evaluate tree into MV polynomial.
         let poly: MvPoly<F, Var<F, S>> = compute_mv_poly(exp);
         // Simplify into abstract stack machine operations.
@@ -67,7 +72,7 @@ where
         let program: &[MvIr<F, Var<F, S>>] = evaluator.program();
         // Modify program, translating indices to u8.
         let (ir, var_map, chall_map) = Self::transpile(program);
-        let message_len = Self::message_len();
+        let message_len = Self::message_len(f);
         // Create message evaluator, main stack machine with a concrete and
         // optimized instruction set.
         let inner: MessageEvaluator<F, u8> = MessageEvaluator::new(ir, message_len);
@@ -144,9 +149,14 @@ where
         let chall_lookup = chall_ids.finish();
         (ir, lookup, chall_lookup)
     }
-    fn message_len() -> usize {
+    fn message_len(f: Option<&S>) -> usize {
         let env = DegreeEnv::new();
-        let degree = S::function(env);
+        let degree = {
+            match f {
+                Some(f) => f.symbolic_function(env).unwrap(),
+                None => S::function(env),
+            }
+        };
         // as a degree d polynomial requires d + 1 evaluations.
         degree.0 + 1
     }

@@ -13,7 +13,7 @@ use ccs::{
 use commit::{committed_structure::CommittedStructure, CommmitmentScheme};
 use spark::committed_spark::CommittedSpark;
 use std::rc::Rc;
-use sumcheck::sumcheck::SumcheckVerifier;
+use sumcheck::sumcheck::{SumcheckProver, SumcheckVerifier};
 
 pub struct LcsReductionKey<F, C, const IO: usize>
 where
@@ -63,6 +63,7 @@ where
     /// MLEs where structure is set as expected and non-structure
     /// MLEs are set to 0.
     pub mles: Rc<Vec<LcsMles<F, IO, 4>>>,
+    pub sumcheck_prover: SumcheckProver<F, LcsSumcheck<F, IO, 4>>,
 }
 
 impl<F, C, const IO: usize> LcsProvingKey<F, C, IO>
@@ -77,8 +78,14 @@ where
         spark_keys: [CommittedSpark<F, C, 2>; IO],
         gates: Vec<Vec<Exp<usize>>>,
     ) -> Self {
-        let lcs_reduction_key = LcsReductionKey::new(Rc::clone(&structure), gates, pcs.as_ref());
+        let lcs_reduction_key =
+            LcsReductionKey::new(Rc::clone(&structure), gates.clone(), pcs.as_ref());
         let domain_vars = lcs_reduction_key.domain_vars;
+        let sumcheck_prover = {
+            let vars = domain_vars;
+            let f = LcsSumcheck::new(gates.clone());
+            SumcheckProver::new_symbolic(vars, &f)
+        };
         let linear_combinations = LinearCombinations::from_tables(matrices);
         let linear_combinations = Rc::new(linear_combinations);
         let linearized_reduction_key = linearized::Key::new(
@@ -96,6 +103,7 @@ where
             matrix_eval_key,
             pcs,
             mles,
+            sumcheck_prover,
         }
     }
 }

@@ -1,6 +1,6 @@
 use crate::instances::{
     lcs::{
-        key::LcsProvingKey,
+        key::{self, LcsProvingKey},
         reduction::LcsReductionProof,
         sumcheck_argument::{LcsMles, LcsSumcheck, SingleChall},
         LcsInstance,
@@ -47,11 +47,7 @@ impl<F: Field, C: CommmitmentScheme<F>, const IO: usize> LcsProvingKey<F, C, IO>
         let r_eq = transcript.point().unwrap();
         let r_eq = MultiPoint::new(r_eq);
 
-        //TODO: from key
-        let vars = 16;
-        //TODO: add selectors
-        //TODO: create once and store in key.
-        let sumcheck_prover: SumcheckProver<F, LcsSumcheck<F, IO, 4>> = SumcheckProver::new(vars);
+        let sumcheck_prover = &self.sumcheck_prover;
 
         let challs = SingleChall::from(sumcheck_chall);
         let inputs = &instance.public_inputs;
