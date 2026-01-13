@@ -60,7 +60,9 @@ impl<F: Field, C: CommmitmentScheme<F>, const IO: usize> LcsProvingKey<F, C, IO>
             point,
             proof,
             evals,
-        } = sumcheck_prover.prove(transcript, mles, &challs).unwrap();
+        } = sumcheck_prover
+            .prove_symbolic(transcript, mles, &challs)
+            .unwrap();
         let evals: LcsMles<F, IO, 4> = evals;
 
         let reduction_proof = LcsReductionProof::new(
