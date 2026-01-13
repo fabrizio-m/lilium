@@ -1,7 +1,7 @@
 use ark_ff::Field;
 use ccs::{
     circuit::{BuildStructure, Circuit},
-    structure::{CcsStructure, Exp, Matrix},
+    structure::{CcsStructure, Matrix},
 };
 use commit::CommmitmentScheme;
 use spark::{committed_spark::CommittedSpark, structure::SparkMatrix};

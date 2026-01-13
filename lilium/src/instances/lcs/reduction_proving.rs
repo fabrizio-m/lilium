@@ -1,8 +1,8 @@
 use crate::instances::{
     lcs::{
-        key::{self, LcsProvingKey},
+        key::LcsProvingKey,
         reduction::LcsReductionProof,
-        sumcheck_argument::{LcsMles, LcsSumcheck, SingleChall},
+        sumcheck_argument::{LcsMles, SingleChall},
         LcsInstance,
     },
     linearized::LinearizedInstance,
@@ -11,11 +11,7 @@ use ark_ff::Field;
 use ccs::witness::LinearCombinations;
 use commit::CommmitmentScheme;
 use sponge::sponge::Duplex;
-use sumcheck::{
-    eq,
-    polynomials::MultiPoint,
-    sumcheck::{ProverOutput, SumcheckProver},
-};
+use sumcheck::{eq, polynomials::MultiPoint, sumcheck::ProverOutput};
 use transcript::{messages::SingleElement, Transcript};
 
 pub struct ReducedInstanceWitness<F, C, const I: usize, const IO: usize>
