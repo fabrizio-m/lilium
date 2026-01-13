@@ -110,7 +110,7 @@ where
     let r_eq = eq::eq(&r_eq);
 
     for i in 0..mles.len() {
-        let products: [F; IO] = combinations.next().unwrap();
+        let products: [F; IO] = combinations.next().unwrap_or([F::zero(); IO]);
         let r_eq = r_eq[i];
         let inputs = inputs.get(i).cloned();
         let w = witness[i];
