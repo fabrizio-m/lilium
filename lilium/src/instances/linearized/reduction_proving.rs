@@ -50,8 +50,8 @@ where
             selector_evals: _,
         } = instance;
 
-        //TODO: add vars
-        let sumcheck_prover: SumcheckProver<F, LinearizedSumcheck<IO>> = SumcheckProver::new(16);
+        let sumcheck_prover: SumcheckProver<F, LinearizedSumcheck<IO>> =
+            SumcheckProver::new(self.domain_vars);
 
         //TODO: it isn't strictly necessary to keep 2 copies.
         let mles = self.mles(&witness, &rx);
