@@ -151,7 +151,7 @@ where
     let r_eq = eq::eq(r_eq);
 
     for i in 0..mles.len() {
-        let products: [F; IO] = combinations.next().unwrap();
+        let products: [F; IO] = combinations.next().unwrap_or([F::zero(); IO]);
 
         let row: &mut LinearizedMles<F, IO> = &mut mles[i];
         row.products = products;
