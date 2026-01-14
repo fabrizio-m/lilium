@@ -86,7 +86,8 @@ impl<F: Field, C: CommmitmentScheme<F>, const IO: usize> LcsProvingKey<F, C, IO>
         let witness_eval = SingleElement(*evals.w());
         let [] = transcript.send_message(&witness_eval).unwrap();
         //TODO: Handle
-        let [] = transcript.send_message(&selector_evals).unwrap();
+        let products = linearized_instance.products.map(SingleElement);
+        let [] = transcript.send_message(&products).unwrap();
 
         let linearized_witness = witness;
         ReducedInstanceWitness {
