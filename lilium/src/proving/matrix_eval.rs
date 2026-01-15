@@ -32,6 +32,9 @@ impl<F: Field, C: CommmitmentScheme<F>, const IO: usize> Key<F, C, IO> {
     {
         let mut proofs = Vec::with_capacity(IO);
 
+        //TODO: handle
+        let [] = transcript.send_message(&instance).unwrap();
+
         // OpenInstance (instance, witness) pairs.
         let mut open_pairs = [(); IO].map(|_| None);
         let point = instance.point;
