@@ -81,7 +81,7 @@ where
     type Error = BatchingError<F, S>;
 
     fn transcript_pattern(_key: &Self, builder: TranscriptBuilder) -> TranscriptBuilder {
-        builder.round::<F, BatchEval<F, S>, 1>()
+        builder.round::<F, StructuredBatchEval<F, S>, 1>()
     }
 
     fn verify_reduction<D: Duplex<F>>(
