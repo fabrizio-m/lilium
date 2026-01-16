@@ -138,12 +138,17 @@ impl<F: Field, S: CommmitmentScheme<F>> StructuredBatchReduction<F, S> {
         assert_eq!(structure_evals.len(), self.structure.len());
 
         let structure_commits: Vec<S::Commitment> = self.structure.clone();
-        let structure = structure_commits.into_iter().zip(structure_evals);
+        let structure_commits = structure_commits.into_iter().zip(structure_evals);
 
-        let mut iter = commitments_and_evals.into_iter();
-        let first: (S::Commitment, F) = iter.next().unwrap();
+        let instance_commits = commitments_and_evals.into_iter();
+        let all_commits: Vec<(S::Commitment, F)> =
+            structure_commits.chain(instance_commits).collect();
+        let mut all_commits = all_commits.into_iter();
+        let first = all_commits
+            .next()
+            .expect("should be used with at least 1 commitment");
 
-        let (commit, eval) = iter.chain(structure).fold(first, |acc, e| {
+        let (commit, eval) = all_commits.fold(first, |acc, e| {
             let (commit, eval) = acc;
             let commit = commit * challenge + &e.0;
             let eval = eval * challenge + eval;
