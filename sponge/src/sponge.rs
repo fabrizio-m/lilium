@@ -3,12 +3,25 @@ use crate::{
     permutation::Permutation,
 };
 use ark_ff::{Field, PrimeField};
-use std::marker::PhantomData;
+use std::{fmt::Display, marker::PhantomData};
 
 #[derive(PartialEq, Eq, Debug, Clone, Copy)]
 pub(crate) enum Pattern {
     Absorb(u32),
     Squeeze(u32),
+}
+
+impl Display for Pattern {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Pattern::Absorb(n) => {
+                write!(f, "A{}", n)
+            }
+            Pattern::Squeeze(n) => {
+                write!(f, "S{}", n)
+            }
+        }
+    }
 }
 
 #[derive(Debug, Default)]
@@ -210,9 +223,14 @@ where
     }
     fn absorb_mode(&mut self) {
         let current = self.running_pattern.pop();
+        // let i = self.running_pattern.len();
         let to_push = match current {
             Some(Pattern::Absorb(n)) => Pattern::Absorb(n + 1),
             Some(p @ Pattern::Squeeze(_)) => {
+                //TODO: add error
+                // if p != self.pattern[i] {
+                // return Err(Error::UnexpectedAbsorb);
+                // }
                 self.running_pattern.push(p);
                 Pattern::Absorb(1)
             }
@@ -222,10 +240,14 @@ where
     }
     fn squeeze_mode(&mut self) -> Result<(), Error> {
         let current = self.running_pattern.pop();
+        let i = self.running_pattern.len();
         let to_push = match current {
             Some(p @ Pattern::Absorb(_)) => {
                 self.running_pattern.push(p);
                 self.squeeze_pos = R;
+                if p != self.pattern[i] {
+                    return Err(Error::UnexpectedSqueeze);
+                }
                 Pattern::Squeeze(1)
             }
             Some(Pattern::Squeeze(n)) => Pattern::Squeeze(n + 1),
