@@ -135,6 +135,7 @@ pub fn sumcheck_degree<F: Field, SF: SumcheckFunction<F>>() -> usize {
     degree.0
 }
 
+#[derive(Clone, Debug)]
 pub struct SumcheckProver<F: Field, SF: SumcheckFunction<F>> {
     vars: usize,
     degree: usize,
@@ -431,10 +432,11 @@ impl<F: Field, SF: SumcheckFunction<F>> Reduction<F> for SumcheckVerifier<F, SF>
     type Error = SumcheckError;
 
     fn transcript_pattern(
-        _key: &Self::Key,
+        key: &Self::Key,
         builder: transcript::TranscriptBuilder,
     ) -> transcript::TranscriptBuilder {
-        builder.fold_rounds::<F, Message<F>, 1>()
+        let params = ParamResolver::new().set::<DegreeParam>(key.degree);
+        builder.with_params(params, |builder| builder.fold_rounds::<F, Message<F>, 1>())
     }
 
     fn verify_reduction<S: Duplex<F>>(
