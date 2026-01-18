@@ -91,8 +91,7 @@ where
         // Get challenge point for sumcheck's zero-check.
         let r_eq = transcript.point()?;
         let r_eq = MultiPoint::new(r_eq);
-        //TODO: create once and store in key.
-        let sumcheck_verifier = SumcheckVerifier::<F, LcsSumcheck<F, IO, 4>>::new(vars);
+        let sumcheck_verifier = &key.sumcheck_verifier;
         // As the expected sum is zero.
         let sumcheck_instance = MessageGuard::new(Sum(F::zero()));
 
@@ -100,7 +99,7 @@ where
         let proof = transcript.receive_message_delayed(|p| p.sumcheck.clone());
         // Verifying sumcheck proof, reducing instance to point eval check.
         let check: PolyEvalCheck<F> = SumcheckVerifier::verify_reduction(
-            &sumcheck_verifier,
+            sumcheck_verifier,
             sumcheck_instance,
             transcript.new_guard(proof),
         )?;
