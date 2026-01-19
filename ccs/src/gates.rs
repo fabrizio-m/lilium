@@ -66,7 +66,7 @@ impl<const IO: usize, const I: usize> Gate<IO, I, 1> for MulN<IO, I> {
         let [out] = o;
         let mut product = i[0].clone();
         for i in i.into_iter().skip(1) {
-            product = product + i;
+            product = product * i;
         }
         Constraints::from(product - out)
     }
