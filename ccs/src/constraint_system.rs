@@ -21,6 +21,7 @@ pub trait Val:
 pub enum Constraints<V> {
     Constraint(V),
     Append(Box<Self>, V),
+    Empty,
 }
 
 impl<V> From<V> for Constraints<V> {
@@ -34,7 +35,11 @@ impl<V: Copy> Iterator for Constraints<V> {
 
     fn next(&mut self) -> Option<Self::Item> {
         match self {
-            Constraints::Constraint(c) => Some(*c),
+            Constraints::Constraint(c) => {
+                let c = *c;
+                *self = Constraints::Empty;
+                Some(c)
+            }
             Constraints::Append(constraints, c) => {
                 let c = *c;
                 let dummy = Box::new(Constraints::Constraint(c));
@@ -42,6 +47,7 @@ impl<V: Copy> Iterator for Constraints<V> {
                 *self = constraints;
                 Some(c)
             }
+            Constraints::Empty => None,
         }
     }
 }
@@ -65,6 +71,7 @@ impl<V> From<Constraints<V>> for Vec<V> {
                 constraints.push(head);
                 constraints
             }
+            Constraints::Empty => vec![],
         }
     }
 }
