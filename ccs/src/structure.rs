@@ -51,6 +51,10 @@ impl Matrix {
         self.rows.push(vec![idx])
     }
 
+    fn push_row_empty(&mut self) {
+        self.rows.push(vec![])
+    }
+
     /// convert to sparse indexed evals as expected by spark
     pub fn to_evals(&self) -> Vec<(usize, usize)> {
         let mut evals = Vec::with_capacity(self.rows.len());
@@ -250,6 +254,9 @@ impl<const MAX_IO: usize> StructureBuilder<MAX_IO> {
             for i in 0..len {
                 io_matrices[i].push_row_single_value(io[i].0);
             }
+            (len..MAX_IO).for_each(|i| {
+                io_matrices[i].push_row_empty();
+            });
             gate_selectors.push(selector);
             // let selector = Self::bit_decomposition::<S>(selector);
 
