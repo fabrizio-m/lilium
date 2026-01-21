@@ -104,7 +104,10 @@ where
         // assign a temporal integer id to each eval;
         let ids = S::map_evals(kinds, |_| ());
         let ids = ids.flatten_vec().into_iter().enumerate().map(|(id, _)| id);
-        let ids: S::Mles<usize> = S::Mles::unflatten_vec(ids.collect());
+        // TODO: Add sanity check ensuring that no id is repeated, as that indicates
+        // an error in the implementation of flatten or unflatten.
+        let ids = ids.collect();
+        let ids: S::Mles<usize> = S::Mles::unflatten_vec(ids);
 
         // To later resolve integer ids to S::Idx.
         let mut lookup: BTreeMap<usize, S::Idx> = BTreeMap::new();
