@@ -45,7 +45,7 @@ fn test_end_to_end() {
     type Scheme = commit::ipa::poly_comm::IpaCommitmentScheme<Fr, Projective, SvdwMap<VestaConfig>>;
     type Permutation = sponge::poseidon2::PoseidonDefault<Fr>;
     type Sponge = sponge::sponge::Sponge<Fr, Permutation, 1, 2, 3>;
-    type Key = CircuitKey<Fr, Sponge, Circuit1, Scheme, 1, 3, 4>;
+    type Key = CircuitKey<Fr, Sponge, Circuit1, Scheme, 3, 3, 4>;
 
     println!("creating key..");
     let key: Key = Key::new();
