@@ -220,8 +220,8 @@ impl<V: Clone + Copy, const IO: usize, const S: usize> Evals<V> for LcsMles<V, I
                 }
             }
         };
-        let [r_eq, w, inputs, input_selector] = [elems.next().unwrap(); 4];
-        let gate_selectors = [elems.next().unwrap(); S];
+        let [r_eq, w, inputs, input_selector] = [(); 4].map(|_| elems.next().unwrap());
+        let gate_selectors = [(); S].map(|_| elems.next().unwrap());
 
         Self {
             products,
