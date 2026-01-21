@@ -159,7 +159,7 @@ where
         let challs = SingleChall::from(sumcheck_chall);
 
         // Check evaluation on the point.
-        let checks = sumcheck_verifier.check_evals_at_r(evals, check.eval, &challs);
+        let checks = sumcheck_verifier.check_evals_at_r_symbolic(evals, check.eval, &challs);
         if checks {
             return Err(crate::Error::EvalCheck);
         }

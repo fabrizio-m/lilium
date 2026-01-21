@@ -335,7 +335,7 @@ pub struct SumcheckVerifier<F: Field, SF: SumcheckFunction<F>> {
     vars: usize,
     weights: BarycentricWeights<F>,
     degree: usize,
-    _f: PhantomData<SF>,
+    f: Option<SF>,
 }
 
 impl<F: Field, SF: SumcheckFunction<F>> SumcheckVerifier<F, SF> {
@@ -350,14 +350,14 @@ impl<F: Field, SF: SumcheckFunction<F>> SumcheckVerifier<F, SF> {
         degree.0
     }
 
-    pub fn new_symbolic(function: &SF, vars: usize) -> Self {
-        let degree = Self::degree_symbolic(function);
+    pub fn new_symbolic(function: SF, vars: usize) -> Self {
+        let degree = Self::degree_symbolic(&function);
         let weights = BarycentricWeights::compute(degree as u32);
         Self {
             vars,
             weights,
             degree,
-            _f: PhantomData,
+            f: Some(function),
         }
     }
 
@@ -369,7 +369,7 @@ impl<F: Field, SF: SumcheckFunction<F>> SumcheckVerifier<F, SF> {
             vars,
             weights,
             degree,
-            _f: PhantomData,
+            f: None,
         }
     }
     /// Verifies sumcheck, leaving it up to the caller to evaluate the polynomial
@@ -405,6 +405,15 @@ impl<F: Field, SF: SumcheckFunction<F>> SumcheckVerifier<F, SF> {
     pub fn check_evals_at_r(&self, evals: SF::Mles<F>, c: F, challs: &SF::Challs) -> bool {
         let env = EvalCheckEnv::new(evals, challs.clone());
         let eval = SF::function(env);
+        eval == c
+    }
+
+    // Will check that c = P(r) from the evaluations of the
+    // multilinear polynomials that compose it
+    pub fn check_evals_at_r_symbolic(&self, evals: SF::Mles<F>, c: F, challs: &SF::Challs) -> bool {
+        let env = EvalCheckEnv::new(evals, challs.clone());
+        let f = self.f.as_ref().unwrap();
+        let eval = f.symbolic_function(env).unwrap();
         eval == c
     }
 }

@@ -41,7 +41,7 @@ where
         let committed_structure = CommittedStructure::new(structure, pcs);
 
         let f = LcsSumcheck::new(gates);
-        let sumcheck_verifier = SumcheckVerifier::new_symbolic(&f, domain_vars);
+        let sumcheck_verifier = SumcheckVerifier::new_symbolic(f, domain_vars);
         Self {
             committed_structure,
             domain_vars,
