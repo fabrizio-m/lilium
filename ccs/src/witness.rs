@@ -1,7 +1,7 @@
 use crate::{
     circuit::Var,
     constraint_system::{ConstraintSystem, Gate, Val},
-    structure::Matrix,
+    matrix::Matrix,
 };
 use ark_ff::Field;
 use std::ops::{Add, Index, Mul, Sub};
