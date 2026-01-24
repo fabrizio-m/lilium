@@ -25,13 +25,13 @@ impl<V, const IO: usize> LinearizedMles<V, IO> {
 pub enum Index {
     /// M_i(rx,x)z(x) for the given i
     Product(usize),
-    /// eq(r) on r random point for zero check
-    Zeq,
+    /// eq(rx).
+    Req,
 }
 
 impl ZeroCheckAvailable for Index {
     fn zerocheck_eq() -> Self {
-        Self::Zeq
+        Self::Req
     }
 }
 
@@ -41,7 +41,7 @@ impl<V: Clone + Copy, const IO: usize> Evals<V> for LinearizedMles<V, IO> {
     fn index(&self, index: Self::Idx) -> &V {
         match index {
             Index::Product(i) => &self.products[i],
-            Index::Zeq => &self.r_eq,
+            Index::Req => &self.r_eq,
         }
     }
 
@@ -127,8 +127,7 @@ impl<F: Field, const IO: usize> SumcheckFunction<F> for LinearizedSumcheck<IO> {
             let m_eq = env.get(Index::Product(i));
             acc += &m_eq;
         }
-        let zeq = env.get(Index::Zeq);
-        //TODO: should it be multiplied to each product? this should be equivalent.
-        acc * zeq
+        let req = env.get(Index::Req);
+        acc * req
     }
 }
