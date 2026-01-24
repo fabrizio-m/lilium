@@ -15,6 +15,7 @@ pub mod reduction_proving;
 pub mod sumcheck_argument;
 
 /// A linearized committed ccs instance
+#[derive(Debug)]
 pub struct LinearizedInstance<F: Field, C: CommmitmentScheme<F>, const IO: usize, const S: usize> {
     /// C = commit(w).
     pub witness_commit: C::Commitment,
