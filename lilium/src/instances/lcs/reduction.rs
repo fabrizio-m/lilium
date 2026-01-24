@@ -79,8 +79,6 @@ where
         instance: MessageGuard<Self::A>,
         mut transcript: TranscriptGuard<F, S, Self::Proof>,
     ) -> Result<Self::B, Self::Error> {
-        let vars = key.domain_vars;
-
         // Unwrap isntance, get challenge for sumcheck.
         let (lcs_instance, [sumcheck_chall]) = transcript.unwrap_guard(instance)?;
         let LcsInstance {
