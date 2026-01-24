@@ -277,6 +277,7 @@ where
             Ok(EvalsExt::fix_var(mle, var))
         })?;
 
+        vars.reverse();
         let point = MultiPoint::new(vars);
         debug_assert_eq!(mles.len(), 1);
         let evals = mles[0].clone();
@@ -313,6 +314,7 @@ where
             Ok(EvalsExt::fix_var(mle, var))
         })?;
 
+        vars.reverse();
         let point = MultiPoint::new(vars);
         debug_assert_eq!(mles.len(), 1);
         let evals = mles[0].clone();
