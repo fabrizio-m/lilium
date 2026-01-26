@@ -3,6 +3,7 @@ use crate::instances::{
     linearized::sumcheck_argument::LinearizedMles,
 };
 use ark_ff::Field;
+use ccs::matrix::Matrix;
 use commit::{committed_structure::CommittedStructure, CommmitmentScheme};
 use std::rc::Rc;
 use sumcheck::polynomials::MultiPoint;
@@ -33,6 +34,7 @@ pub struct Key<F: Field, C: CommmitmentScheme<F>, const IO: usize, const S: usiz
     structure: Rc<Vec<LinearizedMles<F, IO>>>,
     lcs_structure: Rc<Vec<LcsMles<F, IO, S>>>,
     pcs: Rc<C>,
+    matrices: [Rc<Matrix>; IO],
 }
 
 impl<F, C, const IO: usize, const S: usize> Message<F> for LinearizedInstance<F, C, IO, S>
@@ -56,7 +58,12 @@ where
 }
 
 impl<F: Field, C: CommmitmentScheme<F>, const IO: usize, const S: usize> Key<F, C, IO, S> {
-    pub fn new(domain_vars: usize, lcs_structure: Rc<Vec<LcsMles<F, IO, S>>>, pcs: Rc<C>) -> Self {
+    pub fn new(
+        domain_vars: usize,
+        lcs_structure: Rc<Vec<LcsMles<F, IO, S>>>,
+        pcs: Rc<C>,
+        matrices: [Rc<Matrix>; IO],
+    ) -> Self {
         let dummy = LinearizedMles {
             matrices: [F::zero(); IO],
             r_eq: F::zero(),
@@ -72,6 +79,7 @@ impl<F: Field, C: CommmitmentScheme<F>, const IO: usize, const S: usize> Key<F, 
             structure,
             lcs_structure,
             pcs,
+            matrices,
         }
     }
 }

@@ -8,6 +8,7 @@ use crate::instances::{
     matrix_eval::BatchMatrixEvalInstance,
 };
 use ark_ff::Field;
+use ccs::matrix::Matrix;
 use commit::{batching::structured::StructuredBatchEval, CommmitmentScheme, OpenInstance};
 use sponge::sponge::Duplex;
 use sumcheck::{eq, polynomials::MultiPoint, sumcheck::SumcheckProver};
@@ -109,7 +110,8 @@ where
 
     fn mles(&self, witness: &[F], r_eq: &MultiPoint<F>) -> Vec<LinearizedMles<F, IO>> {
         let structure = &self.structure;
-        fill_mles(structure, witness, r_eq)
+        let matrices = self.matrices.each_ref().map(AsRef::as_ref);
+        fill_mles(structure, witness, r_eq, matrices)
     }
 
     fn lcs_open_instance(
@@ -136,32 +138,39 @@ where
 
 use super::sumcheck_argument::LinearizedMles;
 
-fn matrix_partial_eval<F>() -> Vec<F> {
-    todo!()
+fn matrix_partial_eval<F: Field>(matrix: &Matrix, rx: &[F]) -> Vec<F> {
+    let mut res = vec![F::zero(); rx.len()];
+    for (i, j) in matrix.iter() {
+        res[i] += rx[j];
+    }
+    res
 }
 
 fn fill_mles<F, const IO: usize>(
     structure: &[LinearizedMles<F, IO>],
     witness: &[F],
     r_eq: &MultiPoint<F>,
+    matrices: [&Matrix; IO],
 ) -> Vec<LinearizedMles<F, IO>>
 where
     F: Field,
 {
     let mut mles = structure.to_vec();
     let r_eq = eq::eq(r_eq);
-    // M_i(rx,y)
-    let matrix_evals = [(); IO].map(|_| matrix_partial_eval::<F>());
-    let mut matrix_evals = matrix_evals.map(|x| x.into_iter());
 
     //TODO: improve
     for i in 0..mles.len() {
         let row: &mut LinearizedMles<F, IO> = &mut mles[i];
-        for (i, m) in row.matrices.iter_mut().enumerate() {
-            *m = matrix_evals[i].next().unwrap();
-        }
         row.r_eq = r_eq[i];
         row.z = witness[i]
+    }
+    for i in 0..IO {
+        // M_i(rx,y)
+        let m = matrices;
+        let m = matrix_partial_eval(m[i], &r_eq);
+        for (eval, m) in mles.iter_mut().zip(m) {
+            eval.matrices[i] = m;
+        }
     }
     mles
 }

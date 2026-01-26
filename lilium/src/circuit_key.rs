@@ -76,10 +76,11 @@ where
             .iter()
             .map(|gate| Vec::from(gate.clone()))
             .collect();
+        let matrices = ccs_structure.io_matrices.clone().map(Rc::new);
         let lcs_key = LcsProvingKey::new(
             Rc::clone(&committment_scheme),
             structure,
-            ccs_structure.io_matrices.each_ref(),
+            matrices,
             spark_commitments.clone(),
             gates,
         );

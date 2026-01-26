@@ -74,7 +74,7 @@ where
     pub fn new(
         pcs: Rc<C>,
         structure: Rc<Vec<LcsMles<F, IO, 4>>>,
-        matrices: [&Matrix; IO],
+        matrices: [Rc<Matrix>; IO],
         spark_keys: [CommittedSpark<F, C, 2>; IO],
         gates: Vec<Vec<Exp<usize>>>,
     ) -> Self {
@@ -86,10 +86,17 @@ where
             let f = LcsSumcheck::new(gates.clone());
             SumcheckProver::new_symbolic(vars, &f)
         };
-        let linear_combinations = LinearCombinations::from_tables(matrices);
-        let linear_combinations = Rc::new(linear_combinations);
-        let linearized_reduction_key =
-            linearized::Key::new(domain_vars, Rc::clone(&structure), Rc::clone(&pcs));
+        let linear_combinations = {
+            let matrices: [&Matrix; IO] = matrices.each_ref().map(AsRef::as_ref);
+            let linear_combinations = LinearCombinations::from_tables(matrices);
+            Rc::new(linear_combinations)
+        };
+        let linearized_reduction_key = linearized::Key::new(
+            domain_vars,
+            Rc::clone(&structure),
+            Rc::clone(&pcs),
+            matrices,
+        );
         let matrix_eval_key = matrix_eval::Key::new(spark_keys, Rc::clone(&pcs));
         let mles = structure;
         Self {
