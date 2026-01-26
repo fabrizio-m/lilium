@@ -55,7 +55,11 @@ impl Matrix {
     pub fn iter(&self) -> CellIter<'_> {
         let mut rows = self.rows.iter();
         let current_row = rows.next().expect("matrix is empty").iter();
-        CellIter { rows, current_row }
+        CellIter {
+            rows,
+            current_row,
+            current_row_idx: 0,
+        }
     }
 }
 
@@ -71,20 +75,23 @@ impl Index<usize> for Matrix {
 pub struct CellIter<'a> {
     rows: slice::Iter<'a, Vec<usize>>,
     current_row: slice::Iter<'a, usize>,
+    current_row_idx: usize,
 }
 
 impl Iterator for CellIter<'_> {
-    type Item = usize;
+    type Item = (usize, usize);
 
     fn next(&mut self) -> Option<Self::Item> {
+        let idx = self.current_row_idx;
         match self.current_row.next() {
-            Some(c) => Some(*c),
+            Some(c) => Some((idx, *c)),
             None => {
                 let new_row = self.rows.next()?;
                 let mut new_row = new_row.iter();
                 let next = new_row.next();
                 self.current_row = new_row;
-                next.copied()
+                self.current_row_idx = idx + 1;
+                next.copied().map(|j| (idx, j))
             }
         }
     }
