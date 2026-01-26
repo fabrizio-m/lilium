@@ -91,7 +91,7 @@ impl Iterator for CellIter<'_> {
                 let next = new_row.next();
                 self.current_row = new_row;
                 self.current_row_idx = idx + 1;
-                next.copied().map(|j| (idx, j))
+                next.copied().map(|j| (idx + 1, j))
             }
         }
     }
