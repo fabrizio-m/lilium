@@ -1,3 +1,4 @@
+use core::slice;
 use std::ops::Index;
 
 ///sparse matrix
@@ -49,6 +50,13 @@ impl Matrix {
     pub fn get_row(&self, index: usize) -> Option<&[usize]> {
         self.rows.get(index).map(Vec::as_slice)
     }
+
+    /// Returns iterator over all non-zero cells, panics if the matrix is empty.
+    pub fn iter(&self) -> CellIter<'_> {
+        let mut rows = self.rows.iter();
+        let current_row = rows.next().expect("matrix is empty").iter();
+        CellIter { rows, current_row }
+    }
 }
 
 impl Index<usize> for Matrix {
@@ -56,5 +64,28 @@ impl Index<usize> for Matrix {
 
     fn index(&self, index: usize) -> &Self::Output {
         &self.rows[index]
+    }
+}
+
+/// Itertator over the cells of a matrix.
+pub struct CellIter<'a> {
+    rows: slice::Iter<'a, Vec<usize>>,
+    current_row: slice::Iter<'a, usize>,
+}
+
+impl Iterator for CellIter<'_> {
+    type Item = usize;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        match self.current_row.next() {
+            Some(c) => Some(*c),
+            None => {
+                let new_row = self.rows.next()?;
+                let mut new_row = new_row.iter();
+                let next = new_row.next();
+                self.current_row = new_row;
+                next.copied()
+            }
+        }
     }
 }
