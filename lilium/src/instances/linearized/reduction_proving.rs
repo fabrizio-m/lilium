@@ -8,7 +8,6 @@ use crate::instances::{
     matrix_eval::BatchMatrixEvalInstance,
 };
 use ark_ff::Field;
-use ccs::witness::LinearCombinations;
 use commit::{batching::structured::StructuredBatchEval, CommmitmentScheme, OpenInstance};
 use sponge::sponge::Duplex;
 use sumcheck::{eq, polynomials::MultiPoint, sumcheck::SumcheckProver};
@@ -78,9 +77,10 @@ where
         let [] = transcript.send_message(&w_eval_ry).unwrap();
 
         let (matrix_evals, matrix_eval_instance) = {
-            // As product = w * M, and we know w, then M = product/w
+            // Given M(rx,ry)w(ry).
+            // Then M(rx,ry) = (M(rx,ry)w(ry))/w(ry)
             let w_eval_inverse = w_eval_ry.0.inverse().expect("shouldn't evaluate to 0");
-            let matrix_evals = evals.products.map(|p| p * w_eval_inverse);
+            let matrix_evals = evals.matrices.map(|p| p * w_eval_inverse);
 
             let instance = BatchMatrixEvalInstance {
                 matrix_evals,
@@ -109,8 +109,7 @@ where
 
     fn mles(&self, witness: &[F], r_eq: &MultiPoint<F>) -> Vec<LinearizedMles<F, IO>> {
         let structure = &self.structure;
-        let linear_combinations = &self.linear_combinations;
-        fill_mles(structure, linear_combinations, witness, r_eq)
+        fill_mles(structure, witness, r_eq)
     }
 
     fn lcs_open_instance(
@@ -137,9 +136,12 @@ where
 
 use super::sumcheck_argument::LinearizedMles;
 
+fn matrix_partial_eval<F>() -> Vec<F> {
+    todo!()
+}
+
 fn fill_mles<F, const IO: usize>(
     structure: &[LinearizedMles<F, IO>],
-    linear_combinations: &LinearCombinations<IO>,
     witness: &[F],
     r_eq: &MultiPoint<F>,
 ) -> Vec<LinearizedMles<F, IO>>
@@ -147,15 +149,19 @@ where
     F: Field,
 {
     let mut mles = structure.to_vec();
-    let mut combinations = linear_combinations.compute(witness);
     let r_eq = eq::eq(r_eq);
+    // M_i(rx,y)
+    let matrix_evals = [(); IO].map(|_| matrix_partial_eval::<F>());
+    let mut matrix_evals = matrix_evals.map(|x| x.into_iter());
 
+    //TODO: improve
     for i in 0..mles.len() {
-        let products: [F; IO] = combinations.next().unwrap_or([F::zero(); IO]);
-
         let row: &mut LinearizedMles<F, IO> = &mut mles[i];
-        row.products = products;
+        for (i, m) in row.matrices.iter_mut().enumerate() {
+            *m = matrix_evals[i].next().unwrap();
+        }
         row.r_eq = r_eq[i];
+        row.z = witness[i]
     }
     mles
 }

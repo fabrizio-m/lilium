@@ -133,7 +133,7 @@ where
         // Evals M(rx,r) * w(r)
         let products = matrix_evals.map(|m| m * w_eval);
         let r_eval = rx.eval_as_eq(&ry);
-        let evals_at_r = LinearizedMles::new(products, r_eval);
+        let evals_at_r = LinearizedMles::new(products, r_eval, w_eval);
 
         let chall = SingleChall(chall);
         let checks = sumcheck_verifier.check_evals_at_r(evals_at_r, eval, &chall);

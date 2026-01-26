@@ -3,7 +3,6 @@ use crate::instances::{
     linearized::sumcheck_argument::LinearizedMles,
 };
 use ark_ff::Field;
-use ccs::witness::LinearCombinations;
 use commit::{committed_structure::CommittedStructure, CommmitmentScheme};
 use std::rc::Rc;
 use sumcheck::polynomials::MultiPoint;
@@ -31,7 +30,6 @@ pub struct LinearizedInstance<F: Field, C: CommmitmentScheme<F>, const IO: usize
 pub struct Key<F: Field, C: CommmitmentScheme<F>, const IO: usize, const S: usize> {
     domain_vars: usize,
     selector_commitments: CommittedStructure<F, LcsSumcheck<F, IO, S>, C>,
-    linear_combinations: Rc<LinearCombinations<IO>>,
     structure: Rc<Vec<LinearizedMles<F, IO>>>,
     lcs_structure: Rc<Vec<LcsMles<F, IO, S>>>,
     pcs: Rc<C>,
@@ -58,15 +56,11 @@ where
 }
 
 impl<F: Field, C: CommmitmentScheme<F>, const IO: usize, const S: usize> Key<F, C, IO, S> {
-    pub fn new(
-        domain_vars: usize,
-        linear_combinations: Rc<LinearCombinations<IO>>,
-        lcs_structure: Rc<Vec<LcsMles<F, IO, S>>>,
-        pcs: Rc<C>,
-    ) -> Self {
+    pub fn new(domain_vars: usize, lcs_structure: Rc<Vec<LcsMles<F, IO, S>>>, pcs: Rc<C>) -> Self {
         let dummy = LinearizedMles {
-            products: [F::zero(); IO],
+            matrices: [F::zero(); IO],
             r_eq: F::zero(),
+            z: F::zero(),
         };
         let mles = vec![dummy; 1 << domain_vars];
         let structure = Rc::new(mles);
@@ -75,7 +69,6 @@ impl<F: Field, C: CommmitmentScheme<F>, const IO: usize, const S: usize> Key<F, 
         Self {
             domain_vars,
             selector_commitments,
-            linear_combinations,
             structure,
             lcs_structure,
             pcs,

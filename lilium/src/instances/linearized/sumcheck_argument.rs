@@ -1,7 +1,7 @@
 use ark_ff::Field;
 use sumcheck::{
     polynomials::Evals,
-    sumcheck::{Env, EvalKind, SumcheckFunction, Var},
+    sumcheck::{CommitType, Env, EvalKind, SumcheckFunction, Var},
     utils::ZeroCheckAvailable,
 };
 
@@ -10,23 +10,26 @@ pub struct LinearizedSumcheck<const IO: usize>;
 
 #[derive(Clone)]
 pub struct LinearizedMles<V, const IO: usize> {
-    /// matrix vector products M(x)z(x)
-    pub products: [V; IO],
+    /// M(rx,y)
+    pub matrices: [V; IO],
     pub r_eq: V,
+    pub z: V,
 }
 
 impl<V, const IO: usize> LinearizedMles<V, IO> {
-    pub fn new(products: [V; IO], r_eq: V) -> Self {
-        Self { products, r_eq }
+    pub fn new(matrices: [V; IO], r_eq: V, z: V) -> Self {
+        Self { matrices, r_eq, z }
     }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Index {
-    /// M_i(rx,x)z(x) for the given i
-    Product(usize),
+    /// Matrix M_i(rx,x) for the given i.
+    M(usize),
     /// eq(rx).
     Req,
+    /// The witness.
+    Z,
 }
 
 impl ZeroCheckAvailable for Index {
@@ -40,27 +43,30 @@ impl<V: Clone + Copy, const IO: usize> Evals<V> for LinearizedMles<V, IO> {
 
     fn index(&self, index: Self::Idx) -> &V {
         match index {
-            Index::Product(i) => &self.products[i],
+            Index::M(i) => &self.matrices[i],
             Index::Req => &self.r_eq,
+            Index::Z => &self.z,
         }
     }
 
     fn combine<C: Fn(V, V) -> V>(&self, other: &Self, f: C) -> Self {
-        let mut products = self.products;
-        products.iter_mut().zip(other.products).for_each(|(a, b)| {
+        let mut matrices = self.matrices;
+        matrices.iter_mut().zip(other.matrices).for_each(|(a, b)| {
             *a = f(*a, b);
         });
         let r_eq = f(self.r_eq, other.r_eq);
-        Self { products, r_eq }
+        let z = f(self.z, other.z);
+        Self { matrices, r_eq, z }
     }
 
     fn flatten(self, vec: &mut Vec<V>) {
-        vec.extend(self.products);
+        vec.extend(self.matrices);
         vec.push(self.r_eq);
+        vec.push(self.z);
     }
 
     fn unflatten(elems: &mut std::vec::IntoIter<V>) -> Self {
-        let products = {
+        let matrices = {
             let elems: Vec<V> = elems.take(IO).collect();
             match elems.try_into() {
                 Ok(p) => p,
@@ -69,15 +75,17 @@ impl<V: Clone + Copy, const IO: usize> Evals<V> for LinearizedMles<V, IO> {
                 }
             }
         };
-        let [r_eq] = [elems.next().unwrap(); 1];
-        Self { products, r_eq }
+        let r_eq = elems.next().unwrap();
+        let z = elems.next().unwrap();
+        Self { matrices, r_eq, z }
     }
 }
 
 const fn kinds<const IO: usize>() -> LinearizedMles<EvalKind, IO> {
-    let products = [EvalKind::Virtual; IO];
+    let matrices = [EvalKind::Virtual; IO];
     let r_eq = EvalKind::FixedSmall;
-    LinearizedMles { products, r_eq }
+    let z = EvalKind::Committed(CommitType::Instance);
+    LinearizedMles { matrices, r_eq, z }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Default)]
@@ -108,9 +116,10 @@ impl<F: Field, const IO: usize> SumcheckFunction<F> for LinearizedSumcheck<IO> {
         B: Copy + std::fmt::Debug,
         M: Fn(A) -> B,
     {
-        let products = evals.products.map(&f);
+        let matrices = evals.matrices.map(&f);
         let r_eq = f(evals.r_eq);
-        Self::Mles { products, r_eq }
+        let z = f(evals.z);
+        Self::Mles { matrices, r_eq, z }
     }
 
     fn function<V, E>(env: E) -> V
@@ -119,12 +128,12 @@ impl<F: Field, const IO: usize> SumcheckFunction<F> for LinearizedSumcheck<IO> {
         E: Env<F, V, Self::Idx, Self::ChallIdx>,
     {
         let chall = env.get_chall(());
+        let z = env.get(Index::Z);
 
-        // let mut acc = inputs_check.0;
-        let mut acc = env.get(Index::Product(0));
+        let mut acc = env.get(Index::M(0)) * &z;
         for i in 1..IO {
             acc = acc * &chall;
-            let m_eq = env.get(Index::Product(i));
+            let m_eq = env.get(Index::M(i)) * &z;
             acc += &m_eq;
         }
         let req = env.get(Index::Req);

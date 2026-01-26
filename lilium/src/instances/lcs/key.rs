@@ -88,12 +88,8 @@ where
         };
         let linear_combinations = LinearCombinations::from_tables(matrices);
         let linear_combinations = Rc::new(linear_combinations);
-        let linearized_reduction_key = linearized::Key::new(
-            domain_vars,
-            Rc::clone(&linear_combinations),
-            Rc::clone(&structure),
-            Rc::clone(&pcs),
-        );
+        let linearized_reduction_key =
+            linearized::Key::new(domain_vars, Rc::clone(&structure), Rc::clone(&pcs));
         let matrix_eval_key = matrix_eval::Key::new(spark_keys, Rc::clone(&pcs));
         let mles = structure;
         Self {
