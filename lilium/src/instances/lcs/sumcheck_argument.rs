@@ -24,7 +24,7 @@ impl<F, const IO: usize, const S: usize> LcsSumcheck<F, IO, S> {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct LcsMles<V, const IO: usize, const S: usize> {
     /// matrix vector products M(x)z(x)
     products: [V; IO],

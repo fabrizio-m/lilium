@@ -78,10 +78,8 @@ where
         let [] = transcript.send_message(&w_eval_ry).unwrap();
 
         let (matrix_evals, matrix_eval_instance) = {
-            // Given M(rx,ry)w(ry).
-            // Then M(rx,ry) = (M(rx,ry)w(ry))/w(ry)
-            let w_eval_inverse = w_eval_ry.0.inverse().expect("shouldn't evaluate to 0");
-            let matrix_evals = evals.matrices.map(|p| p * w_eval_inverse);
+            // M(rx,ry).
+            let matrix_evals = evals.matrices;
 
             let instance = BatchMatrixEvalInstance {
                 matrix_evals,
@@ -140,7 +138,7 @@ use super::sumcheck_argument::LinearizedMles;
 
 fn matrix_partial_eval<F: Field>(matrix: &Matrix, rx: &[F]) -> Vec<F> {
     let mut res = vec![F::zero(); rx.len()];
-    for (i, j) in matrix.iter() {
+    for (j, i) in matrix.iter() {
         res[i] += rx[j];
     }
     res

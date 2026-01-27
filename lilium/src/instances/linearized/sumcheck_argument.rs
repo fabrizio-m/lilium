@@ -8,7 +8,7 @@ use sumcheck::{
 /// sumcheck based reduction of linearized instances
 pub struct LinearizedSumcheck<const IO: usize>;
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct LinearizedMles<V, const IO: usize> {
     /// M(rx,y)
     pub matrices: [V; IO],
@@ -136,7 +136,6 @@ impl<F: Field, const IO: usize> SumcheckFunction<F> for LinearizedSumcheck<IO> {
             let m_eq = env.get(Index::M(i)) * &z;
             acc += &m_eq;
         }
-        let req = env.get(Index::Req);
-        acc * req
+        acc
     }
 }

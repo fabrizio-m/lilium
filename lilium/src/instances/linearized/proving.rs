@@ -85,8 +85,6 @@ where
 
         let n_vars = key.domain_vars;
 
-        // Starting from 0 as expected from the zero check for
-        // the inputs.
         let sum = products[1..]
             .iter()
             .fold(products[0], |acc, m| acc * chall + m);
@@ -130,10 +128,10 @@ where
         // be checked later as one of the instances produced in this reduction.
         let (matrix_evals, []) = transcript.receive_message(|proof| proof.matrix_evals)?;
         let matrix_evals = matrix_evals.map(|x| x.0);
-        // Evals M(rx,r) * w(r)
-        let products = matrix_evals.map(|m| m * w_eval);
+        // Evals M(rx,ry)
+        let matrices = matrix_evals;
         let r_eval = rx.eval_as_eq(&ry);
-        let evals_at_r = LinearizedMles::new(products, r_eval, w_eval);
+        let evals_at_r = LinearizedMles::new(matrices, r_eval, w_eval);
 
         let chall = SingleChall(chall);
         let checks = sumcheck_verifier.check_evals_at_r(evals_at_r, eval, &chall);
