@@ -20,13 +20,13 @@ impl Matrix {
         self.rows.len() == 0
     }
 
-    pub(crate) fn with_capacity(capacity: usize) -> Self {
+    pub fn with_capacity(capacity: usize) -> Self {
         Matrix {
             rows: Vec::with_capacity(capacity),
         }
     }
 
-    pub(crate) fn push_row_single_value(&mut self, idx: usize) {
+    pub fn push_row_single_value(&mut self, idx: usize) {
         self.rows.push(vec![idx])
     }
 
@@ -86,12 +86,17 @@ impl Iterator for CellIter<'_> {
         match self.current_row.next() {
             Some(c) => Some((idx, *c)),
             None => {
-                let new_row = self.rows.next()?;
+                let new_row = loop {
+                    let row = self.rows.next()?;
+                    self.current_row_idx += 1;
+                    if !row.is_empty() {
+                        break row;
+                    }
+                };
                 let mut new_row = new_row.iter();
                 let next = new_row.next();
                 self.current_row = new_row;
-                self.current_row_idx = idx + 1;
-                next.copied().map(|j| (idx + 1, j))
+                next.copied().map(|j| (self.current_row_idx, j))
             }
         }
     }
