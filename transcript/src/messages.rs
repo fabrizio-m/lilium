@@ -104,3 +104,15 @@ where
         vec![low, high]
     }
 }
+
+impl<F: Field, A: Message<F>, B: Message<F>> Message<F> for (A, B) {
+    fn len(vars: usize, param_resolver: &ParamResolver) -> usize {
+        A::len(vars, param_resolver) + B::len(vars, param_resolver)
+    }
+
+    fn to_field_elements(&self) -> Vec<F> {
+        let a = self.0.to_field_elements();
+        let b = self.1.to_field_elements();
+        a.into_iter().chain(b).collect()
+    }
+}
