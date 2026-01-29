@@ -56,6 +56,9 @@ where
             _f: PhantomData,
         }
     }
+    pub fn commits(self) -> Vec<CS::Commitment> {
+        self.commitments
+    }
 }
 
 impl<F, SF, CS> CommittedStructure<F, SF, CS>
