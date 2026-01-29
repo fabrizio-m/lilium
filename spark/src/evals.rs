@@ -181,10 +181,10 @@ impl<V: Copy, const D: usize> Evals<V> for SparkEval<V, D> {
 impl<V> DimensionEval<V> {
     pub const fn kind() -> DimensionEval<EvalKind> {
         DimensionEval {
-            lookup: LookupEval::<()>::kind(),
+            lookup: LookupEval::<()>::kind(true),
             eq_eval: EvalKind::FixedSmall,
             dimension_index: EvalKind::Committed(CommitType::Structure),
-            eq_lookups: EvalKind::Committed(CommitType::Structure),
+            eq_lookups: EvalKind::Committed(CommitType::Instance),
         }
     }
     /// compute the small evals

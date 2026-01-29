@@ -47,7 +47,7 @@ impl<F: Field, C: CommmitmentScheme<F>, const IO: usize> Key<F, C, IO> {
                 open_instance,
                 witness,
                 proof,
-            } = self.spark_keys[i].prove(transcript, instance);
+            } = self.spark_keys[i].prove(transcript, instance, &self.pcs);
             open_pairs[i] = Some((open_instance, witness));
             proofs.push(proof);
         }

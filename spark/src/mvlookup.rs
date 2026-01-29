@@ -119,8 +119,13 @@ where
 }
 
 impl<V> LookupEval<V> {
-    pub const fn kind() -> LookupEval<EvalKind> {
-        let [frac1, frac2, counts] = [EvalKind::Committed(CommitType::Structure); 3];
+    pub const fn kind(fixed_counts: bool) -> LookupEval<EvalKind> {
+        let [frac1, frac2] = [EvalKind::Committed(CommitType::Instance); 2];
+        let counts = EvalKind::Committed(if fixed_counts {
+            CommitType::Structure
+        } else {
+            CommitType::Instance
+        });
         LookupEval {
             frac1,
             frac2,

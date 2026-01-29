@@ -1,13 +1,17 @@
 use crate::{
     challenges::SparkChallenges,
     committed_spark::{CommittedSpark, CommittedSparkInstance, CommittedSparkProof},
-    evals::SparkEval,
+    evals::{DimensionIndex, SparkEval, SparkIndex},
+    mvlookup::LookupIdx,
     spark::SparkEvalCheck,
 };
 use ark_ff::Field;
-use commit::{committed_structure::MultiCommit, CommmitmentScheme, OpenInstance};
+use commit::{CommmitmentScheme, OpenInstance};
 use sponge::sponge::Duplex;
-use sumcheck::{polynomials::MultiPoint, sumcheck::SumcheckProver};
+use sumcheck::{
+    polynomials::{Evals, MultiPoint},
+    sumcheck::SumcheckProver,
+};
 use transcript::Transcript;
 
 pub struct ProverOutput<F: Field, C: CommmitmentScheme<F>, const D: usize> {
@@ -21,6 +25,7 @@ impl<F: Field, C: CommmitmentScheme<F>, const D: usize> CommittedSpark<F, C, D> 
         &self,
         transcript: &mut Transcript<F, S>,
         instance: CommittedSparkInstance<F, D>,
+        scheme: &C,
     ) -> ProverOutput<F, C, D>
     where
         C: 'static,
@@ -44,10 +49,30 @@ impl<F: Field, C: CommmitmentScheme<F>, const D: usize> CommittedSpark<F, C, D> 
         } = sumcheck_prover
             .prove(transcript, mles.clone(), &challenges)
             .unwrap();
+        let multi_commit = {
+            let mut instance_mles: Vec<Vec<F>> = vec![vec![F::zero(); mles.len()]; D * 3];
 
-        let instance =
-            self.committed_structure
-                .open_instance(MultiCommit::new_empty(), mles.to_vec(), r);
+            for i in 0..D {
+                let indices = [
+                    DimensionIndex::Lookup(LookupIdx::Frac1),
+                    DimensionIndex::Lookup(LookupIdx::Frac2),
+                    DimensionIndex::EqLookup,
+                ]
+                .map(|d| SparkIndex::Dimension(i, d));
+                for j in 0..3 {
+                    let index = indices[j];
+                    for (e, mles) in instance_mles[3 * i + j].iter_mut().zip(mles.iter()) {
+                        *e = *mles.index(index);
+                    }
+                }
+            }
+            let mles: Vec<&[F]> = instance_mles.iter().map(|x| x.as_slice()).collect();
+            self.committed_structure.commit(scheme, &mles)
+        };
+
+        let instance = self
+            .committed_structure
+            .open_instance(multi_commit, mles.to_vec(), r);
         let committed_evals = instance.clone();
         let (open_instance, witness) = self.committed_structure.prove(instance, &mles, transcript);
 
