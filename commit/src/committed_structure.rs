@@ -34,6 +34,7 @@ where
     _phantom: PhantomData<SF>,
 }
 
+#[derive(Clone, Debug)]
 pub struct MultiCommit<F, SF, CS>
 where
     F: Field,
