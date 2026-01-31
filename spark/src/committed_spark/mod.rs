@@ -3,7 +3,7 @@ use crate::{
 };
 use ark_ff::Field;
 use commit::{
-    batching::{structured::StructuredBatchEval, BatchingError},
+    batching::{structured::StructuredBatchEval, BatchEval, BatchingError},
     committed_structure::CommittedStructure,
     CommmitmentScheme, OpenInstance,
 };
@@ -15,7 +15,8 @@ use sumcheck::{
     SumcheckError,
 };
 use transcript::{
-    params::ParamResolver, protocols::Reduction, Message, MessageGuard, TranscriptGuard,
+    messages::SingleElement, params::ParamResolver, protocols::Reduction, Message, MessageGuard,
+    TranscriptGuard,
 };
 
 mod prove;
@@ -26,7 +27,6 @@ pub use prove::ProverOutput;
 
 #[derive(Clone, Debug)]
 pub struct CommittedSpark<F: Field, C: CommmitmentScheme<F>, const D: usize> {
-    // structure: SparkStructure<F, D>,
     committed_structure: CommittedStructure<F, SparkEvalCheck<D>, C>,
     structure: Rc<SparkStructure<F, D>>,
     sumcheck_verifier: SumcheckVerifier<F, SparkEvalCheck<D>>,
@@ -56,10 +56,16 @@ impl<F: Field, const D: usize> Message<F> for CommittedSparkInstance<F, D> {
     }
 }
 
+type StructureEvals<F, const D: usize> = ([[F; 2]; D], [F; 2]);
+type InstanceEvals<F, const D: usize> = [[F; 3]; D];
+
 #[derive(Debug, Clone)]
 pub struct CommittedSparkProof<F: Field, C: CommmitmentScheme<F>, const D: usize> {
+    eq_lookup_commitments: [C::Commitment; D],
+    fraction_lookup_commitments: [[C::Commitment; 2]; D],
     sumcheck_proof: sumcheck::sumcheck::Proof<F, SparkEvalCheck<D>>,
-    committed_evals: StructuredBatchEval<F, C>,
+    structure_evals: StructureEvals<F, D>,
+    instance_evals: InstanceEvals<F, D>,
 }
 
 #[derive(Debug, Clone)]
@@ -109,11 +115,17 @@ where
         builder: transcript::TranscriptBuilder,
     ) -> transcript::TranscriptBuilder {
         builder
-            .round::<F, CommittedSparkInstance<F, D>, 3>()
+            .round::<F, CommittedSparkInstance<F, D>, 0>()
+            // eq_lookups commitments
+            .round::<F, [C::Commitment; D], 2>()
+            //other lookup commitments
             .point()
+            .round::<F, [[C::Commitment; 2]; D], 1>()
             .add_reduction_patter::<F, SumcheckVerifier<F, SparkEvalCheck<D>>>(
                 &key.sumcheck_verifier,
             )
+            .round::<F, InstanceEvals<SingleElement<F>, D>, 0>()
+            .round::<F, StructureEvals<SingleElement<F>, D>, 0>()
             .add_reduction_patter::<F, CommittedStructure<F, SparkEvalCheck<D>, C>>(
                 &key.committed_structure,
             )
@@ -125,14 +137,19 @@ where
         mut transcript: TranscriptGuard<F, S, Self::Proof>,
     ) -> Result<Self::B, Self::Error> {
         let vars = key.committed_structure.vars();
-        let (instance, challs) = transcript.unwrap_guard(instance)?;
-        let [c1, c2, c3] = challs;
+        let (instance, []) = transcript.unwrap_guard(instance)?;
 
-        let challenges = SparkChallenges::new(c1, c2, c3);
+        let (eq_lookup_commitments, [c1, c2]) =
+            transcript.receive_message(|proof| proof.eq_lookup_commitments.clone())?;
+
         let zero_check_point = MultiPoint::new(transcript.point()?);
 
+        let (fraction_lookup_commitments, [c3]) =
+            transcript.receive_message(|proof| proof.fraction_lookup_commitments.clone())?;
+
+        let challenges = SparkChallenges::new(c1, c2, c3);
+
         let CommittedSparkInstance { point, eval } = instance;
-        // shouldn't fail
         assert_eq!(point[0].vars(), vars);
         let sumcheck_instance = MessageGuard::new(Sum(eval));
 
@@ -149,7 +166,34 @@ where
         let zero_eq_eval = zero_check_point.eval_as_eq(&r);
         let eq_evals = point.map(|x| x.eval_as_eq(&r));
         let small_evals = SparkEval::<F, D>::small_evals(zero_eq_eval, eq_evals);
-        let instance = transcript.receive_message_delayed(|proof| proof.committed_evals.clone());
+        let instance = {
+            let commitments: Vec<C::Commitment> = eq_lookup_commitments
+                .into_iter()
+                .zip(fraction_lookup_commitments)
+                .flat_map(|(eq, [f1, f2])| [f1, f2, eq])
+                .collect();
+            let (instance_evals, []) = transcript
+                .receive_message(|proof| proof.instance_evals.map(|x| x.map(SingleElement)))?;
+            let (structure_evals, []) = transcript.receive_message(|proof| {
+                let shared = proof.structure_evals.1.map(SingleElement);
+                let per_dimension = proof.structure_evals.0.map(|x| x.map(SingleElement));
+                (per_dimension, shared)
+            })?;
+            let commitments_and_evals: Vec<(C::Commitment, F)> = commitments
+                .into_iter()
+                .zip(instance_evals.into_iter().flatten().map(|x| x.0))
+                .collect();
+            let dynamic_batch = BatchEval::new(r, commitments_and_evals);
+            let structure_evals: Vec<F> = structure_evals
+                .0
+                .into_iter()
+                .flatten()
+                .chain(structure_evals.1)
+                .map(|x| x.0)
+                .collect();
+            let instance = StructuredBatchEval::new(dynamic_batch, structure_evals);
+            MessageGuard::new(instance)
+        };
         let (open_instance, evals) = CommittedStructure::verify_reduction(
             &key.committed_structure,
             instance,
