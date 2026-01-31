@@ -55,8 +55,8 @@ impl<F: Field, C: CommmitmentScheme<F>, const D: usize> CommittedSpark<F, C, D> 
 
         let zero_check_point = MultiPoint::new(transcript.point().unwrap());
 
-        // The last one is not used and can be set to zero.
-        let challenges = SparkChallenges::new(c1, c2, F::zero());
+        // The second one is not used and can be set to zero.
+        let challenges = SparkChallenges::new(c1, F::zero(), c2);
         let mles = SparkEval::evals(
             &self.structure,
             points,
@@ -80,7 +80,7 @@ impl<F: Field, C: CommmitmentScheme<F>, const D: usize> CommittedSpark<F, C, D> 
 
         let [c3] = transcript.send_message(&fraction_commitments).unwrap();
 
-        let challenges = SparkChallenges::new(c1, c2, c3);
+        let challenges = SparkChallenges::new(c1, c3, c2);
 
         let commitments = (eq_lookup_commitments, fraction_commitments);
         (mles, challenges, commitments)

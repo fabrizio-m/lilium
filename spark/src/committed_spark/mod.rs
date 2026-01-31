@@ -147,7 +147,7 @@ where
         let (fraction_lookup_commitments, [c3]) =
             transcript.receive_message(|proof| proof.fraction_lookup_commitments.clone())?;
 
-        let challenges = SparkChallenges::new(c1, c2, c3);
+        let challenges = SparkChallenges::new(c1, c3, c2);
 
         let CommittedSparkInstance { point, eval } = instance;
         assert_eq!(point[0].vars(), vars);
