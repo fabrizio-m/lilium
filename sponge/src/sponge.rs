@@ -202,7 +202,7 @@ where
 {
     pub fn absorb(&mut self, elem: F) -> Result<(), Error> {
         assert_eq!(R + C, T);
-        self.absorb_mode();
+        self.absorb_mode()?;
         self.check_pattern()?;
 
         if self.absorb_pos == R {
@@ -227,22 +227,22 @@ where
         self.squeeze_pos += 1;
         Ok(squeezed)
     }
-    fn absorb_mode(&mut self) {
+    fn absorb_mode(&mut self) -> Result<(), Error> {
         let current = self.running_pattern.pop();
-        // let i = self.running_pattern.len();
+        let i = self.running_pattern.len();
         let to_push = match current {
             Some(Pattern::Absorb(n)) => Pattern::Absorb(n + 1),
             Some(p @ Pattern::Squeeze(_)) => {
-                //TODO: add error
-                // if p != self.pattern[i] {
-                // return Err(Error::UnexpectedAbsorb);
-                // }
+                if p != self.pattern[i] {
+                    return Err(Error::UnexpectedAbsorb);
+                }
                 self.running_pattern.push(p);
                 Pattern::Absorb(1)
             }
             None => Pattern::Absorb(1),
         };
         self.running_pattern.push(to_push);
+        Ok(())
     }
     fn squeeze_mode(&mut self) -> Result<(), Error> {
         let current = self.running_pattern.pop();
