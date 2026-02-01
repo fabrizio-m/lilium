@@ -47,8 +47,7 @@ where
         let vars = ccs_structure.vars();
         let spark_structure = ccs_structure.io_matrices.clone().map(|matrix: Matrix| {
             let mut evals: Vec<_> = matrix
-                .to_evals()
-                .into_iter()
+                .iter()
                 .map(|index| {
                     let (i, j) = index;
                     ([i, j], F::one())
