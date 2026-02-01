@@ -15,6 +15,10 @@ pub struct Transcript<F: Field, S: Duplex<F>> {
 }
 
 impl<F: Field, S: Duplex<F>> Transcript<F, S> {
+    /// Prints the current state of the sponge, for debugging.
+    pub fn print_state(&self) {
+        self.sponge.print();
+    }
     pub fn guard<P>(&mut self, proof: P) -> TranscriptGuard<F, S, P> {
         TranscriptGuard::new(self, proof)
     }
@@ -102,6 +106,11 @@ impl<I, const N: usize> MessageGuard<[I; N]> {
 }
 
 impl<'a, F: Field, S: Duplex<F>, P> TranscriptGuard<'a, F, S, P> {
+    /// Prints the current state of the sponge, for debugging.
+    pub fn print_state(&self) {
+        self.transcript.print_state();
+    }
+
     pub fn new(transcript: &'a mut Transcript<F, S>, proof: P) -> Self {
         Self { transcript, proof }
     }
