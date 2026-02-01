@@ -142,7 +142,7 @@ impl<F: Field, S: CommmitmentScheme<F>> StructuredBatchReduction<F, S> {
 
         let instance_commits = commitments_and_evals.into_iter();
         let all_commits: Vec<(S::Commitment, F)> =
-            structure_commits.chain(instance_commits).collect();
+            instance_commits.chain(structure_commits).collect();
         let mut all_commits = all_commits.into_iter();
         let first = all_commits
             .next()
@@ -151,7 +151,7 @@ impl<F: Field, S: CommmitmentScheme<F>> StructuredBatchReduction<F, S> {
         let (commit, eval) = all_commits.fold(first, |acc, e| {
             let (commit, eval) = acc;
             let commit = commit * challenge + &e.0;
-            let eval = eval * challenge + eval;
+            let eval = eval * challenge + e.1;
             (commit, eval)
         });
 

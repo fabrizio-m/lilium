@@ -221,7 +221,7 @@ where
         });
         let structure_filter: Vec<bool> = strucutre_filter.flatten_vec();
         let instance_filter = SF::map_evals(SF::KINDS, |kind| {
-            matches!(kind, EvalKind::Committed(CommitType::Structure))
+            matches!(kind, EvalKind::Committed(CommitType::Instance))
         });
         let instance_filter: Vec<bool> = instance_filter.flatten_vec();
 
