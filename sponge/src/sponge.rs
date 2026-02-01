@@ -186,6 +186,12 @@ where
             &self.pattern, &self.running_pattern,
             "sponge dropped with a partial or incorrect pattern"
         );
+
+        // panic can be avoided for debugging
+        // TODO: find a more debugging friendly approach.
+        // if self.pattern != self.running_pattern {
+        // println!("sponge dropped with a partial or incorrect pattern");
+        // }
     }
 }
 
@@ -305,6 +311,8 @@ pub trait Duplex<F: Field> {
     fn absorb(&mut self, elem: F) -> Result<(), Error>;
     fn squeeze(&mut self) -> Result<F, Error>;
     fn finish(self) -> Result<(), Error>;
+    /// Prints the state, for debugging purposes.
+    fn print(&self);
 }
 
 impl<F, P, const R: usize, const C: usize, const T: usize> Duplex<F> for Sponge<F, P, R, C, T>
@@ -343,5 +351,8 @@ where
 
     fn finish(self) -> Result<(), Error> {
         Sponge::finish(self)
+    }
+    fn print(&self) {
+        println!("s: {:?}", self.state);
     }
 }
