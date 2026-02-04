@@ -9,6 +9,6 @@ members = [
     "spark",
     "sponge",
     "sumcheck",
-    "hash-to-curve"
-    , "shout"]
+    "hash-to-curve",
+    "shout"]
 resolver = "2"
