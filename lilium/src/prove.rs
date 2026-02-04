@@ -27,7 +27,7 @@ where
         C: Circuit<F, IN, OUT, PRIV_OUT>,
     {
         assert_eq!(I, IN + OUT);
-        let (mut witness, output) = <C as Prove<_, IN, OUT, PRIV_OUT, IO>>::witness(inputs, false);
+        let (mut witness, output) = <C as Prove<_, IN, OUT, PRIV_OUT, IO>>::witness(inputs, true);
         witness.pad_to_power();
         let witness_commit = self.committment_scheme.commit_mle(&witness.0);
 
