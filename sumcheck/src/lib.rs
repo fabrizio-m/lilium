@@ -5,6 +5,7 @@ pub(crate) mod degree;
 pub mod eq;
 pub mod eval_check;
 pub mod eval_impls;
+pub mod folding;
 pub(crate) mod message;
 pub mod polynomials;
 pub mod sumcheck;
