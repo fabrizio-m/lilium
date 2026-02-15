@@ -1,6 +1,6 @@
 use crate::{
     error::{Error, Mismatch},
-    permutation::Permutation,
+    permutation::{Permutation, UnsafePermutation},
 };
 use ark_ff::{Field, PrimeField};
 use std::{fmt::Display, marker::PhantomData};
@@ -354,5 +354,39 @@ where
     }
     fn print(&self) {
         println!("s: {:?}", self.state);
+    }
+}
+
+pub struct UnsafeSponge<F: Field> {
+    inner: Sponge<F, UnsafePermutation<F, 3>, 2, 1, 3>,
+}
+
+impl<F: Field> Duplex<F> for UnsafeSponge<F> {
+    type Initializer = SpongeInitializer<F, UnsafePermutation<F, 3>, 2, 1, 3>;
+
+    fn from_builder(builder: SpongeBuilder) -> Self::Initializer {
+        Sponge::from_builder(builder)
+    }
+
+    fn instanciate(init: &Self::Initializer) -> Self {
+        Self {
+            inner: Sponge::instanciate(init),
+        }
+    }
+
+    fn absorb(&mut self, elem: F) -> Result<(), Error> {
+        self.inner.absorb(elem)
+    }
+
+    fn squeeze(&mut self) -> Result<F, Error> {
+        self.inner.squeeze()
+    }
+
+    fn finish(self) -> Result<(), Error> {
+        self.inner.finish()
+    }
+
+    fn print(&self) {
+        self.inner.print();
     }
 }
