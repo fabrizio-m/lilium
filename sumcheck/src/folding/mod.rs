@@ -9,6 +9,7 @@ use transcript::params::ParamResolver;
 
 mod prover;
 mod reduction;
+mod tests;
 
 pub struct SumFold<F: Field, SF: SumcheckFunction<F>> {
     // Weights for degree d.
@@ -40,6 +41,13 @@ pub struct SumFoldProof<F: Field> {
 
 pub struct SumFoldInstance<F, const N: usize> {
     sums: [Sum<F>; N],
+}
+
+impl<F, const N: usize> SumFoldInstance<F, N> {
+    pub fn new(sums: [F; N]) -> Self {
+        let sums = sums.map(Sum);
+        Self { sums }
+    }
 }
 
 impl<F: Field, const N: usize> transcript::Message<F> for SumFoldInstance<F, N> {
