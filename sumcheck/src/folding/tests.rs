@@ -139,7 +139,7 @@ impl<F: Field> SumcheckFunction<F> for Product {
 }
 
 #[test]
-fn sumfold() {
+fn sumfold_product() {
     use ark_ff::{UniformRand, Zero};
     use ark_vesta::Fr;
 
@@ -159,4 +159,76 @@ fn sumfold() {
     let w2 = w.by_ref().take(1 << vars).collect::<Vec<_>>();
 
     fold_and_prove::<Fr, Product>([Fr::zero(); 2], [w1, w2], Product);
+}
+
+/// A fake zero check with rows like a * b - c = 0.
+#[derive(Clone, Copy)]
+struct InnerProduct;
+
+impl<F: Field> SumcheckFunction<F> for InnerProduct {
+    type Idx = usize;
+
+    type Mles<V: Copy + std::fmt::Debug> = SimpleEval<V, 2>;
+
+    type Challs = NoChallenges<F>;
+
+    type ChallIdx = NoChallIdx;
+
+    const KINDS: Self::Mles<EvalKind> = SimpleEval::new([EvalKind::Virtual; 2]);
+
+    fn map_evals<A, B, M>(evals: Self::Mles<A>, f: M) -> Self::Mles<B>
+    where
+        A: Copy + std::fmt::Debug,
+        B: Copy + std::fmt::Debug,
+        M: Fn(A) -> B,
+    {
+        evals.map(f)
+    }
+
+    fn function<V: Var<F>, E: Env<F, V, Self::Idx, Self::ChallIdx>>(env: E) -> V {
+        let a = env.get(0);
+        let b = env.get(1);
+        a * b
+    }
+
+    fn symbolic_function<V: Var<F>, E: Env<F, V, Self::Idx, Self::ChallIdx>>(
+        &self,
+        env: E,
+    ) -> Option<V> {
+        let a = env.get(0);
+        let b = env.get(1);
+        Some(a * b)
+    }
+}
+
+#[test]
+fn sumfold_inner_product() {
+    use ark_ff::{UniformRand, Zero};
+    use ark_vesta::Fr;
+
+    let vars = VARS;
+    let mut rng = StdRng::seed_from_u64(0);
+
+    // let mut w: Vec<SimpleEval<Fr, 2>> = vec![];
+    let mut w = vec![];
+    for _ in 0..(1 << (vars + 1)) {
+        let a: Fr = Fr::rand(&mut rng);
+        let b = Fr::rand(&mut rng);
+        // let eval = SimpleEval::new([a, b]);
+        w.push([a, b]);
+    }
+    let mut w = w.into_iter();
+    let w1 = w.by_ref().take(1 << vars).collect::<Vec<_>>();
+    let s1 = w1
+        .iter()
+        .fold(Fr::zero(), |acc, eval| acc + eval[0] * eval[1]);
+    let w2 = w.by_ref().take(1 << vars).collect::<Vec<_>>();
+    let s2 = w2
+        .iter()
+        .fold(Fr::zero(), |acc, eval| acc + eval[0] * eval[1]);
+
+    let w1: Vec<SimpleEval<Fr, 2>> = w1.into_iter().map(SimpleEval::new).collect();
+    let w2: Vec<SimpleEval<Fr, 2>> = w2.into_iter().map(SimpleEval::new).collect();
+
+    fold_and_prove::<Fr, InnerProduct>([s1, s2], [w1, w2], InnerProduct);
 }
