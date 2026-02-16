@@ -1,10 +1,12 @@
 use crate::{
     folding::{SumFold, SumFoldInstance, SumFoldProof},
     message::Message,
-    sumcheck::{Sum, SumcheckFunction},
+    sumcheck::{DegreeParam, Sum, SumcheckFunction},
 };
 use ark_ff::Field;
-use transcript::{protocols::Reduction, MessageGuard, TranscriptBuilder, TranscriptGuard};
+use transcript::{
+    params::ParamResolver, protocols::Reduction, MessageGuard, TranscriptBuilder, TranscriptGuard,
+};
 
 impl<F: Field, SF: SumcheckFunction<F>> Reduction<F> for SumFold<F, SF> {
     type A = SumFoldInstance<F, 2>;
@@ -17,11 +19,11 @@ impl<F: Field, SF: SumcheckFunction<F>> Reduction<F> for SumFold<F, SF> {
 
     type Error = ();
 
-    fn transcript_pattern(_key: &Self::Key, builder: TranscriptBuilder) -> TranscriptBuilder {
+    fn transcript_pattern(key: &Self::Key, builder: TranscriptBuilder) -> TranscriptBuilder {
+        let params = ParamResolver::new().set::<DegreeParam>(key.degree + 1);
         builder
             .round::<F, SumFoldInstance<F, 2>, 1>()
-            //TODO: check length
-            .round::<F, Message<F>, 1>()
+            .with_params(params, |builder| builder.round::<F, Message<F>, 1>())
     }
 
     fn verify_reduction<S: sponge::sponge::Duplex<F>>(
