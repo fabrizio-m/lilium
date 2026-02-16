@@ -9,6 +9,7 @@ use transcript::params::ParamResolver;
 
 mod prover;
 mod reduction;
+#[cfg(test)]
 mod tests;
 
 pub struct SumFold<F: Field, SF: SumcheckFunction<F>> {

@@ -1,23 +1,99 @@
-#[cfg(test)]
-use rand::{rngs::StdRng, SeedableRng};
-use sponge::sponge::UnsafeSponge;
-use std::fmt::Debug;
-use transcript::{protocols::Reduction, MessageGuard, TranscriptBuilder};
-
 use crate::{
     folding::prover::SumFoldProverOutput,
-    polynomials::{simple_eval::SimpleEval, SingleEval},
+    polynomials::simple_eval::SimpleEval,
     sumcheck::{Env, EvalKind, NoChallIdx, NoChallenges, SumcheckVerifier, Var},
 };
+use rand::{rngs::StdRng, SeedableRng};
+use sponge::sponge::UnsafeSponge;
+use transcript::{protocols::Reduction, MessageGuard, TranscriptBuilder};
 
 use super::*;
 
-struct Evals<F> {
-    a: F,
-    b: F,
-    c: F,
+const VARS: usize = 4;
+
+fn fold_and_prove<F: Field, SF>(sums: [F; 2], witnesses: [Vec<SF::Mles<F>>; 2], f: SF)
+where
+    SF: SumcheckFunction<F, Challs = NoChallenges<F>> + Copy,
+{
+    let [w1, w2] = witnesses;
+
+    // checking sumcheck individually
+    {
+        check_sumcheck::<F, SF>(sums[0], w1.clone(), f);
+        check_sumcheck::<F, SF>(sums[1], w2.clone(), f);
+    }
+
+    let sumfold_key = SumFold::<F, _>::new(&f);
+
+    let transcript_desc = TranscriptBuilder::new(VARS, ParamResolver::new())
+        .add_reduction_patter::<F, SumFold<F, _>>(&sumfold_key)
+        .finish::<F, UnsafeSponge<F>>();
+
+    let (w3, instance) = {
+        let mut transcript = transcript_desc.instanciate();
+        let instance = SumFoldInstance::new([sums[0], sums[1]]);
+        let SumFoldProverOutput {
+            instance,
+            folded_witness,
+            proof,
+        } = sumfold_key.fold(
+            w1,
+            &w2,
+            Some(instance),
+            &mut transcript,
+            NoChallenges::default(),
+        );
+        transcript.finish_unchecked();
+
+        let mut transcript = transcript_desc.instanciate();
+        let instance = MessageGuard::new(instance);
+        let reduced =
+            SumFold::verify_reduction(&sumfold_key, instance, transcript.guard(proof)).unwrap();
+        transcript.finish_unchecked();
+        (folded_witness, reduced)
+    };
+    check_sumcheck::<F, SF>(instance.0, w3, f);
 }
 
+#[cfg(test)]
+fn check_sumcheck<F, SF>(sum: F, witness: Vec<SF::Mles<F>>, f: SF)
+where
+    F: Field,
+    SF: SumcheckFunction<F, Challs = NoChallenges<F>> + Copy,
+{
+    let vars = VARS;
+    let prover = SumcheckProver::<F, SF>::new(vars);
+    let verifier = SumcheckVerifier::new_symbolic(f, vars);
+    let builder = TranscriptBuilder::new(vars, ParamResolver::new());
+    let transcript_desc = SumcheckVerifier::<F, SF>::transcript_pattern(&verifier, builder)
+        .finish::<F, UnsafeSponge<F>>();
+
+    let out = {
+        let mut transcript = transcript_desc.instanciate();
+        let out = prover
+            .prove(&mut transcript, witness, &NoChallenges::default())
+            .unwrap();
+        transcript.finish_unchecked();
+        out
+    };
+
+    let reduced = {
+        let mut transcript = transcript_desc.instanciate();
+        let instance = MessageGuard::new(Sum(sum));
+        // let transcript = transcript.guard(out.proof);
+
+        let reduced =
+            SumcheckVerifier::verify_reduction(&verifier, instance, transcript.guard(out.proof))
+                .unwrap();
+        transcript.finish_unchecked();
+        reduced
+    };
+    let checks = verifier.check_evals_at_r(out.evals, reduced.eval, &NoChallenges::default());
+    assert!(checks);
+}
+
+/// A fake zero check with rows like a * b - c = 0.
+#[derive(Clone, Copy)]
 struct Product;
 
 const fn kinds() -> SimpleEval<EvalKind, 3> {
@@ -62,18 +138,18 @@ impl<F: Field> SumcheckFunction<F> for Product {
     }
 }
 
-const VARS: usize = 4;
+#[test]
+fn sumfold() {
+    use ark_ff::{UniformRand, Zero};
+    use ark_vesta::Fr;
 
-#[cfg(test)]
-fn fold_and_prove<F: Field>() {
     let vars = VARS;
-    let mut w = vec![];
-
     let mut rng = StdRng::seed_from_u64(0);
 
+    let mut w: Vec<SimpleEval<Fr, 3>> = vec![];
     for _ in 0..(1 << (vars + 1)) {
-        let a = F::rand(&mut rng);
-        let b = F::rand(&mut rng);
+        let a: Fr = Fr::rand(&mut rng);
+        let b = Fr::rand(&mut rng);
         let c = a * b;
         let eval = SimpleEval::new([a, b, c]);
         w.push(eval);
@@ -82,79 +158,5 @@ fn fold_and_prove<F: Field>() {
     let w1 = w.by_ref().take(1 << vars).collect::<Vec<_>>();
     let w2 = w.by_ref().take(1 << vars).collect::<Vec<_>>();
 
-    // checking sumcheck individually
-    {
-        check_sumcheck(F::zero(), w1.clone());
-        check_sumcheck(F::zero(), w2.clone());
-    }
-
-    let sumfold_key = SumFold::<F, _>::new(&Product);
-
-    let transcript_desc = TranscriptBuilder::new(VARS, ParamResolver::new())
-        .add_reduction_patter::<F, SumFold<F, _>>(&sumfold_key)
-        .finish::<F, UnsafeSponge<F>>();
-
-    let (w3, instance) = {
-        let mut transcript = transcript_desc.instanciate();
-        let instance = SumFoldInstance::new([F::zero(), F::zero()]);
-        let SumFoldProverOutput {
-            instance,
-            folded_witness,
-            proof,
-        } = sumfold_key.fold(
-            w1,
-            &w2,
-            Some(instance),
-            &mut transcript,
-            NoChallenges::default(),
-        );
-        transcript.finish_unchecked();
-
-        let mut transcript = transcript_desc.instanciate();
-        let instance = MessageGuard::new(instance);
-        let reduced =
-            SumFold::verify_reduction(&sumfold_key, instance, transcript.guard(proof)).unwrap();
-        transcript.finish_unchecked();
-        (folded_witness, reduced)
-    };
-    check_sumcheck(instance.0, w3);
-}
-
-#[cfg(test)]
-fn check_sumcheck<F: Field>(sum: F, witness: Vec<SimpleEval<F, 3>>) {
-    let vars = VARS;
-    let prover = SumcheckProver::<F, Product>::new(vars);
-    let verifier = SumcheckVerifier::new_symbolic(Product, vars);
-    let builder = TranscriptBuilder::new(vars, ParamResolver::new());
-    let transcript_desc = SumcheckVerifier::<F, Product>::transcript_pattern(&verifier, builder)
-        .finish::<F, UnsafeSponge<F>>();
-
-    let out = {
-        let mut transcript = transcript_desc.instanciate();
-        let out = prover
-            .prove(&mut transcript, witness, &NoChallenges::default())
-            .unwrap();
-        transcript.finish_unchecked();
-        out
-    };
-
-    let reduced = {
-        let mut transcript = transcript_desc.instanciate();
-        let instance = MessageGuard::new(Sum(sum));
-        // let transcript = transcript.guard(out.proof);
-
-        let reduced =
-            SumcheckVerifier::verify_reduction(&verifier, instance, transcript.guard(out.proof))
-                .unwrap();
-        transcript.finish_unchecked();
-        reduced
-    };
-    let checks = verifier.check_evals_at_r(out.evals, reduced.eval, &NoChallenges::default());
-    assert!(checks);
-}
-
-#[test]
-fn sumfold() {
-    use ark_vesta::Fr;
-    fold_and_prove::<Fr>();
+    fold_and_prove::<Fr, Product>([Fr::zero(); 2], [w1, w2], Product);
 }
