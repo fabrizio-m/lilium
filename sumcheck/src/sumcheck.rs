@@ -208,7 +208,7 @@ where
         }
     }
 
-    fn degree_symbolic(function: &SF) -> usize {
+    pub(crate) fn degree_symbolic(function: &SF) -> usize {
         let degree_env = DegreeEnv::new();
         let degree =
             SF::symbolic_function(function, degree_env).expect("symbolic function not implemented");
