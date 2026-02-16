@@ -12,6 +12,7 @@ mod reduction;
 #[cfg(test)]
 mod tests;
 
+/// Reduction from 2 folding instances into a single one.
 pub struct SumFold<F: Field, SF: SumcheckFunction<F>> {
     // Weights for degree d.
     weights: BarycentricWeights<F>,

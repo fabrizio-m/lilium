@@ -2,6 +2,7 @@ use crate::{
     folding::{SumFold, SumFoldInstance, SumFoldProof},
     message::Message,
     sumcheck::{DegreeParam, Sum, SumcheckFunction},
+    SumcheckError,
 };
 use ark_ff::Field;
 use transcript::{
@@ -17,7 +18,7 @@ impl<F: Field, SF: SumcheckFunction<F>> Reduction<F> for SumFold<F, SF> {
 
     type Proof = SumFoldProof<F>;
 
-    type Error = ();
+    type Error = SumcheckError;
 
     fn transcript_pattern(key: &Self::Key, builder: TranscriptBuilder) -> TranscriptBuilder {
         let params = ParamResolver::new().set::<DegreeParam>(key.degree + 1);
@@ -31,18 +32,25 @@ impl<F: Field, SF: SumcheckFunction<F>> Reduction<F> for SumFold<F, SF> {
         instance: MessageGuard<Self::A>,
         mut transcript: TranscriptGuard<F, S, Self::Proof>,
     ) -> Result<Self::B, Self::Error> {
-        let (instance, [beta]) = transcript.unwrap_guard(instance).unwrap();
+        let (instance, [beta]) = transcript
+            .unwrap_guard(instance)
+            .map_err(SumcheckError::TranscriptError)?;
         // eq(x,beta) = x * beta + (1-x) * (1-beta)
         // eq(0,beta) = 1 - beta
         // eq(1,beta) = beta
         let sum = (F::one() - beta) * instance.sums[0].0 + beta * instance.sums[1].0;
 
+        // A single sumcheck round, we get message from prover, generate challenge
+        // r, check message agrees with original sum.
+        // And then the work is reduced to a new sumcheck instance over the same polynomial
+        // with 1 variable fixed with r.
         let (msg, [r]) = transcript
             .receive_message(|proof| proof.message.clone())
-            .unwrap();
+            .map_err(SumcheckError::TranscriptError)?;
 
-        //TODO: error
-        assert_eq!(sum, msg.eval_at_0() + msg.eval_at_1());
+        if sum != msg.eval_at_0() + msg.eval_at_1() {
+            return Err(SumcheckError::RoundSum);
+        }
 
         let eqr = r * beta + (F::one() - r) * (F::one() - beta);
 

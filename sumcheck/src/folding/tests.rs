@@ -80,7 +80,6 @@ where
     let reduced = {
         let mut transcript = transcript_desc.instanciate();
         let instance = MessageGuard::new(Sum(sum));
-        // let transcript = transcript.guard(out.proof);
 
         let reduced =
             SumcheckVerifier::verify_reduction(&verifier, instance, transcript.guard(out.proof))
@@ -208,12 +207,10 @@ fn sumfold_inner_product() {
     let vars = VARS;
     let mut rng = StdRng::seed_from_u64(0);
 
-    // let mut w: Vec<SimpleEval<Fr, 2>> = vec![];
     let mut w = vec![];
     for _ in 0..(1 << (vars + 1)) {
         let a: Fr = Fr::rand(&mut rng);
         let b = Fr::rand(&mut rng);
-        // let eval = SimpleEval::new([a, b]);
         w.push([a, b]);
     }
     let mut w = w.into_iter();
