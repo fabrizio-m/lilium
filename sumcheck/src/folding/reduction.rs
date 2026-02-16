@@ -35,7 +35,7 @@ impl<F: Field, SF: SumcheckFunction<F>> Reduction<F> for SumFold<F, SF> {
         // eq(x,beta) = x * beta + (1-x) * (1-beta)
         // eq(0,beta) = 1 - beta
         // eq(1,beta) = beta
-        let sum = beta * instance.sums[0].0 + (F::one() - beta) * instance.sums[1].0;
+        let sum = (F::one() - beta) * instance.sums[0].0 + beta * instance.sums[1].0;
 
         let (msg, [r]) = transcript
             .receive_message(|proof| proof.message.clone())

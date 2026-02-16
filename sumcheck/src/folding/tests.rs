@@ -161,7 +161,6 @@ fn sumfold_product() {
     fold_and_prove::<Fr, Product>([Fr::zero(); 2], [w1, w2], Product);
 }
 
-/// A fake zero check with rows like a * b - c = 0.
 #[derive(Clone, Copy)]
 struct InnerProduct;
 
