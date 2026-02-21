@@ -12,6 +12,7 @@ pub mod sumcheck;
 pub mod symbolic;
 mod tests;
 pub mod utils;
+pub mod zerocheck;
 
 pub use tests::prove_and_verify;
 pub use tests::TestSponge;
