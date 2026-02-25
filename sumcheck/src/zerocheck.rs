@@ -2,17 +2,21 @@
 
 use crate::polynomials::MultiPoint;
 use ark_ff::Field;
-use std::iter::successors;
+use std::{
+    iter::successors,
+    ops::{Add, Mul},
+};
 
 /// Multilinear polynomial of form:
 /// p(x_0) = x_0 * ß + (1 - x_0) * c
-/// p(x_{i+1}) = x_{i+1} * ß^{2^i} * p(x_i)
+/// p(x_{i+1}) = (x_{i+1} * ß^{2^i} + (1 - x_i) * c_i) * p(x_i)
 /// For some challenge ß and c = 1.
 /// Making the MLE essentially a vector
 /// 1, ß, ß^2, .. , ß^{2^k}
 /// Represented as a product of degree 1 univariate polynomials.
 /// For v varibles, point evaluation if O(v) and MLE computation is
 /// O(2^v).
+#[derive(Clone, Debug)]
 pub struct CompactPowers<F: Field> {
     coefficients: Vec<(F, F)>,
 }
@@ -111,6 +115,74 @@ fn compact_powers() {
     test(chall);
 }
 
+impl<F: Field> Mul<F> for CompactPowers<F> {
+    type Output = Self;
+
+    fn mul(mut self, rhs: F) -> Self::Output {
+        for (b, c) in self.coefficients.iter_mut() {
+            *b *= rhs;
+            *c *= rhs;
+        }
+        self
+    }
+}
+
+impl<F: Field> Add<Self> for CompactPowers<F> {
+    type Output = Self;
+
+    fn add(mut self, rhs: Self) -> Self::Output {
+        for (l, r) in self.coefficients.iter_mut().zip(rhs.coefficients) {
+            l.0 += r.0;
+            l.1 += r.1;
+        }
+        self
+    }
+}
+
+#[cfg(test)]
+fn bits(x: usize, left: usize) -> Vec<u8> {
+    match left {
+        0 => {
+            vec![]
+        }
+        left => {
+            let bit = x & 0b1;
+            let mut tail = bits(x >> 1, left - 1);
+            tail.push(bit as u8);
+            tail
+        }
+    }
+}
+
+#[cfg(test)]
+fn compact_powers_over_domain<F: Field>(challs: [F; 3]) {
+    let vars = 5;
+    let [c1, c2, c3] = challs;
+    let powers1 = CompactPowers::new(c1, vars);
+    let powers2 = CompactPowers::new(c2, vars);
+    let powers3 = powers1.clone() * c3 + powers2.clone();
+
+    let mut evals3 = powers3.eval_over_domain().into_iter();
+    for i in 0..(1 << vars) {
+        let point = bits(i, vars).into_iter().map(F::from);
+        let point = MultiPoint::new(point.rev().collect());
+        let e3 = evals3.next().unwrap();
+        assert_eq!(e3, powers3.point_eval(&point));
+    }
+}
+
+#[test]
+fn powers_over_domain() {
+    use ark_ff::UniformRand;
+    use ark_vesta::Fr;
+    use rand::{rngs::StdRng, SeedableRng};
+
+    let mut rng = StdRng::seed_from_u64(0);
+    let mut chall = || Fr::rand(&mut rng);
+
+    let challs = [(); 3].map(|_| chall());
+    compact_powers_over_domain(challs);
+}
 // Wrapper over functions that may be worth implementing in the future.
 /*
 struct ZeroCheck<F: Field, SF: SumcheckFunction<F>> {
@@ -194,3 +266,25 @@ impl<F: Field, SF: SumcheckFunction<F>> SumcheckFunction<F> for ZeroCheck<F, SF>
     }
 }
 */
+
+// e1 = [1,ß], e2 = [1,ß^2]
+// e(0,0) = e1(0) * e2(o) = 1 * 1   = 1
+// e(1,0) = e1(1) * e2(o) = ß * 1   = ß
+// e(0,1) = e1(0) * e2(1) = 1 * ß^2 = ß^2
+// e(1,1) = e1(1) * e2(1) = ß * ß^2 = ß^3
+// e1' = α*e1, e2' = α*e2
+// e'(0,0) = e1'(0) * e2'(o) = α * α     = α^2
+// e'(1,0) = e1'(1) * e2'(o) = ßα * α    = ßα^2
+// e'(0,1) = e1'(0) * e2'(1) = α * ß^2α  = ß^2α^2
+// e'(1,1) = e1'(1) * e2'(1) = ßα * ß^2α = ß^3α^2
+// e1'' = α*e1, e2'' = e2
+// e''(0,0) = e1''(0) * e2''(o) = α * 1  = α
+// e''(1,0) = e1''(1) * e2''(o) = ßα * 1 = ßα
+// e''(0,1) = e1''(0) * e2''(1) = α * ß^2 = ß^2α
+// e''(1,1) = e1''(1) * e2''(1) = ßα * ß^2 = ß^3α
+//
+//
+// e1 = [1,ß], e2 = [1,ß^2]
+// e1 * α + e1 = [α + 1, ßα   + ß]
+// e2 * α + e2 = [α + 1, ß^2α + ß^2]
+// e(0,0) = e1(0) * e2(o) = α + 1 * α + 1 = 1
