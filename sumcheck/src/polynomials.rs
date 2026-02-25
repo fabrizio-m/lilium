@@ -225,11 +225,16 @@ pub mod simple_eval {
         pub const fn new(inner: [F; N]) -> Self {
             Self(inner)
         }
+
         pub fn map<V, M>(self, f: M) -> SimpleEval<V, N>
         where
             M: Fn(F) -> V,
         {
             SimpleEval(self.0.map(f))
+        }
+
+        pub fn inner(&self) -> &[F; N] {
+            &self.0
         }
     }
 
