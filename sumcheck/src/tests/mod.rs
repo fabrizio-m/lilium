@@ -33,8 +33,12 @@ where
 }
 
 /// Creates a prove with the mle and tries to verify it.
-/// Returns evals to double check if desired.
-pub fn prove_and_verify<F, SF>(mle: Vec<SF::Mles<F>>, sum: F, challs: SF::Challs) -> SF::Mles<F>
+/// Returns evals and point to double check if desired.
+pub fn prove_and_verify<F, SF>(
+    mle: Vec<SF::Mles<F>>,
+    sum: F,
+    challs: SF::Challs,
+) -> (SF::Mles<F>, MultiPoint<F>)
 where
     F: Field,
     SF: SumcheckFunction<F>,
@@ -64,7 +68,7 @@ where
     let PolyEvalCheck { vars, eval } = check;
     let r = MultiPoint::new(vars);
 
-    let evals = EvalsExt::eval(&mle, r);
+    let evals = EvalsExt::eval(&mle, r.clone());
     assert!(verifier.check_evals_at_r(evals.clone(), eval, &challs));
-    evals
+    (evals, r)
 }
