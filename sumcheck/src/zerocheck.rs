@@ -88,6 +88,7 @@ fn write_evals<F: Field>(dest: &mut [F], flips: &[F]) {
     }
 }
 
+#[cfg(test)]
 fn test<F: Field>(chall: F) {
     let vars = 5;
     let powers = CompactPowers::new(chall, vars);

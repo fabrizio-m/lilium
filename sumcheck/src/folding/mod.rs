@@ -11,6 +11,7 @@ mod prover;
 mod reduction;
 #[cfg(test)]
 mod tests;
+pub mod utils;
 
 /// Reduction from 2 folding instances into a single one.
 pub struct SumFold<F: Field, SF: SumcheckFunction<F>> {
