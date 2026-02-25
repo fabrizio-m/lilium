@@ -1,5 +1,5 @@
 use crate::{
-    folding::{SumFold, SumFoldInstance, SumFoldProof},
+    folding::{utils::FieldFolder, SumFold, SumFoldInstance, SumFoldProof},
     message::Message,
     polynomials::Evals,
     sumcheck::{Sum, SumcheckFunction},
@@ -12,6 +12,7 @@ pub struct SumFoldProverOutput<F: Field, SF: SumcheckFunction<F>> {
     pub instance: SumFoldInstance<F, 2>,
     pub folded_witness: Vec<SF::Mles<F>>,
     pub proof: SumFoldProof<F>,
+    pub folder: FieldFolder<F>,
 }
 
 impl<F: Field, SF: SumcheckFunction<F>> SumFold<F, SF> {
@@ -86,10 +87,13 @@ impl<F: Field, SF: SumcheckFunction<F>> SumFold<F, SF> {
         }
         let folded_witness = w1;
 
+        let folder = FieldFolder::new(r);
+
         SumFoldProverOutput {
             instance,
             folded_witness,
             proof,
+            folder,
         }
     }
 }

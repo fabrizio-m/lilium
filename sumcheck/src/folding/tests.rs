@@ -36,6 +36,7 @@ where
             instance,
             folded_witness,
             proof,
+            ..
         } = sumfold_key.fold(
             w1,
             &w2,
