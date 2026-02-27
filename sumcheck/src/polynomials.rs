@@ -218,7 +218,7 @@ pub mod simple_eval {
     use crate::utils::ZeroCheckAvailable;
     use std::fmt::Debug;
 
-    #[derive(Clone, Debug)]
+    #[derive(Clone, Copy, Debug)]
     pub struct SimpleEval<F, const N: usize>([F; N]);
 
     impl<F, const N: usize> SimpleEval<F, N> {
