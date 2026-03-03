@@ -28,6 +28,10 @@ pub struct SumFold<F: Field, SF: SumcheckFunction<F>> {
 impl<F: Field, SF: SumcheckFunction<F>> SumFold<F, SF> {
     pub fn new(f: &SF) -> Self {
         let degree = SumcheckProver::<F, SF>::degree_symbolic(f);
+        Self::new_custom_degree(degree, f)
+    }
+
+    pub(super) fn new_custom_degree(degree: usize, f: &SF) -> Self {
         let evaluator = SumcheckEvaluator::new(Some(f));
         let weights = BarycentricWeights::compute(degree as u32);
         let extended_weights = BarycentricWeights::compute(degree as u32 + 1);
