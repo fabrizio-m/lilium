@@ -204,6 +204,21 @@ where
     pub fn eval_accumulate(&mut self, evals: [&S::Mles<F>; 2]) {
         self.0.eval_accumulate(evals);
     }
+
+    /// Evaluates function with provided evals, adding result into
+    /// internal accumulator.
+    /// Then the accumulated result is returned and the accumulator
+    /// set to zero.
+    pub fn eval_and_zero(&mut self, evals: [&S::Mles<F>; 2]) -> Vec<F> {
+        self.0.eval_accumulate(evals);
+        let message_len = self.0.message_len;
+        let stack_len = self.0.inner.result().len();
+        assert_eq!(message_len, stack_len);
+        let res = self.0.inner.result().to_vec();
+        self.0.inner.set_stack(&self.0.accumulator_init);
+        res
+    }
+
     /// Consumes itself, releasing accumulated result and the inner &mut.
     pub fn finish(self) -> Vec<F> {
         let message_len = self.0.message_len;
