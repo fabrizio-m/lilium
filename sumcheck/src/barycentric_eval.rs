@@ -58,6 +58,18 @@ impl<F: Field> BarycentricWeights<F> {
             .fold(F::zero(), |acc, (d, e)| acc + d * e);
         m * eval
     }
+
+    /// Number of evaluation points in the domain, degree + 1.
+    pub fn domain_size(&self) -> usize {
+        self.weights.len()
+    }
+
+    /// Returns evaluation for x = evals.len().
+    pub fn extend(&self, evals: &[F]) -> F {
+        let point = self.weights.len() as u32;
+        let point = F::from(point);
+        self.evaluate(evals, point)
+    }
 }
 
 #[cfg(test)]
