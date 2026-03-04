@@ -51,7 +51,7 @@ impl<F: Field> Message<F> {
     }
 
     /// Adds an extra evaluation to handle a bigger degree.
-    pub fn extend(self, weights: &BarycentricWeights<F>) -> Self {
+    pub(crate) fn extend(self, weights: &BarycentricWeights<F>) -> Self {
         let next_point = F::from(self.degree() as u32 + 1);
         let message_extra_eval = self.eval_at_x(next_point, weights);
         let evals = self.0.into_iter().chain([message_extra_eval]);
