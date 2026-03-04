@@ -12,7 +12,7 @@ use std::{
     ops::{Add, Mul},
     vec::IntoIter,
 };
-use transcript::Transcript;
+use transcript::{params::ParamResolver, Transcript};
 
 /// Multilinear polynomial of form:
 /// p(x_0) = x_0 * ß + (1 - x_0) * c
@@ -93,6 +93,19 @@ impl<F: Field> CompactPowers<F> {
 
     pub(crate) fn factors(&self) -> &[(F, F)] {
         &self.coefficients
+    }
+}
+
+impl<F: Field> transcript::Message<F> for CompactPowers<F> {
+    fn len(vars: usize, _param_resolver: &ParamResolver) -> usize {
+        vars * 2
+    }
+
+    fn to_field_elements(&self) -> Vec<F> {
+        self.coefficients
+            .iter()
+            .flat_map(|(a, b)| [*a, *b])
+            .collect()
     }
 }
 
