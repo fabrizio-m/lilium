@@ -2,35 +2,89 @@
 //! folded instance is proved and verified.
 
 use crate::{
-    folding::{prover::SumFoldProverOutput, SumFold, SumFoldInstance},
-    polynomials::simple_eval::SimpleEval,
-    prove_and_verify,
-    sumcheck::{Env, EvalKind, NoChallIdx, NoChallenges, SumcheckFunction, Var},
-    zerocheck::CompactPowers,
+    folding::{prover::SumFoldProverOutput, zerofold::ZeroFold, SumFold, SumFoldInstance},
+    polynomials::{simple_eval::SimpleEval, MultiPoint},
+    sumcheck::{
+        CommitType, Env, EvalKind, NoChallIdx, NoChallenges, ProverOutput, Sum, SumcheckFunction,
+        SumcheckProver, SumcheckVerifier, Var,
+    },
+    zerocheck::{CompactPowers, ZeroCheckIdx, ZeroCheckMles},
 };
 use ark_ff::Field;
 use sponge::sponge::UnsafeSponge;
 use std::fmt::Debug;
 use transcript::{
-    params::ParamResolver, protocols::Reduction, MessageGuard, TranscriptBuilder, TranscriptGuard,
+    instances::PolyEvalCheck, params::ParamResolver, protocols::Reduction, MessageGuard,
+    TranscriptBuilder, TranscriptGuard,
 };
 
-struct ZeroCheck;
+// Folding zerocheck currently requires defining 2 functions, one
+// for sumcheck and the other for sumfold.
 
-const fn kinds() -> SimpleEval<EvalKind, 4> {
-    SimpleEval::new([EvalKind::Virtual; 4])
+/// To be proved with sumcheck.
+struct ZeroCheckWrapped;
+
+type Evals<V> = ZeroCheckMles<V, SimpleEval<V, 3>>;
+
+/// The kind could be anything, it isn't relevant for this test.
+const fn kinds() -> Evals<EvalKind> {
+    let inner = SimpleEval::new([EvalKind::Committed(CommitType::Instance); 3]);
+    ZeroCheckMles::new(EvalKind::Virtual, inner)
 }
 
-impl<F: Field> SumcheckFunction<F> for ZeroCheck {
-    type Idx = usize;
+impl<F: Field> SumcheckFunction<F> for ZeroCheckWrapped {
+    type Idx = ZeroCheckIdx<usize>;
 
-    type Mles<V: Copy + Debug> = SimpleEval<V, 4>;
+    type Mles<V: Copy + Debug> = Evals<V>;
 
     type Challs = NoChallenges<F>;
 
     type ChallIdx = NoChallIdx;
 
     const KINDS: Self::Mles<EvalKind> = kinds();
+
+    fn map_evals<A, B, M>(evals: Self::Mles<A>, f: M) -> Self::Mles<B>
+    where
+        A: Copy + Debug,
+        B: Copy + Debug,
+        M: Fn(A) -> B,
+    {
+        evals.map(&f, |inner| inner.map(&f))
+    }
+
+    fn function<V: Var<F>, E: Env<F, V, Self::Idx, Self::ChallIdx>>(env: E) -> V {
+        let a = env.get(ZeroCheckIdx::Inner(0));
+        let b = env.get(ZeroCheckIdx::Inner(1));
+        let c = env.get(ZeroCheckIdx::Inner(2));
+        let z = env.get(ZeroCheckIdx::ZeroCheckChallenge);
+        z * (a * b - c)
+    }
+
+    fn symbolic_function<V: Var<F>, E: Env<F, V, Self::Idx, Self::ChallIdx>>(
+        &self,
+        env: E,
+    ) -> Option<V> {
+        let a = env.get(ZeroCheckIdx::Inner(0));
+        let b = env.get(ZeroCheckIdx::Inner(1));
+        let c = env.get(ZeroCheckIdx::Inner(2));
+        let z = env.get(ZeroCheckIdx::ZeroCheckChallenge);
+        Some(z * (a * b - c))
+    }
+}
+
+// To be fold by sumfold.
+struct ZeroCheckInner;
+
+impl<F: Field> SumcheckFunction<F> for ZeroCheckInner {
+    type Idx = usize;
+
+    type Mles<V: Copy + Debug> = SimpleEval<V, 3>;
+
+    type Challs = NoChallenges<F>;
+
+    type ChallIdx = NoChallIdx;
+
+    const KINDS: Self::Mles<EvalKind> = SimpleEval::new([EvalKind::Virtual; 3]);
 
     fn map_evals<A, B, M>(evals: Self::Mles<A>, f: M) -> Self::Mles<B>
     where
@@ -45,8 +99,7 @@ impl<F: Field> SumcheckFunction<F> for ZeroCheck {
         let a = env.get(0);
         let b = env.get(1);
         let c = env.get(2);
-        let z = env.get(3);
-        z * (a + b - c)
+        a * b - c
     }
 
     fn symbolic_function<V: Var<F>, E: Env<F, V, Self::Idx, Self::ChallIdx>>(
@@ -56,8 +109,7 @@ impl<F: Field> SumcheckFunction<F> for ZeroCheck {
         let a = env.get(0);
         let b = env.get(1);
         let c = env.get(2);
-        let z = env.get(3);
-        Some(z * (a + b - c))
+        Some(a * b - c)
     }
 }
 
@@ -65,7 +117,7 @@ const VARS: usize = 5;
 
 #[derive(Clone)]
 struct InstanceWitness<F: Field> {
-    witness: Vec<SimpleEval<F, 4>>,
+    witness: Vec<Evals<F>>,
     powers: CompactPowers<F>,
 }
 
@@ -74,14 +126,15 @@ fn sample_instance_witness<F: Field>(elems: Vec<F>) -> InstanceWitness<F> {
     let mut evals = vec![];
     let mut elems = elems.into_iter();
     let chall = elems.next().unwrap();
-    let compact_powers = CompactPowers::new(chall, VARS);
+    let compact_powers = CompactPowers::new(chall, VARS) * F::from(3u8);
     let mut powers = compact_powers.clone().eval_over_domain().into_iter();
     for _ in 0..(1 << VARS) {
         let a = elems.next().unwrap();
         let b = elems.next().unwrap();
-        let c = a + b;
+        let c = a * b;
+        let inner = SimpleEval::new([a, b, c]);
         let z = powers.next().unwrap();
-        evals.push(SimpleEval::new([a, b, c, z]));
+        evals.push(Evals::new(z, inner));
     }
     InstanceWitness {
         witness: evals,
@@ -91,8 +144,7 @@ fn sample_instance_witness<F: Field>(elems: Vec<F>) -> InstanceWitness<F> {
 
 fn check_pair<F: Field>(pair: InstanceWitness<F>, sum: F) {
     let InstanceWitness { witness, powers } = pair;
-    let (evals, r) = prove_and_verify::<F, ZeroCheck>(witness, sum, NoChallenges::default());
-    assert_eq!(powers.point_eval(&r), evals.inner()[3]);
+    prove_and_verify(powers, witness, sum);
 }
 
 fn test<F: Field>(random_elements: Vec<F>) {
@@ -104,46 +156,53 @@ fn test<F: Field>(random_elements: Vec<F>) {
     check_pair(pair1.clone(), F::zero());
     check_pair(pair2.clone(), F::zero());
 
-    let sumfold_key = SumFold::<F, _>::new(&ZeroCheck);
+    let zerofold: ZeroFold<F, ZeroCheckInner> = ZeroFold::new(ZeroCheckInner, VARS);
 
-    let (mut witness, sum, folder) = {
+    let (witness, sum, folder) = {
         let transcript_desc = TranscriptBuilder::new(VARS, ParamResolver::new())
-            .add_reduction_patter::<F, SumFold<F, _>>(&sumfold_key)
+            .add_reduction_patter::<F, SumFold<F, _>>(zerofold.sumfold_key())
             .finish::<F, UnsafeSponge<F>>();
-
-        let mut transcript = transcript_desc.instanciate();
 
         let instance = SumFoldInstance::new([F::zero(), F::zero()]);
         let sums = Some(instance);
-        let w1 = pair1.witness.clone();
-        let w2 = pair2.witness.as_slice();
+        let w1 = pair1.witness.iter().map(|e| *e.inner()).collect();
+        let w2 = pair2.witness.iter().map(|e| *e.inner()).collect::<Vec<_>>();
 
+        let powers = [pair1.powers.clone(), pair2.powers.clone()];
+        let mut transcript = transcript_desc.instanciate();
         let SumFoldProverOutput {
             instance,
             folded_witness,
             proof,
             folder,
-        } = sumfold_key.fold(w1, w2, sums, &mut transcript, NoChallenges::default());
+        } = zerofold.fold_zerocheck(
+            w1,
+            w2.as_slice(),
+            sums,
+            powers,
+            NoChallenges::default(),
+            &mut transcript,
+        );
         transcript.finish_unchecked();
 
         let mut transcript = transcript_desc.instanciate();
         let transcript_guard = TranscriptGuard::new(&mut transcript, proof);
         let instance = MessageGuard::new(instance);
 
-        let instance = SumFold::verify_reduction(&sumfold_key, instance, transcript_guard).unwrap();
+        let instance =
+            SumFold::verify_reduction(zerofold.sumfold_key(), instance, transcript_guard).unwrap();
         transcript.finish_unchecked();
         (folded_witness, instance, folder)
     };
 
     let powers = folder.fold_powers(pair1.powers, pair2.powers);
-    {
-        let powers = powers.clone().eval_over_domain();
-        for (w, power) in witness.iter_mut().zip(powers) {
-            let mut row = *w.inner();
-            row[3] = power;
-            *w = SimpleEval::new(row);
-        }
-    }
+    let folded_powers = powers.eval_over_domain().into_iter();
+    let witness = witness
+        .into_iter()
+        .zip(folded_powers)
+        .map(|(e, p)| ZeroCheckMles::new(p, e))
+        .collect();
+
     let pair = InstanceWitness { witness, powers };
 
     check_pair(pair, sum.0);
@@ -160,4 +219,43 @@ fn fold_zerocheck() {
     let elems = repeat(()).map(|_| Fr::rand(&mut rng));
     let elems = elems.take((1 << VARS) * 4 + 2).collect();
     test(elems);
+}
+
+pub fn prove_and_verify<F: Field>(powers: CompactPowers<F>, mle: Vec<Evals<F>>, sum: F) {
+    let prover = SumcheckProver::<F, ZeroCheckWrapped>::new_symbolic(VARS, &ZeroCheckWrapped);
+    let verifier = SumcheckVerifier::<F, ZeroCheckWrapped>::new_symbolic(ZeroCheckWrapped, VARS);
+
+    let transcript_desc = TranscriptBuilder::new(VARS, ParamResolver::new())
+        .add_reduction_patter::<F, SumcheckVerifier<F, ZeroCheckWrapped>>(&verifier)
+        .finish::<F, UnsafeSponge<F>>();
+
+    let reduced = {
+        let mut transcript = transcript_desc.instanciate();
+        let reduced = prover
+            .prove_zerocheck(
+                powers.clone(),
+                &mut transcript,
+                mle,
+                &NoChallenges::default(),
+            )
+            .unwrap();
+        transcript.finish().unwrap();
+        reduced
+    };
+    let ProverOutput { proof, evals, .. } = reduced;
+
+    let mut transcript = transcript_desc.instanciate();
+    let instance = MessageGuard::new(Sum(sum));
+
+    let reduced = SumcheckVerifier::verify_reduction(&verifier, instance, transcript.guard(proof));
+    transcript.finish_unchecked();
+    let PolyEvalCheck { vars, eval } = reduced.unwrap();
+    let point = MultiPoint::new(vars);
+
+    let inner = *evals.inner();
+    let powers_eval = powers.point_eval(&point);
+    let evals = ZeroCheckMles::new(powers_eval, inner);
+
+    let checks = verifier.check_evals_at_r(evals, eval, &NoChallenges::default());
+    assert!(checks);
 }
