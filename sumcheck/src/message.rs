@@ -73,7 +73,7 @@ impl<F: Field> Message<F> {
     pub fn eval_at_1(&self) -> F {
         self.0[1]
     }
-    pub fn eval_at_x(&self, x: F, weights: &BarycentricWeights<F>) -> F {
+    pub(crate) fn eval_at_x(&self, x: F, weights: &BarycentricWeights<F>) -> F {
         weights.evaluate(&self.0, x)
     }
 }
