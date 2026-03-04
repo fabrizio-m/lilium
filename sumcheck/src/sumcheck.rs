@@ -147,6 +147,15 @@ pub struct Proof<F: Field, SF: SumcheckFunction<F>> {
     _f: PhantomData<SF>,
 }
 
+impl<F: Field, SF: SumcheckFunction<F>> Proof<F, SF> {
+    pub fn from_messages(messages: Vec<Message<F>>) -> Self {
+        Self {
+            messages,
+            _f: PhantomData,
+        }
+    }
+}
+
 impl<F: Field, SF: SumcheckFunction<F>> Debug for Proof<F, SF> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("Proof")
@@ -245,7 +254,7 @@ where
         message
     }
 
-    fn message_symbolic(&self, mle: &[SF::Mles<F>], challs: &SF::Challs) -> Message<F> {
+    pub(crate) fn message_symbolic(&self, mle: &[SF::Mles<F>], challs: &SF::Challs) -> Message<F> {
         let half_len = mle.len() / 2;
         let (left, right) = mle.split_at(half_len);
         let mut evaluator = self.evaluator.clone();
