@@ -26,6 +26,10 @@ impl<F: Field> Message<F> {
         Self(evals)
     }
 
+    pub(crate) fn inner(&self) -> &[F] {
+        &self.0
+    }
+
     pub(crate) fn new_degree_n(eval_at_0: F, eval_at_1: F, degree: usize) -> Self {
         assert!(degree >= 1, "degree should be >= 0");
         // e0, e1
