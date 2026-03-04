@@ -1,6 +1,7 @@
 use ark_ff::Field;
 use sumcheck::{eq::eq_subset, polynomials::MultiPoint};
 
+pub mod flcs;
 pub mod lcs;
 mod linearized;
 pub mod matrix_eval;
