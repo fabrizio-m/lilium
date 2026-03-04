@@ -14,6 +14,9 @@ mod tests;
 pub mod utils;
 #[cfg(test)]
 mod zerocheck;
+mod zerofold;
+
+pub use zerofold::ZeroFold;
 
 /// Reduction from 2 folding instances into a single one.
 pub struct SumFold<F: Field, SF: SumcheckFunction<F>> {
