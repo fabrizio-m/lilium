@@ -1,11 +1,18 @@
 //! Utilities for zerocheck.
 
-use crate::polynomials::MultiPoint;
+use crate::{
+    polynomials::{Evals, MultiPoint},
+    sumcheck::{Proof, ProverOutput, SumcheckFunction, SumcheckProver},
+    SumcheckError,
+};
 use ark_ff::Field;
+use sponge::sponge::Duplex;
 use std::{
     iter::successors,
     ops::{Add, Mul},
+    vec::IntoIter,
 };
+use transcript::Transcript;
 
 /// Multilinear polynomial of form:
 /// p(x_0) = x_0 * ß + (1 - x_0) * c
@@ -41,7 +48,14 @@ impl<F: Field> CompactPowers<F> {
             })
     }
 
+    /// Returns evaluations over the hypercube.
     pub fn eval_over_domain(&self) -> Vec<F> {
+        self.eval_over_domain_scaled(F::one())
+    }
+
+    /// Returns evaluations over the hypercube, scaling
+    /// each of them by the provided scalar.
+    pub fn eval_over_domain_scaled(&self, scalar: F) -> Vec<F> {
         let vars = self.coefficients.len();
 
         // p(x) = 0 * ß + (1 - 0) * c = c
@@ -49,6 +63,7 @@ impl<F: Field> CompactPowers<F> {
             .coefficients
             .iter()
             .fold(F::one(), |acc, (_, c)| acc * c);
+        let eval_at_zero = eval_at_zero * scalar;
 
         // Multiplying each of these has the effect of swaping the corresponding
         // from 0 to 1.
@@ -67,6 +82,17 @@ impl<F: Field> CompactPowers<F> {
 
         write_evals(&mut mle, &flips);
         mle
+    }
+
+    /// Pops upper factor and returns its evaluation in the point.
+    fn fix_upper_var(&mut self, point: F) -> F {
+        let upper_factor = self.coefficients.pop();
+        let (b, c) = upper_factor.unwrap();
+        point * b + (F::one() - point) * c
+    }
+
+    pub(crate) fn factors(&self) -> &[(F, F)] {
+        &self.coefficients
     }
 }
 
@@ -184,108 +210,244 @@ fn powers_over_domain() {
     let challs = [(); 3].map(|_| chall());
     compact_powers_over_domain(challs);
 }
-// Wrapper over functions that may be worth implementing in the future.
-/*
-struct ZeroCheck<F: Field, SF: SumcheckFunction<F>> {
-    f: SF,
-}
 
 #[derive(Clone, Copy, Debug, PartialEq, PartialOrd, Eq, Ord)]
-enum Idx<I> {
+pub enum ZeroCheckIdx<I> {
     ZeroCheckChallenge,
     Inner(I),
 }
 
 #[derive(Clone, Debug)]
-struct ZeroCheckMles<V, I> {
-    challenge: V,
+pub struct ZeroCheckMles<V, I> {
+    zerocheck: V,
     inner: I,
 }
 
+impl<V, I> ZeroCheckMles<V, I> {
+    pub const fn new(zerocheck: V, inner: I) -> Self {
+        Self { zerocheck, inner }
+    }
+
+    pub fn map<V2, I2, M1, M2>(self, f: M1, inner_f: M2) -> ZeroCheckMles<V2, I2>
+    where
+        M1: Fn(V) -> V2,
+        M2: Fn(I) -> I2,
+    {
+        let Self { zerocheck, inner } = self;
+        let zerocheck = f(zerocheck);
+        let inner = inner_f(inner);
+        ZeroCheckMles { zerocheck, inner }
+    }
+
+    pub fn inner(&self) -> &I {
+        &self.inner
+    }
+}
+
 impl<V: Copy, I: Evals<V>> Evals<V> for ZeroCheckMles<V, I> {
-    type Idx = Idx<I::Idx>;
+    type Idx = ZeroCheckIdx<I::Idx>;
 
     fn index(&self, index: Self::Idx) -> &V {
         match index {
-            Idx::ZeroCheckChallenge => &self.challenge,
-            Idx::Inner(idx) => self.inner.index(idx),
+            ZeroCheckIdx::ZeroCheckChallenge => &self.zerocheck,
+            ZeroCheckIdx::Inner(idx) => self.inner.index(idx),
         }
     }
 
     fn combine<C: Fn(V, V) -> V>(&self, other: &Self, f: C) -> Self {
-        let challenge = f(self.challenge, other.challenge);
+        let zerocheck = f(self.zerocheck, other.zerocheck);
         let inner = self.inner.combine(&other.inner, f);
-        ZeroCheckMles { challenge, inner }
+        ZeroCheckMles { zerocheck, inner }
     }
 
     fn flatten(self, vec: &mut Vec<V>) {
-        let Self { challenge, inner } = self;
-        vec.push(challenge);
+        let Self { zerocheck, inner } = self;
+        vec.push(zerocheck);
         inner.flatten(vec);
     }
 
     fn unflatten(elems: &mut IntoIter<V>) -> Self {
-        let challenge = elems.next().unwrap();
+        let zerocheck = elems.next().unwrap();
         let inner = I::unflatten(elems);
-        Self { challenge, inner }
+        Self { zerocheck, inner }
     }
 }
 
-const fn kinds<I>(inner: I) -> ZeroCheckMles<EvalKind, I> {
-    ZeroCheckMles {
-        challenge: EvalKind::FixedSmall,
-        inner,
+impl<F: Field, SF, I> SumcheckProver<F, SF>
+where
+    I: Evals<F>,
+    SF: SumcheckFunction<F, Mles<F> = ZeroCheckMles<F, I>>,
+{
+    pub fn prove_zerocheck<S: Duplex<F>>(
+        &self,
+        powers: CompactPowers<F>,
+        transcript: &mut Transcript<F, S>,
+        mle: Vec<SF::Mles<F>>,
+        challs: &SF::Challs,
+    ) -> Result<ProverOutput<F, SF>, SumcheckError> {
+        let nvars = powers.coefficients.len();
+        let mut messages = Vec::with_capacity(nvars);
+
+        let mut vars = vec![];
+        let mut shrinking_powers = ShrinkingPowers::new(powers);
+        let mles = (0..nvars).try_fold(mle, |mle, _| {
+            let mle: Vec<SF::Mles<F>> = mle;
+            let m = self.message_symbolic(&mle, challs);
+            let [var] = transcript
+                .send_message(&m)
+                .map_err(SumcheckError::TranscriptError)?;
+            messages.push(m);
+            vars.push(var);
+            Ok(Self::fix_vars_custom(mle, &mut shrinking_powers, var))
+        })?;
+
+        vars.reverse();
+        let point = MultiPoint::new(vars);
+        debug_assert_eq!(mles.len(), 1);
+        let evals = mles[0].clone();
+
+        let proof = Proof::from_messages(messages);
+
+        Ok(ProverOutput {
+            point,
+            proof,
+            evals,
+        })
+    }
+
+    /// Fixes variables like `EvalsExt::fix_var` for the inner MLEs,
+    /// But handles the zerocheck MLE differently, as it is the product of univariate
+    /// polynomials and just treated as a single MLE for convinience.
+    fn fix_vars_custom(
+        mut mle: Vec<ZeroCheckMles<F, I>>,
+        shrinking_powers: &mut ShrinkingPowers<F>,
+        var: F,
+    ) -> Vec<ZeroCheckMles<F, I>> {
+        let half_len = mle.len() / 2;
+        let one_minus_var = F::one() - var;
+        let (left, right) = mle.split_at_mut(half_len);
+
+        let mut powers = shrinking_powers.fix(var).into_iter();
+
+        let f = |a, b| one_minus_var * a + var * b;
+        for (left, right) in left.iter_mut().zip(right) {
+            let left_inner: &mut I = &mut left.inner;
+            let inner = left_inner.combine(&right.inner, f);
+
+            let zerocheck = powers.next().unwrap();
+            *left = ZeroCheckMles { zerocheck, inner };
+        }
+        mle.truncate(half_len);
+        mle
     }
 }
 
-impl<F: Field, SF: SumcheckFunction<F>> SumcheckFunction<F> for ZeroCheck<F, SF> {
-    type Idx = Idx<SF::Idx>;
+/// Structure holding a partially fixed `CompactPowers`.
+/// Allow to fix variables 1 at a time and compute the corresponding MLE.
+struct ShrinkingPowers<F: Field> {
+    powers: CompactPowers<F>,
+    constants: Vec<F>,
+}
 
-    type Mles<V: Copy + Debug> = ZeroCheckMles<V, SF::Mles<V>>;
-    // type Mles<V: Copy + Debug> = ;
-
-    type Challs = SF::Challs;
-
-    type ChallIdx = SF::ChallIdx;
-
-    const KINDS: Self::Mles<EvalKind> = kinds(SF::KINDS);
-
-    fn map_evals<A, B, M>(evals: Self::Mles<A>, f: M) -> Self::Mles<B>
-    where
-        A: Copy + Debug,
-        B: Copy + Debug,
-        M: Fn(A) -> B,
-    {
-        let ZeroCheckMles { challenge, inner } = evals;
-        let challenge = f(challenge);
-        let inner = SF::map_evals(inner, f);
-        ZeroCheckMles { challenge, inner }
+impl<F: Field> ShrinkingPowers<F> {
+    fn new(powers: CompactPowers<F>) -> Self {
+        Self {
+            powers,
+            constants: vec![],
+        }
     }
 
-    fn function<V: Var<F>, E: Env<F, V, Self::Idx, Self::ChallIdx>>(env: E) -> V {
-        let chall = env.get(Idx::ZeroCheckChallenge);
+    /// Fixes upper variables and computes MLE.
+    fn fix(&mut self, point: F) -> Vec<F> {
+        assert_ne!(self.powers.coefficients.len(), 0, "no variable left to fix");
+
+        let constant = self.powers.fix_upper_var(point);
+        self.constants.push(constant);
+
+        let scale = self
+            .constants
+            .iter()
+            .cloned()
+            .fold(F::one(), |acc, c| acc * c);
+        if self.powers.coefficients.is_empty() {
+            vec![scale]
+        } else {
+            self.powers.eval_over_domain_scaled(scale)
+        }
     }
 }
-*/
 
-// e1 = [1,ß], e2 = [1,ß^2]
-// e(0,0) = e1(0) * e2(o) = 1 * 1   = 1
-// e(1,0) = e1(1) * e2(o) = ß * 1   = ß
-// e(0,1) = e1(0) * e2(1) = 1 * ß^2 = ß^2
-// e(1,1) = e1(1) * e2(1) = ß * ß^2 = ß^3
-// e1' = α*e1, e2' = α*e2
-// e'(0,0) = e1'(0) * e2'(o) = α * α     = α^2
-// e'(1,0) = e1'(1) * e2'(o) = ßα * α    = ßα^2
-// e'(0,1) = e1'(0) * e2'(1) = α * ß^2α  = ß^2α^2
-// e'(1,1) = e1'(1) * e2'(1) = ßα * ß^2α = ß^3α^2
-// e1'' = α*e1, e2'' = e2
-// e''(0,0) = e1''(0) * e2''(o) = α * 1  = α
-// e''(1,0) = e1''(1) * e2''(o) = ßα * 1 = ßα
-// e''(0,1) = e1''(0) * e2''(1) = α * ß^2 = ß^2α
-// e''(1,1) = e1''(1) * e2''(1) = ßα * ß^2 = ß^3α
-//
-//
-// e1 = [1,ß], e2 = [1,ß^2]
-// e1 * α + e1 = [α + 1, ßα   + ß]
-// e2 * α + e2 = [α + 1, ß^2α + ß^2]
-// e(0,0) = e1(0) * e2(o) = α + 1 * α + 1 = 1
+#[cfg(test)]
+fn mle_equivalence_test<F: Field>(elems: Vec<F>) {
+    let mut elems = elems.into_iter();
+    const VARS: usize = 3;
+
+    let fixes = [(); VARS].map(|_| elems.next().unwrap());
+    let p1 = CompactPowers::new(elems.next().unwrap(), VARS);
+    let p2 = CompactPowers::new(elems.next().unwrap(), VARS);
+    let fold = elems.next().unwrap();
+    let mut powers = p1 * fold + p2;
+    powers.coefficients[2].0 = F::one();
+    powers.coefficients[2].1 = F::one();
+    let mut full_eval = F::one();
+    for (fix, (b, c)) in fixes.iter().zip(powers.coefficients.clone()) {
+        let eval = b * fix + c * (F::one() - fix);
+        full_eval *= eval;
+        println!("feactor_eval: {}", eval)
+    }
+    let check_point = MultiPoint::new(fixes.to_vec());
+    assert_eq!(full_eval, powers.point_eval(&check_point));
+
+    // let c1 = powers.fix_upper_var(fixes[0]);
+    // println!("c = {}", c1);
+    // let c2 = powers.fix_upper_var(fixes[1]);
+    // println!("c = {}", c2);
+    // let c3 = powers.fix_upper_var(fixes[2]);
+    // println!("c = {}", c3);
+}
+
+#[test]
+fn mle_equivalence() {
+    use crate::utils::Fm;
+    use ark_ff::UniformRand;
+    use rand::{rngs::StdRng, SeedableRng};
+    let mut rng = StdRng::seed_from_u64(0);
+    let elems = [(); 10].map(|_| Fm::rand(&mut rng));
+    mle_equivalence_test::<Fm>(elems.to_vec());
+}
+
+#[test]
+fn factor_folding() {
+    use crate::utils::Fm;
+    use ark_ff::{One, UniformRand};
+    use rand::{rngs::StdRng, SeedableRng};
+
+    let vars = 5;
+    let mut rng = StdRng::seed_from_u64(0);
+    let mut elem = || Fm::rand(&mut rng);
+    let chall: Fm = elem();
+
+    let p1 = CompactPowers::new(elem(), vars);
+    let p2 = CompactPowers::new(elem(), vars);
+    let p3: CompactPowers<Fm> = p1.clone() * chall + p2.clone();
+
+    let check_point = [(); 5].map(|_| elem());
+
+    let eval = |(a, b), x| a * x + b * (Fm::one() - x);
+    let mut res = Fm::one();
+
+    #[allow(clippy::needless_range_loop)]
+    for i in 0..vars {
+        let p1 = eval(p1.coefficients[i], check_point[i]);
+        let p2 = eval(p2.coefficients[i], check_point[i]);
+        let p3 = eval(p3.coefficients[i], check_point[i]);
+        assert_eq!(p1 * chall + p2, p3);
+        res *= p1 * chall + p2;
+    }
+    let check_point = MultiPoint::new(check_point.to_vec());
+
+    let p1ev = p1.point_eval(&check_point);
+    let p2ev = p2.point_eval(&check_point);
+    let p3ev = p3.point_eval(&check_point);
+    assert_ne!(p1ev * chall + p2ev, p3ev);
+}
