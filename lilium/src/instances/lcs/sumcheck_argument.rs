@@ -1,9 +1,8 @@
-use crate::instances::{eval_input_selector, eval_ux};
 use ark_ff::Field;
 use ccs::structure::Exp;
 use std::marker::PhantomData;
 use sumcheck::{
-    polynomials::{Evals, MultiPoint},
+    polynomials::Evals,
     sumcheck::{CommitType, Env, EvalKind, SumcheckFunction, Var},
     utils::{ZeroCheck, ZeroCheckAvailable},
 };
@@ -13,15 +12,6 @@ pub struct LcsSumcheck<F, const IO: usize, const S: usize> {
     //gates: Constraints<Exp<usize>>,
     gates: Vec<Vec<Exp<usize>>>,
     _f: PhantomData<F>,
-}
-
-impl<F, const IO: usize, const S: usize> LcsSumcheck<F, IO, S> {
-    pub fn new(gates: Vec<Vec<Exp<usize>>>) -> Self {
-        Self {
-            gates,
-            _f: PhantomData,
-        }
-    }
 }
 
 #[derive(Clone, Debug)]
@@ -97,32 +87,6 @@ impl<V, const IO: usize, const S: usize> LcsMles<V, IO, S> {
             w: Some(w),
             gate_selectors: selector_evals.map(Some),
             ..Default::default()
-        }
-    }
-
-    pub(crate) fn small_evals<F: Field>(
-        point: MultiPoint<F>,
-        r_eq: MultiPoint<F>,
-        inputs: Vec<F>,
-    ) -> LcsMles<Option<F>, IO, S> {
-        assert_eq!(point.vars(), r_eq.vars());
-        let r_eq = r_eq.eval_as_eq(&point);
-        let input_len = inputs.len();
-
-        let u = F::one();
-        let inputs = eval_ux(point.inner_ref(), u, &inputs);
-        let inputs = Some(inputs);
-
-        let input_selector = eval_input_selector(&point, input_len);
-        let input_selector = Some(input_selector);
-
-        LcsMles {
-            products: [None; IO],
-            r_eq: Some(r_eq),
-            w: None,
-            inputs,
-            input_selector,
-            gate_selectors: [None; S],
         }
     }
 

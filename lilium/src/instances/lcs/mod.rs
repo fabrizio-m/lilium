@@ -5,8 +5,6 @@ use transcript::Message;
 
 pub mod key;
 mod proving;
-mod reduction;
-mod reduction_proving;
 pub(crate) mod sumcheck_argument;
 pub mod verifying;
 pub mod zerocheck_reduction;
