@@ -8,6 +8,7 @@ mod instances;
 pub mod prove;
 mod proving;
 mod test;
+pub(crate) use instances::flcs;
 
 pub struct Prover<F: Field, const IO: usize = 0> {
     _phantom: PhantomData<F>,
