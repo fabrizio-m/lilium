@@ -9,6 +9,7 @@ mod reduction;
 mod reduction_proving;
 pub(crate) mod sumcheck_argument;
 pub mod verifying;
+pub mod zerocheck_reduction;
 
 pub(crate) use sumcheck_argument::LcsSumcheck;
 
