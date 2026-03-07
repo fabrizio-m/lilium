@@ -75,6 +75,14 @@ impl<V, const IO: usize, const S: usize> LcsMles<V, IO, S> {
         &self.w
     }
 
+    /// Returns (input_selector, gate_selectors).
+    pub fn selectors(&self) -> (V, [V; S])
+    where
+        V: Copy,
+    {
+        (self.input_selector, self.gate_selectors)
+    }
+
     /// Create eval with provided products and everything else set to `None`.
     pub fn new_only_products(products: [V; IO]) -> LcsMles<Option<V>, IO, S> {
         let products = products.map(Option::Some);
