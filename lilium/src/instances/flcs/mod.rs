@@ -3,7 +3,17 @@ use commit::CommmitmentScheme;
 use sumcheck::zerocheck::CompactPowers;
 use transcript::{params::ParamResolver, Message};
 
+mod key;
+mod reduction;
+mod reduction_proving;
+mod sumcheck_reduction;
+
+pub use key::FlcsReductionKey;
+pub use reduction::{FlcsReduction, FlcsReductionProof};
+pub use reduction_proving::ReducedInstanceWitness;
+
 #[derive(Clone, Debug)]
+/// LCS instance which can be folded.
 pub struct FoldableLcsInstance<F, C, const I: usize>
 where
     F: Field,
@@ -12,6 +22,24 @@ where
     witness_commit: C::Commitment,
     public_inputs: [F; I],
     zerocheck_powers: CompactPowers<F>,
+}
+
+impl<F, C, const I: usize> FoldableLcsInstance<F, C, I>
+where
+    F: Field,
+    C: CommmitmentScheme<F>,
+{
+    pub(crate) fn new(
+        witness_commit: C::Commitment,
+        public_inputs: [F; I],
+        zerocheck_powers: CompactPowers<F>,
+    ) -> Self {
+        Self {
+            witness_commit,
+            public_inputs,
+            zerocheck_powers,
+        }
+    }
 }
 
 impl<F, C, const I: usize> Message<F> for FoldableLcsInstance<F, C, I>
