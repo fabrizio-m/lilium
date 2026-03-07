@@ -56,7 +56,7 @@ where
 
     type B = LinearizedInstance<F, C, IO, 4>;
 
-    type Key = FlcsReductionKey<F, C, IO>;
+    type Key = FlcsReductionKey<F, IO>;
 
     type Proof = FlcsReductionProof<F, IO>;
 
@@ -69,7 +69,6 @@ where
         let sumcheck_verifier = &key.sumcheck_verifier;
         builder
             .round::<F, Self::A, 1>()
-            // .point()
             .add_reduction_patter::<F, SumcheckVerifier<F, LcsSumcheck<F, IO, 4>>>(
                 sumcheck_verifier,
             )

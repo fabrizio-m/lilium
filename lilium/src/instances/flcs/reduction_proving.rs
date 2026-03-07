@@ -25,8 +25,8 @@ where
     pub reduction_proof: FlcsReductionProof<F, IO>,
 }
 
-impl<F: Field, C: CommmitmentScheme<F>, const IO: usize> FlcsReductionKey<F, C, IO> {
-    pub fn reduce_foldable_instance_witness<S, const I: usize>(
+impl<F: Field, const IO: usize> FlcsReductionKey<F, IO> {
+    pub fn reduce_foldable_instance_witness<C, S, const I: usize>(
         &self,
         instance: FoldableLcsInstance<F, C, I>,
         witness: Vec<F>,
@@ -34,7 +34,7 @@ impl<F: Field, C: CommmitmentScheme<F>, const IO: usize> FlcsReductionKey<F, C, 
     ) -> ReducedInstanceWitness<F, C, I, IO>
     where
         S: Duplex<F>,
-        C: 'static,
+        C: CommmitmentScheme<F> + 'static,
     {
         //TODO: handle
         let [sumcheck_chall] = transcript.send_message(&instance).unwrap();

@@ -17,7 +17,7 @@ where
     F: Field,
     C: CommmitmentScheme<F>,
 {
-    pub flcs_reduction_key: FlcsReductionKey<F, C, IO>,
+    pub flcs_reduction_key: FlcsReductionKey<F, IO>,
     pub linearized_reduction_key: linearized::Key<F, C, IO, 4>,
     pub matrix_eval_key: matrix_eval::Key<F, C, IO>,
     pub pcs: Rc<C>,
@@ -44,7 +44,6 @@ where
             Rc::clone(&structure),
             Rc::clone(&linear_combinations),
             gates.clone(),
-            pcs.as_ref(),
         );
         let domain_vars = flcs_reduction_key.domain_vars;
         let linearized_reduction_key = linearized::Key::new(
