@@ -1,7 +1,13 @@
-use crate::instances::lcs::{
-    key::LcsProvingKey, reduction_proving::ReducedInstanceWitness, verifying::LcsProof, LcsInstance,
+use crate::{
+    flcs::ReducedInstanceWitness,
+    instances::{
+        lcs::{
+            key::LcsProvingKey, verifying::LcsProof, zerocheck_reduction::ZerocheckReductionKey,
+            LcsInstance,
+        },
+        linearized::reduction_proving,
+    },
 };
-use crate::instances::linearized::reduction_proving;
 use ark_ff::Field;
 use commit::CommmitmentScheme;
 use sponge::sponge::Duplex;
@@ -18,11 +24,17 @@ impl<F: Field, C: CommmitmentScheme<F>, const IO: usize> LcsProvingKey<F, C, IO>
         S: Duplex<F>,
         C: 'static,
     {
+        let vars = self.flcs_reduction_key.domain_vars;
+        let zerocheck_key = ZerocheckReductionKey::new(vars);
+        let instance = zerocheck_key.reduce::<F, C, S, I>(instance, transcript);
+
         let ReducedInstanceWitness {
             linearized_instance,
             linearized_witness,
             reduction_proof,
-        } = self.reduce_instance_witness(instance, witness, transcript);
+        } = self
+            .flcs_reduction_key
+            .reduce_foldable_instance_witness(instance, witness, transcript);
 
         let reduction_proving::ProverOutput {
             matrix_eval_instance,

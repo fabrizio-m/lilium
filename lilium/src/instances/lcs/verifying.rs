@@ -1,7 +1,11 @@
-use super::reduction::LcsReductionProof;
 use crate::{
+    flcs::{FlcsReduction, FlcsReductionProof},
     instances::{
-        lcs::{key::LcsProvingKey, reduction::LcsReduction, LcsInstance, LcsProver},
+        lcs::{
+            key::LcsProvingKey,
+            zerocheck_reduction::{ZerocheckReduction, ZerocheckReductionKey},
+            LcsInstance, LcsProver,
+        },
         linearized::proving::{LinearizedInstanceReduction, LinearizedProof},
     },
     proving::matrix_eval::{MatrixEvalProof, MatrixEvalProtocol},
@@ -14,7 +18,7 @@ use transcript::{
 };
 
 pub struct LcsProof<F: Field, C: CommmitmentScheme<F>, const IO: usize> {
-    reduction_proof: LcsReductionProof<F, IO>,
+    reduction_proof: FlcsReductionProof<F, IO>,
     linearized_proof: LinearizedProof<F, IO>,
     matrix_eval_proof: MatrixEvalProof<F, C, IO>,
     open_proofs: [C::Proof; 2],
@@ -22,7 +26,7 @@ pub struct LcsProof<F: Field, C: CommmitmentScheme<F>, const IO: usize> {
 
 impl<F: Field, C: CommmitmentScheme<F>, const IO: usize> LcsProof<F, C, IO> {
     pub(crate) fn new(
-        reduction_proof: LcsReductionProof<F, IO>,
+        reduction_proof: FlcsReductionProof<F, IO>,
         linearized_proof: LinearizedProof<F, IO>,
         matrix_eval_proof: MatrixEvalProof<F, C, IO>,
         open_proofs: [C::Proof; 2],
@@ -51,8 +55,11 @@ where
     type Error = ();
 
     fn transcript_pattern(key: &Self::Key, builder: TranscriptBuilder) -> TranscriptBuilder {
+        let vars = key.flcs_reduction_key.domain_vars;
+        let zerocheck_key = ZerocheckReductionKey::new(vars);
         builder
-            .add_reduction_patter::<F, LcsReduction<C, I, IO>>(&key.lcs_reduction_key)
+            .add_reduction_patter::<F, ZerocheckReduction<C, I>>(&zerocheck_key)
+            .add_reduction_patter::<F, FlcsReduction<C, I, IO>>(&key.flcs_reduction_key)
             .add_reduction_patter::<F, LinearizedInstanceReduction<F, C, IO, 4>>(
                 &key.linearized_reduction_key,
             )
@@ -70,12 +77,24 @@ where
         instance: MessageGuard<Self::Instance>,
         mut transcript: TranscriptGuard<F, S, Self::Proof>,
     ) -> Result<(), Self::Error> {
-        let lcs_reduction_proof =
+        let instance = {
+            let vars = key.flcs_reduction_key.domain_vars;
+            let zerocheck_key = ZerocheckReductionKey::new(vars);
+            let instance = ZerocheckReduction::verify_reduction(
+                &zerocheck_key,
+                instance,
+                transcript.new_guard(()),
+            );
+            //TODO:handle
+            MessageGuard::new(instance.unwrap())
+        };
+        let flcs_reduction_proof =
             transcript.receive_message_delayed(|proof| proof.reduction_proof.clone());
-        let reduced = LcsReduction::verify_reduction(
-            &key.lcs_reduction_key,
+        //TODO:handle
+        let reduced = FlcsReduction::verify_reduction(
+            &key.flcs_reduction_key,
             instance,
-            transcript.new_guard(lcs_reduction_proof),
+            transcript.new_guard(flcs_reduction_proof),
         )
         .unwrap();
         let linearized_instance = reduced;

@@ -1,4 +1,5 @@
 use crate::{
+    flcs::FlcsReductionKey,
     instances::{
         lcs::sumcheck_argument::{LcsMles, LcsSumcheck},
         linearized,
@@ -30,9 +31,7 @@ where
     F: Field,
     C: CommmitmentScheme<F>,
 {
-    // pub fn new<const S: usize>(
     pub fn new(
-        // structure: Rc<Vec<LcsMles<F, IO, S>>>,
         structure: Rc<Vec<LcsMles<F, IO, 4>>>,
         gates: Vec<Vec<Exp<usize>>>,
         pcs: &C,
@@ -56,6 +55,7 @@ where
     C: CommmitmentScheme<F>,
 {
     pub lcs_reduction_key: LcsReductionKey<F, C, IO>,
+    pub flcs_reduction_key: FlcsReductionKey<F, C, IO>,
     pub linear_combinations: Rc<LinearCombinations<IO>>,
     pub linearized_reduction_key: linearized::Key<F, C, IO, 4>,
     pub matrix_eval_key: matrix_eval::Key<F, C, IO>,
@@ -91,6 +91,12 @@ where
             let linear_combinations = LinearCombinations::from_tables(matrices);
             Rc::new(linear_combinations)
         };
+        let flcs_reduction_key = FlcsReductionKey::new(
+            Rc::clone(&structure),
+            Rc::clone(&linear_combinations),
+            gates.clone(),
+            pcs.as_ref(),
+        );
         let linearized_reduction_key = linearized::Key::new(
             domain_vars,
             Rc::clone(&structure),
@@ -101,6 +107,7 @@ where
         let mles = structure;
         Self {
             lcs_reduction_key,
+            flcs_reduction_key,
             linear_combinations,
             linearized_reduction_key,
             matrix_eval_key,
