@@ -331,3 +331,81 @@ where
         }
     }
 }
+
+/// Same as `LcsSumcheck` without the zerocheck wrapper, as required for folding.
+pub struct LcsSumfold<F, const IO: usize, const S: usize> {
+    gates: Vec<Vec<Exp<usize>>>,
+    _f: PhantomData<F>,
+}
+
+impl<F: Field, const IO: usize, const S: usize> From<LcsSumcheck<F>> for LcsSumfold<F, IO, S> {
+    fn from(value: LcsSumcheck<F>) -> Self {
+        let LcsSumcheck { gates, _f };
+        LcsSumfold { gates, _f }
+    }
+}
+
+impl<F, const IO: usize, const S: usize> SumcheckFunction<F> for LcsSumfold<F, IO, S>
+where
+    F: Field,
+{
+    type Idx = Index;
+
+    type Mles<V: Copy + Debug> = LcsMles<V, IO, S>;
+
+    type Challs = ConstraintCombinationChallenge<F>;
+
+    type ChallIdx = ();
+
+    const KINDS: Self::Mles<EvalKind> = *kinds().inner();
+
+    fn map_evals<A, B, M>(evals: Self::Mles<A>, f: M) -> Self::Mles<B>
+    where
+        A: Copy + Debug,
+        B: Copy + Debug,
+        M: Fn(A) -> B,
+    {
+        let products = evals.products.map(&f);
+        let w = f(evals.w);
+        let inputs = f(evals.inputs);
+        let input_selector = f(evals.input_selector);
+        let gate_selectors = evals.gate_selectors.map(&f);
+        LcsMles {
+            products,
+            w,
+            inputs,
+            input_selector,
+            gate_selectors,
+        }
+    }
+
+    fn function<V: Var<F>, E: Env<F, V, Self::Idx, Self::ChallIdx>>(_env: E) -> V {
+        panic!("unused")
+    }
+
+    fn symbolic_function<V: Var<F>, E: Env<F, V, Self::Idx, Self::ChallIdx>>(
+        &self,
+        env: E,
+    ) -> Option<V> {
+        let chall = env.get_chall(());
+        let w = env.get(Index::W);
+
+        let inputs_check = {
+            let inputs = env.get(Index::Inputs);
+            let input_selec = env.get(Index::InputsSelector);
+            // equality enforced with the public inputs in the
+            // part of the domain dedicated to them.
+            input_selec * &w - inputs
+        };
+
+        let mut acc = inputs_check;
+        for (i, constraints) in self.gates.iter().enumerate() {
+            let selector = env.get(Index::GateSelector(i));
+            for constraint in constraints {
+                let exp = constraint.clone();
+                acc = acc * &chall + eval_exp(&env, exp) * &selector;
+            }
+        }
+        Some(acc)
+    }
+}
