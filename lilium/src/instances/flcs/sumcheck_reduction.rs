@@ -11,13 +11,15 @@ use sumcheck::{
 /// sumcheck based reduction of lcs instances
 pub struct LcsSumcheck<F, const IO: usize, const S: usize> {
     gates: Vec<Vec<Exp<usize>>>,
+    multi_constraint: bool,
     _f: PhantomData<F>,
 }
 
 impl<F, const IO: usize, const S: usize> LcsSumcheck<F, IO, S> {
-    pub fn new(gates: Vec<Vec<Exp<usize>>>) -> Self {
+    pub fn new(gates: Vec<Vec<Exp<usize>>>, multi_constraint: bool) -> Self {
         Self {
             gates,
+            multi_constraint,
             _f: PhantomData,
         }
     }
@@ -300,7 +302,11 @@ where
             for constraint in constraints {
                 let exp = constraint.clone();
                 let exp = eval_exp(&|idx| env.get(ZeroCheckIdx::Inner(idx)), exp);
-                acc = acc * &chall + exp * &selector;
+                acc = if self.multi_constraint {
+                    acc * &chall + exp * &selector
+                } else {
+                    acc + exp * &selector
+                };
             }
         }
         Some(acc)
@@ -343,7 +349,15 @@ impl<F: Field, const IO: usize, const S: usize> From<LcsSumcheck<F, IO, S>>
     for LcsSumfold<F, IO, S>
 {
     fn from(value: LcsSumcheck<F, IO, S>) -> Self {
-        let LcsSumcheck { gates, _f } = value;
+        let LcsSumcheck {
+            gates,
+            multi_constraint,
+            _f,
+        } = value;
+        assert!(
+            !multi_constraint,
+            "folding doesn't support multi-constraint gates"
+        );
         LcsSumfold { gates, _f }
     }
 }
@@ -390,7 +404,9 @@ where
         &self,
         env: E,
     ) -> Option<V> {
-        let chall = env.get_chall(());
+        // Not used to avoid complications with folding, gates are limited to have a
+        // single constraint in order to remain sound.
+        // let chall = env.get_chall(());
         let w = env.get(Index::W);
 
         let inputs_check = {
@@ -404,10 +420,15 @@ where
         let mut acc = inputs_check;
         for (i, constraints) in self.gates.iter().enumerate() {
             let selector = env.get(Index::GateSelector(i));
+            assert_eq!(
+                constraints.len(),
+                1,
+                "folding can not be used with multi-constraint gates"
+            );
             for constraint in constraints {
                 let exp = constraint.clone();
                 let exp = eval_exp(&|idx| env.get(idx), exp);
-                acc = acc * &chall + exp * &selector;
+                acc = acc + exp * &selector;
             }
         }
         Some(acc)

@@ -30,7 +30,8 @@ where
         gates: Vec<Vec<Exp<usize>>>,
     ) -> Self {
         let domain_vars = structure.len().next_power_of_two().ilog2() as usize;
-        let sumcheck_function = LcsSumcheck::new(gates);
+        //TODO: expose option.
+        let sumcheck_function = LcsSumcheck::new(gates, false);
         let structure = structure
             .iter()
             .map(|inner| {
