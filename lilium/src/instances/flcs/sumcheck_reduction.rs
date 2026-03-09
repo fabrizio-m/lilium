@@ -299,7 +299,7 @@ where
             let selector = inner(Index::GateSelector(i));
             for constraint in constraints {
                 let exp = constraint.clone();
-                let exp = eval_exp(|idx| env.get(ZeroCheckIdx::Inner(idx)), exp);
+                let exp = eval_exp(&|idx| env.get(ZeroCheckIdx::Inner(idx)), exp);
                 acc = acc * &chall + exp * &selector;
             }
         }
@@ -307,7 +307,7 @@ where
     }
 }
 
-fn eval_exp<F, V, R>(resolver: R, exp: Exp<usize>) -> V
+fn eval_exp<F, V, R>(resolver: &R, exp: Exp<usize>) -> V
 where
     F: Field,
     V: Var<F>,
@@ -316,18 +316,18 @@ where
     match exp {
         Exp::Atom(v) => resolver(Index::Product(v)),
         Exp::Add(exp1, exp2) => {
-            let e1 = eval_exp(&resolver, *exp1);
-            let e2 = eval_exp(&resolver, *exp2);
+            let e1 = eval_exp(resolver, *exp1);
+            let e2 = eval_exp(resolver, *exp2);
             e1 + e2
         }
         Exp::Mul(exp1, exp2) => {
-            let e1 = eval_exp(&resolver, *exp1);
-            let e2 = eval_exp(&resolver, *exp2);
+            let e1 = eval_exp(resolver, *exp1);
+            let e2 = eval_exp(resolver, *exp2);
             e1 * e2
         }
         Exp::Sub(exp1, exp2) => {
-            let e1 = eval_exp(&resolver, *exp1);
-            let e2 = eval_exp(&resolver, *exp2);
+            let e1 = eval_exp(resolver, *exp1);
+            let e2 = eval_exp(resolver, *exp2);
             e1 - e2
         }
     }
@@ -406,7 +406,7 @@ where
             let selector = env.get(Index::GateSelector(i));
             for constraint in constraints {
                 let exp = constraint.clone();
-                let exp = eval_exp(|idx| env.get(idx), exp);
+                let exp = eval_exp(&|idx| env.get(idx), exp);
                 acc = acc * &chall + exp * &selector;
             }
         }
