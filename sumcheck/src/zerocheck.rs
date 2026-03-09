@@ -252,7 +252,7 @@ impl<V, I> ZeroCheckMles<V, I> {
         ZeroCheckMles { zerocheck, inner }
     }
 
-    pub fn inner(&self) -> &I {
+    pub const fn inner(&self) -> &I {
         &self.inner
     }
 }
