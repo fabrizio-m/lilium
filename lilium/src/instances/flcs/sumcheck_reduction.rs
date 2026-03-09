@@ -299,34 +299,35 @@ where
             let selector = inner(Index::GateSelector(i));
             for constraint in constraints {
                 let exp = constraint.clone();
-                acc = acc * &chall + eval_exp(&env, exp) * &selector;
+                let exp = eval_exp(|idx| env.get(ZeroCheckIdx::Inner(idx)), exp);
+                acc = acc * &chall + exp * &selector;
             }
         }
         Some(acc)
     }
 }
 
-fn eval_exp<F, V, E>(env: &E, exp: Exp<usize>) -> V
+fn eval_exp<F, V, R>(resolver: R, exp: Exp<usize>) -> V
 where
     F: Field,
     V: Var<F>,
-    E: Env<F, V, ZeroCheckIdx<Index>, ()>,
+    R: Fn(Index) -> V,
 {
     match exp {
-        Exp::Atom(v) => env.get(ZeroCheckIdx::Inner(Index::Product(v))),
+        Exp::Atom(v) => resolver(Index::Product(v)),
         Exp::Add(exp1, exp2) => {
-            let e1 = eval_exp(env, *exp1);
-            let e2 = eval_exp(env, *exp2);
+            let e1 = eval_exp(&resolver, *exp1);
+            let e2 = eval_exp(&resolver, *exp2);
             e1 + e2
         }
         Exp::Mul(exp1, exp2) => {
-            let e1 = eval_exp(env, *exp1);
-            let e2 = eval_exp(env, *exp2);
+            let e1 = eval_exp(&resolver, *exp1);
+            let e2 = eval_exp(&resolver, *exp2);
             e1 * e2
         }
         Exp::Sub(exp1, exp2) => {
-            let e1 = eval_exp(env, *exp1);
-            let e2 = eval_exp(env, *exp2);
+            let e1 = eval_exp(&resolver, *exp1);
+            let e2 = eval_exp(&resolver, *exp2);
             e1 - e2
         }
     }
@@ -338,9 +339,11 @@ pub struct LcsSumfold<F, const IO: usize, const S: usize> {
     _f: PhantomData<F>,
 }
 
-impl<F: Field, const IO: usize, const S: usize> From<LcsSumcheck<F>> for LcsSumfold<F, IO, S> {
-    fn from(value: LcsSumcheck<F>) -> Self {
-        let LcsSumcheck { gates, _f };
+impl<F: Field, const IO: usize, const S: usize> From<LcsSumcheck<F, IO, S>>
+    for LcsSumfold<F, IO, S>
+{
+    fn from(value: LcsSumcheck<F, IO, S>) -> Self {
+        let LcsSumcheck { gates, _f } = value;
         LcsSumfold { gates, _f }
     }
 }
@@ -403,7 +406,8 @@ where
             let selector = env.get(Index::GateSelector(i));
             for constraint in constraints {
                 let exp = constraint.clone();
-                acc = acc * &chall + eval_exp(&env, exp) * &selector;
+                let exp = eval_exp(|idx| env.get(idx), exp);
+                acc = acc * &chall + exp * &selector;
             }
         }
         Some(acc)
