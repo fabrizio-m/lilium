@@ -1,5 +1,5 @@
 use crate::{
-    folding::{SumFold, SumFoldInstance, SumFoldProof},
+    folding::{utils::FieldFolder, SumFold, SumFoldInstance, SumFoldProof},
     message::Message,
     sumcheck::{DegreeParam, Sum, SumcheckFunction},
     SumcheckError,
@@ -12,7 +12,7 @@ use transcript::{
 impl<F: Field, SF: SumcheckFunction<F>> Reduction<F> for SumFold<F, SF> {
     type A = SumFoldInstance<F, 2>;
 
-    type B = Sum<F>;
+    type B = (Sum<F>, FieldFolder<F>);
 
     type Key = Self;
 
@@ -58,6 +58,7 @@ impl<F: Field, SF: SumcheckFunction<F>> Reduction<F> for SumFold<F, SF> {
         let new_sum = msg.eval_at_x(r, &key.extended_weights);
         // Thus, removing eq(beta,r) leaves just the sum of f(r,...)
         let new_sum = Sum(new_sum / eqr);
-        Ok(new_sum)
+        let folder = FieldFolder::new(r);
+        Ok((new_sum, folder))
     }
 }

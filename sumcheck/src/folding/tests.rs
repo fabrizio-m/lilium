@@ -51,7 +51,7 @@ where
         let reduced =
             SumFold::verify_reduction(&sumfold_key, instance, transcript.guard(proof)).unwrap();
         transcript.finish_unchecked();
-        (folded_witness, reduced)
+        (folded_witness, reduced.0)
     };
     check_sumcheck::<F, SF>(instance.0, w3, f);
 }

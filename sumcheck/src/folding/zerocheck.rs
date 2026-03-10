@@ -189,7 +189,8 @@ fn test<F: Field>(random_elements: Vec<F>) {
         let transcript_guard = TranscriptGuard::new(&mut transcript, proof);
         let instance = MessageGuard::new(instance);
 
-        let instance =
+        //TODO: compare folder from prover and verifier.
+        let (instance, _) =
             SumFold::verify_reduction(zerofold.sumfold_key(), instance, transcript_guard).unwrap();
         transcript.finish_unchecked();
         (folded_witness, instance, folder)
