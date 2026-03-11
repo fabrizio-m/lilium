@@ -60,6 +60,7 @@ where
     >,
 {
     type Commitment: for<'a> Add<&'a Self::Commitment, Output = Self::Commitment>
+        + Add<Output = Self::Commitment>
         + Mul<F, Output = Self::Commitment>
         + Clone
         + Debug

@@ -65,6 +65,13 @@ impl<G: CurveGroup> Add<&Self> for IpaCommitment<G> {
         Self(self.0 + rhs.0)
     }
 }
+impl<G: CurveGroup> Add for IpaCommitment<G> {
+    type Output = Self;
+
+    fn add(self, rhs: Self) -> Self::Output {
+        Self(self.0 + rhs.0)
+    }
+}
 
 #[derive(Debug, Clone)]
 pub enum IpaError {
