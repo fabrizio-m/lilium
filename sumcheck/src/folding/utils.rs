@@ -1,3 +1,5 @@
+use std::ops::{Add, Mul};
+
 use crate::{polynomials::Evals, zerocheck::CompactPowers};
 use ark_ff::Field;
 
@@ -29,5 +31,14 @@ impl<F: Field> FieldFolder<F> {
             let folded = a.combine(b, |a, b| self.fold_elem(a, b));
             *a = folded;
         }
+    }
+
+    /// Folds any type which can be multiplied by field elements and added to itself.
+    /// Useful for folding commitments.
+    pub fn fold_abstract<T>(&self, a: T, b: T) -> T
+    where
+        T: Mul<F, Output = T> + Add<Output = T>,
+    {
+        a * self.nr + b * self.r
     }
 }
