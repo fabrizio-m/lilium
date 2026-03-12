@@ -1,8 +1,9 @@
 use ark_ff::Field;
 use commit::CommmitmentScheme;
-use sumcheck::zerocheck::CompactPowers;
+use sumcheck::{folding::utils::FieldFolder, zerocheck::CompactPowers};
 use transcript::{params::ParamResolver, Message};
 
+mod folding;
 mod key;
 mod reduction;
 mod reduction_proving;
@@ -22,6 +23,7 @@ where
     witness_commit: C::Commitment,
     public_inputs: [F; I],
     zerocheck_powers: CompactPowers<F>,
+    sum: F,
 }
 
 impl<F, C, const I: usize> FoldableLcsInstance<F, C, I>
@@ -38,6 +40,23 @@ where
             witness_commit,
             public_inputs,
             zerocheck_powers,
+            sum: F::zero(),
+        }
+    }
+
+    pub(crate) fn fold(self, other: Self, folder: FieldFolder<F>, sum: F) -> Self {
+        let witness_commit = folder.fold_abstract(self.witness_commit, other.witness_commit);
+        let mut public_inputs = [F::zero(); I];
+        for (i, input) in public_inputs.iter_mut().enumerate() {
+            *input = folder.fold_elem(self.public_inputs[i], other.public_inputs[i]);
+        }
+        let zerocheck_powers = folder.fold_powers(self.zerocheck_powers, other.zerocheck_powers);
+
+        Self {
+            witness_commit,
+            public_inputs,
+            zerocheck_powers,
+            sum,
         }
     }
 }
