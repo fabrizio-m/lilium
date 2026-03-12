@@ -92,12 +92,13 @@ where
         let [r] = transcript.send_message(&message).unwrap();
 
         // Checking that message agrees with sum.
-        {
+        let sum = {
             let sum = instance.sums[0].0 * (F::ONE - beta) + instance.sums[1].0 * beta;
             let eval_zero = message.eval_at_0();
             let eval_one = message.eval_at_1();
             assert_eq!(sum, eval_zero + eval_one);
-        }
+            sum
+        };
 
         let proof = SumFoldProof { message };
 
@@ -115,6 +116,7 @@ where
             folded_witness,
             proof,
             folder,
+            sum,
         }
     }
 

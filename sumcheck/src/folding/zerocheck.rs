@@ -175,6 +175,7 @@ fn test<F: Field>(random_elements: Vec<F>) {
             folded_witness,
             proof,
             folder,
+            sum,
         } = zerofold.fold_zerocheck(
             w1,
             w2.as_slice(),
@@ -192,6 +193,7 @@ fn test<F: Field>(random_elements: Vec<F>) {
         //TODO: compare folder from prover and verifier.
         let (instance, _) =
             SumFold::verify_reduction(zerofold.sumfold_key(), instance, transcript_guard).unwrap();
+        assert_eq!(sum, instance.0);
         transcript.finish_unchecked();
         (folded_witness, instance, folder)
     };

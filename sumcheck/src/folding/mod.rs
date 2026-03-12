@@ -16,6 +16,7 @@ pub mod utils;
 mod zerocheck;
 mod zerofold;
 
+pub use prover::SumFoldProverOutput;
 pub use zerofold::ZeroFold;
 
 /// Reduction from 2 folding instances into a single one.
