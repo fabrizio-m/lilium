@@ -33,6 +33,13 @@ impl<F: Field> FieldFolder<F> {
         }
     }
 
+    pub fn fold_vector(&self, a: &mut [F], b: &[F]) {
+        for (a, b) in a.iter_mut().zip(b) {
+            let folded = self.fold_elem(*a, *b);
+            *a = folded;
+        }
+    }
+
     /// Folds any type which can be multiplied by field elements and added to itself.
     /// Useful for folding commitments.
     pub fn fold_abstract<T>(&self, a: T, b: T) -> T
