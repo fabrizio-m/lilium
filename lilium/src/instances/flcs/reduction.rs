@@ -88,11 +88,11 @@ where
             witness_commit,
             public_inputs,
             zerocheck_powers,
+            sum,
         } = lcs_instance;
 
         let sumcheck_verifier = &key.sumcheck_verifier;
-        // As the expected sum is zero.
-        let sumcheck_instance = MessageGuard::new(Sum(F::zero()));
+        let sumcheck_instance = MessageGuard::new(Sum(sum));
 
         // Receive sumcheck proof.
         let proof = transcript.receive_message_delayed(|p| p.sumcheck.clone());
