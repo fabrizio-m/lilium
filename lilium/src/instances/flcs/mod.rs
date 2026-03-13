@@ -3,7 +3,7 @@ use commit::CommmitmentScheme;
 use sumcheck::{folding::utils::FieldFolder, zerocheck::CompactPowers};
 use transcript::{params::ParamResolver, Message};
 
-mod folding;
+pub mod folding;
 mod key;
 mod reduction;
 mod reduction_proving;

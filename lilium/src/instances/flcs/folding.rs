@@ -1,9 +1,9 @@
 use crate::flcs::{
-    sumcheck_reduction::{ConstraintCombinationChallenge, LcsMles, LcsSumfold},
+    sumcheck_reduction::{ConstraintCombinationChallenge, LcsMles, LcsSumcheck, LcsSumfold},
     FoldableLcsInstance,
 };
 use ark_ff::Field;
-use ccs::witness::LinearCombinations;
+use ccs::{structure::Exp, witness::LinearCombinations};
 use commit::CommmitmentScheme;
 use sponge::sponge::Duplex;
 use std::{iter::repeat, marker::PhantomData, rc::Rc};
@@ -15,11 +15,11 @@ use transcript::{
     protocols::Reduction, MessageGuard, Transcript, TranscriptBuilder, TranscriptGuard,
 };
 
-struct LcsFolding<F, C, const IO: usize> {
+pub struct LcsFolding<F, C, const IO: usize> {
     _phantom: PhantomData<(F, C)>,
 }
 
-struct LcsFoldingKey<F: Field, const IO: usize> {
+pub struct LcsFoldingKey<F: Field, const IO: usize> {
     // vars: usize,
     zerofold: ZeroFold<F, LcsSumfold<F, IO, 4>>,
     structure: Rc<Vec<ZeroCheckMles<F, LcsMles<F, IO, 4>>>>,
@@ -69,7 +69,21 @@ where
 }
 
 impl<F: Field, const IO: usize> LcsFoldingKey<F, IO> {
-    #[allow(dead_code)]
+    pub fn new(
+        gates: Vec<Vec<Exp<usize>>>,
+        vars: usize,
+        structure: Rc<Vec<ZeroCheckMles<F, LcsMles<F, IO, 4>>>>,
+        linear_combinations: Rc<LinearCombinations<IO>>,
+    ) -> Self {
+        let function = LcsSumcheck::<F, IO, 4>::new(gates, false);
+        let zerofold = ZeroFold::new(LcsSumfold::from(function), vars);
+        Self {
+            zerofold,
+            structure,
+            linear_combinations,
+        }
+    }
+
     pub fn fold<C, S>(
         &self,
         instances: [FoldableLcsInstance<F, C, IO>; 2],

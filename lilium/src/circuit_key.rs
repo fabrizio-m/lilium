@@ -1,7 +1,7 @@
 use ark_ff::Field;
 use ccs::{
     circuit::{BuildStructure, Circuit},
-    structure::{CcsStructure, Matrix},
+    structure::{CcsStructure, Exp, Matrix},
 };
 use commit::CommmitmentScheme;
 use spark::{committed_spark::CommittedSpark, structure::SparkMatrix};
@@ -10,7 +10,10 @@ use std::{marker::PhantomData, rc::Rc};
 use sumcheck::sumcheck::DegreeParam;
 use transcript::{params::ParamResolver, TranscriptBuilder, TranscriptDescriptor};
 
-use crate::instances::lcs::{key::LcsProvingKey, sumcheck_argument::LcsMles, LcsProver};
+use crate::{
+    flcs::folding::{LcsFolding, LcsFoldingKey},
+    instances::lcs::{key::LcsProvingKey, sumcheck_argument::LcsMles, LcsProver},
+};
 
 /// key to create and verify proofs for a given circuit
 pub struct CircuitKey<
@@ -29,6 +32,8 @@ pub struct CircuitKey<
     pub spark_commitments: [CommittedSpark<F, CS, 2>; IO],
     pub committment_scheme: Rc<CS>,
     pub lcs_key: LcsProvingKey<F, CS, IO>,
+    pub folding_key: LcsFoldingKey<F, IO>,
+    pub folding_transcript: TranscriptDescriptor<F, D>,
 }
 
 // impl<F, T, C, CS, const I: usize, const IO: usize, const S: usize> CircuitKey<F, T, C, CS, I, IO, S>
@@ -70,7 +75,7 @@ where
             .map(|s| CommittedSpark::new(Rc::clone(s), committment_scheme.as_ref()));
 
         let structure = Rc::new(structure(ccs_structure.clone()));
-        let gates = ccs_structure
+        let gates: Vec<Vec<Exp<usize>>> = ccs_structure
             .gates
             .iter()
             .map(|gate| Vec::from(gate.clone()))
@@ -81,8 +86,19 @@ where
             structure,
             matrices,
             spark_commitments.clone(),
-            gates,
+            gates.clone(),
         );
+
+        let folding_key = LcsFoldingKey::new(
+            gates,
+            vars,
+            Rc::clone(&lcs_key.flcs_reduction_key.structure),
+            Rc::clone(&lcs_key.flcs_reduction_key.linear_combinations),
+        );
+        let transcript_builder = TranscriptBuilder::new(vars, ParamResolver::new());
+        let folding_transcript = transcript_builder
+            .add_reduction_patter::<F, LcsFolding<F, CS, IO>>(&folding_key)
+            .finish();
 
         let transcript_builder = TranscriptBuilder::new(vars, resolver);
         let transcript = transcript_builder
@@ -97,6 +113,8 @@ where
             spark_commitments,
             committment_scheme,
             lcs_key,
+            folding_key,
+            folding_transcript,
         }
     }
 }
