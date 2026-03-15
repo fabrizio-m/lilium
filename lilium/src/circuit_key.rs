@@ -26,14 +26,11 @@ pub struct CircuitKey<
     const S: usize = 0,
 > {
     _circuit: PhantomData<C>,
-    pub transcript: TranscriptDescriptor<F, D>,
-    pub ccs_structure: CcsStructure<IO, S>,
-    pub spark_structure: [Rc<SparkMatrix<F>>; IO],
-    pub spark_commitments: [CommittedSpark<F, CS, 2>; IO],
-    pub committment_scheme: Rc<CS>,
-    pub lcs_key: LcsProvingKey<F, CS, IO>,
-    pub folding_key: LcsFoldingKey<F, IO>,
-    pub folding_transcript: TranscriptDescriptor<F, D>,
+    pub(crate) transcript: TranscriptDescriptor<F, D>,
+    pub(crate) committment_scheme: Rc<CS>,
+    pub(crate) lcs_key: LcsProvingKey<F, CS, IO>,
+    folding_key: LcsFoldingKey<F, IO>,
+    folding_transcript: TranscriptDescriptor<F, D>,
 }
 
 // impl<F, T, C, CS, const I: usize, const IO: usize, const S: usize> CircuitKey<F, T, C, CS, I, IO, S>
@@ -108,9 +105,6 @@ where
         Self {
             _circuit: PhantomData,
             transcript,
-            ccs_structure,
-            spark_structure,
-            spark_commitments,
             committment_scheme,
             lcs_key,
             folding_key,
