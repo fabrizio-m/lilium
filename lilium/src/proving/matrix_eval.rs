@@ -39,10 +39,9 @@ impl<F: Field, C: CommmitmentScheme<F>, const IO: usize> Key<F, C, IO> {
         let mut open_pairs = [(); IO].map(|_| None);
         let point = instance.point;
 
-        for i in 0..IO {
+        for (i, eval) in instance.matrix_evals.iter().enumerate() {
             // let structure = &self.spark_structure[i];
-            let eval = instance.matrix_evals[i];
-            let instance = CommittedSparkInstance::new(point.clone(), eval);
+            let instance = CommittedSparkInstance::new(point.clone(), *eval);
             let spark::committed_spark::ProverOutput {
                 open_instance,
                 witness,
