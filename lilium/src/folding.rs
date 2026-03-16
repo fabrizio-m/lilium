@@ -10,6 +10,10 @@ use sponge::sponge::Duplex;
 use sumcheck::folding::SumFoldProof;
 use transcript::{protocols::Reduction, MessageGuard};
 
+/// A pair of instances, which allows for any combination of `FoldableLcsInstance`
+/// and `LcsInstance`.
+/// Do not create this directly, use instead `(A,B).into()` or `InstancePair::from((A,B))`
+/// which is implemented for the 4 cases.
 pub enum InstancePair<F, C, const I: usize>
 where
     F: Field,
