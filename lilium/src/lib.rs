@@ -4,10 +4,12 @@ use std::marker::PhantomData;
 use sumcheck::SumcheckError;
 
 pub mod circuit_key;
+pub mod folding;
 mod instances;
 pub mod prove;
 mod proving;
 mod test;
+
 pub(crate) use instances::flcs;
 
 pub struct Prover<F: Field, const IO: usize = 0> {
