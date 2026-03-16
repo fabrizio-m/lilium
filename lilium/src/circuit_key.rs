@@ -94,7 +94,7 @@ where
         );
         let transcript_builder = TranscriptBuilder::new(vars, ParamResolver::new());
         let folding_transcript = transcript_builder
-            .add_reduction_patter::<F, LcsFolding<F, CS, IO>>(&folding_key)
+            .add_reduction_patter::<F, LcsFolding<F, CS, IO, I>>(&folding_key)
             .finish();
 
         let transcript_builder = TranscriptBuilder::new(vars, resolver);

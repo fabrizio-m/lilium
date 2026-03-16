@@ -15,7 +15,7 @@ use transcript::{
     protocols::Reduction, MessageGuard, Transcript, TranscriptBuilder, TranscriptGuard,
 };
 
-pub struct LcsFolding<F, C, const IO: usize> {
+pub struct LcsFolding<F, C, const IO: usize, const I: usize> {
     _phantom: PhantomData<(F, C)>,
 }
 
@@ -26,14 +26,14 @@ pub struct LcsFoldingKey<F: Field, const IO: usize> {
     linear_combinations: Rc<LinearCombinations<IO>>,
 }
 
-impl<F, C, const IO: usize> Reduction<F> for LcsFolding<F, C, IO>
+impl<F, C, const IO: usize, const I: usize> Reduction<F> for LcsFolding<F, C, IO, I>
 where
     F: Field,
     C: CommmitmentScheme<F> + 'static,
 {
-    type A = [FoldableLcsInstance<F, C, IO>; 2];
+    type A = [FoldableLcsInstance<F, C, I>; 2];
 
-    type B = FoldableLcsInstance<F, C, IO>;
+    type B = FoldableLcsInstance<F, C, I>;
 
     type Key = LcsFoldingKey<F, IO>;
 
@@ -53,7 +53,7 @@ where
         mut transcript: TranscriptGuard<F, S, Self::Proof>,
     ) -> Result<Self::B, Self::Error> {
         // TODO: handle.
-        let (instances, []): ([FoldableLcsInstance<F, C, IO>; 2], _) =
+        let (instances, []): ([FoldableLcsInstance<F, C, I>; 2], _) =
             transcript.unwrap_guard(instance).unwrap();
 
         let sums = instances.each_ref().map(|instance| instance.sum);
@@ -84,12 +84,12 @@ impl<F: Field, const IO: usize> LcsFoldingKey<F, IO> {
         }
     }
 
-    pub fn fold<C, S>(
+    pub fn fold<C, S, const I: usize>(
         &self,
-        instances: [FoldableLcsInstance<F, C, IO>; 2],
+        instances: [FoldableLcsInstance<F, C, I>; 2],
         witnesses: [Vec<F>; 2],
         transcript: &mut Transcript<F, S>,
-    ) -> (FoldableLcsInstance<F, C, IO>, Vec<F>, SumFoldProof<F>)
+    ) -> (FoldableLcsInstance<F, C, I>, Vec<F>, SumFoldProof<F>)
     where
         C: CommmitmentScheme<F>,
         S: Duplex<F>,
