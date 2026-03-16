@@ -40,7 +40,6 @@ impl<F: Field, C: CommmitmentScheme<F>, const IO: usize> Key<F, C, IO> {
         let point = instance.point;
 
         for (i, eval) in instance.matrix_evals.iter().enumerate() {
-            // let structure = &self.spark_structure[i];
             let instance = CommittedSparkInstance::new(point.clone(), *eval);
             let spark::committed_spark::ProverOutput {
                 open_instance,
