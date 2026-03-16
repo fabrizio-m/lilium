@@ -29,8 +29,8 @@ pub struct CircuitKey<
     pub(crate) transcript: TranscriptDescriptor<F, D>,
     pub(crate) committment_scheme: Rc<CS>,
     pub(crate) lcs_key: LcsProvingKey<F, CS, IO>,
-    folding_key: LcsFoldingKey<F, IO>,
-    folding_transcript: TranscriptDescriptor<F, D>,
+    pub(crate) folding_key: LcsFoldingKey<F, IO>,
+    pub(crate) folding_transcript: TranscriptDescriptor<F, D>,
 }
 
 // impl<F, T, C, CS, const I: usize, const IO: usize, const S: usize> CircuitKey<F, T, C, CS, I, IO, S>
