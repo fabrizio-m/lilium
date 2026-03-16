@@ -12,7 +12,12 @@ use transcript::{params::ParamResolver, TranscriptBuilder, TranscriptDescriptor}
 
 use crate::{
     flcs::folding::{LcsFolding, LcsFoldingKey},
-    instances::lcs::{key::LcsProvingKey, sumcheck_argument::LcsMles, LcsProver},
+    instances::lcs::{
+        key::LcsProvingKey,
+        sumcheck_argument::LcsMles,
+        zerocheck_reduction::{ZerocheckReduction, ZerocheckReductionKey},
+        LcsProver,
+    },
 };
 
 /// key to create and verify proofs for a given circuit
@@ -31,6 +36,8 @@ pub struct CircuitKey<
     pub(crate) lcs_key: LcsProvingKey<F, CS, IO>,
     pub(crate) folding_key: LcsFoldingKey<F, IO>,
     pub(crate) folding_transcript: TranscriptDescriptor<F, D>,
+    /// For the zerocheck reduction used in certain cases of folding.
+    pub(crate) zerocheck_transcript: TranscriptDescriptor<F, D>,
 }
 
 // impl<F, T, C, CS, const I: usize, const IO: usize, const S: usize> CircuitKey<F, T, C, CS, I, IO, S>
@@ -101,6 +108,10 @@ where
         let transcript = transcript_builder
             .add_protocol_patter::<F, LcsProver<CS, I, IO>>(&lcs_key)
             .finish();
+        let transcript_builder = TranscriptBuilder::new(vars, ParamResolver::new());
+        let zerocheck_transcript = transcript_builder
+            .add_reduction_patter::<F, ZerocheckReduction<CS, I>>(&ZerocheckReductionKey::new(vars))
+            .finish();
 
         Self {
             _circuit: PhantomData,
@@ -109,6 +120,7 @@ where
             lcs_key,
             folding_key,
             folding_transcript,
+            zerocheck_transcript,
         }
     }
 }
