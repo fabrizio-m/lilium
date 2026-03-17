@@ -9,6 +9,7 @@ mod instances;
 pub mod prove;
 mod proving;
 mod test;
+pub mod testing;
 
 pub(crate) use instances::flcs;
 
