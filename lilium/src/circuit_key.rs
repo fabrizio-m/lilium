@@ -40,7 +40,6 @@ pub struct CircuitKey<
     pub(crate) zerocheck_transcript: TranscriptDescriptor<F, D>,
 }
 
-// impl<F, T, C, CS, const I: usize, const IO: usize, const S: usize> CircuitKey<F, T, C, CS, I, IO, S>
 impl<F, T, C, CS, const I: usize, const IO: usize> CircuitKey<F, T, C, CS, I, IO, 4>
 where
     F: Field,
@@ -67,12 +66,6 @@ where
         });
         let spark_structure = spark_structure.map(Rc::new);
         let committment_scheme = Rc::new(CS::new(vars));
-
-        // This assumes IO is selected properly, which should be fine as it
-        // can be higher than needed but not lower.
-        // TODO: wrong, IO isn't necessarily the same
-        let degree = IO;
-        let resolver = ParamResolver::new().set::<DegreeParam>(degree);
 
         let spark_commitments = spark_structure
             .each_ref()
@@ -104,7 +97,7 @@ where
             .add_reduction_patter::<F, LcsFolding<F, CS, IO, I>>(&folding_key)
             .finish();
 
-        let transcript_builder = TranscriptBuilder::new(vars, resolver);
+        let transcript_builder = TranscriptBuilder::new(vars, ParamResolver::new());
         let transcript = transcript_builder
             .add_protocol_patter::<F, LcsProver<CS, I, IO>>(&lcs_key)
             .finish();
