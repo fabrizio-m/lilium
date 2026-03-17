@@ -7,7 +7,6 @@ use commit::CommmitmentScheme;
 use spark::{committed_spark::CommittedSpark, structure::SparkMatrix};
 use sponge::sponge::Duplex;
 use std::{marker::PhantomData, rc::Rc};
-use sumcheck::sumcheck::DegreeParam;
 use transcript::{params::ParamResolver, TranscriptBuilder, TranscriptDescriptor};
 
 use crate::{
