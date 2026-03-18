@@ -7,7 +7,7 @@ use ccs::{
 
 /// Poseidon2 permutation like circuit, 8 external rounds, 40 internal rounds,
 /// sbox degree 7, and state size 3.
-/// It does the same type and number of operations, but all constants are set to state[0].
+/// It does the same type and number of operations, but all constants are set to state\[0\].
 pub struct TestingHash;
 
 impl<F: Field> Circuit<F, 3, 3, 3> for TestingHash {
