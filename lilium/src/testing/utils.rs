@@ -83,3 +83,42 @@ fn apply_matrix<V: Val, C: ConstraintSystem<V>>(cs: &mut C, state: &mut [Var<V>;
     let s2 = cs.add(sum.clone(), double_s2);
     *state = [s0, s1, s2];
 }
+
+pub struct HashChain<const N: usize>;
+
+impl<F: Field, const N: usize> Circuit<F, 1, 1, 1> for HashChain<N> {
+    type PrivateInput = ();
+
+    type PrivateOutput = F;
+
+    fn circuit<V: Val, C: ConstraintSystem<V>>(
+        cs: &mut C,
+        public_input: [Var<V>; 1],
+    ) -> ([Var<V>; 1], [Var<V>; 1]) {
+        let [x] = public_input;
+        let mut state = [(); 3].map(|_| x.clone());
+
+        for _ in 0..N {
+            let (new_state, _) = <TestingHash as Circuit<F, 3, 3, 3>>::circuit(cs, state.clone());
+            state = new_state;
+        }
+
+        let [out, _, _] = state;
+        ([out.clone()], [out])
+    }
+
+    fn handle_output([out]: [F; 1]) -> Self::PrivateOutput {
+        out
+    }
+}
+
+/*
+#[test]
+fn profile_chain() {
+    use ark_vesta::Fr;
+    use ccs::circuit::BuildStructure;
+
+    let profile = <HashChain<100> as BuildStructure<Fr, 1, 1, 1, 5>>::profile();
+    println!("{profile}");
+}
+*/
