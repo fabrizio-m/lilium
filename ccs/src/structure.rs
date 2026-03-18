@@ -146,6 +146,24 @@ impl Mul for WitnessIndex {
 impl Val for WitnessIndex {}
 
 impl<const MAX_IO: usize> StructureBuilder<MAX_IO> {
+    pub fn gate_counts(&self) -> Vec<(&'static str, usize)> {
+        let registry = &self.registry;
+        let constraints = &self.constraints;
+        let mut counts = vec![0; registry.gate_registry.len()];
+
+        for constraint in constraints {
+            counts[constraint.selector] += 1;
+        }
+
+        let mut named_counts = counts.into_iter().map(|c| ("", c)).collect::<Vec<_>>();
+
+        for gate in registry.gate_registry.values() {
+            named_counts[gate.0].0 = gate.2;
+        }
+
+        named_counts
+    }
+
     fn var(&mut self) -> WitnessIndex {
         //in this way 0 is reserved for the 1
         self.next += 1;
@@ -340,8 +358,11 @@ fn exp_to_multiset() {
 
 impl GateRegistry {
     fn expressions_sorted(self) -> Vec<Constraints<Exp<usize>>> {
-        let mut gates: Vec<(usize, Constraints<Exp<usize>>)> =
-            self.gate_registry.into_values().collect();
+        let mut gates: Vec<(usize, Constraints<Exp<usize>>)> = self
+            .gate_registry
+            .into_values()
+            .map(|(id, c, _)| (id, c))
+            .collect();
         gates.sort_by_key(|x| x.0);
         for (i1, (i2, _)) in gates.iter().enumerate() {
             assert_eq!(i1, *i2, "unexpected index");

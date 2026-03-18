@@ -108,14 +108,14 @@ pub mod cs_prototype {
     use super::*;
     use crate::structure::Exp;
     use std::{
-        any::{Any, TypeId},
+        any::{type_name, Any, TypeId},
         collections::BTreeMap,
     };
 
     #[derive(Debug)]
     /// Keeps track of used gates, and assigns a unique id to each of them.
     pub struct GateRegistry {
-        pub(crate) gate_registry: BTreeMap<TypeId, (usize, Constraints<Exp<usize>>)>,
+        pub(crate) gate_registry: BTreeMap<TypeId, (usize, Constraints<Exp<usize>>, &'static str)>,
         next_selector: usize,
     }
 
@@ -140,7 +140,7 @@ pub mod cs_prototype {
             let entry = entry.or_insert_with(|| {
                 self.next_selector += 1;
                 let exp = eval_gate_constraints::<G, IO, I, O>();
-                (self.next_selector - 1, exp)
+                (self.next_selector - 1, exp, type_name::<G>())
             });
             entry.0
         }

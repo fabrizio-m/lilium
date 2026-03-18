@@ -1,3 +1,5 @@
+use std::fmt::Display;
+
 use crate::{
     constraint_system::{ConstraintSystem, Val},
     structure::{CcsStructure, StructureBuilder},
@@ -49,6 +51,31 @@ pub trait BuildStructure<
         cs.link_outputs::<IN, OUT>(public_out.map(Var::unwrap));
 
         cs.build::<S>(IN + OUT)
+    }
+
+    fn profile() -> CircuitProfile {
+        let (mut cs, public_input) = StructureBuilder::<IO>::with_inputs::<IN>();
+        cs.reserve_outputs::<OUT>();
+        let (public_out, _) = Self::circuit(&mut cs, public_input.map(Var));
+        cs.link_outputs::<IN, OUT>(public_out.map(Var::unwrap));
+        let gate_counts = cs.gate_counts();
+        CircuitProfile { gate_counts }
+    }
+}
+
+#[derive(Debug)]
+pub struct CircuitProfile {
+    gate_counts: Vec<(&'static str, usize)>,
+}
+
+impl Display for CircuitProfile {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        writeln!(f, "CircuitProfile\n")?;
+        writeln!(f, "gates used:")?;
+        for (gate, count) in &self.gate_counts {
+            writeln!(f, "{}: {}", gate, count)?;
+        }
+        Ok(())
     }
 }
 
