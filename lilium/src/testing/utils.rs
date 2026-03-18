@@ -49,6 +49,17 @@ impl<F: Field> Circuit<F, 3, 3, 3> for TestingHash {
     }
 }
 
+/*
+#[test]
+fn profile_hash() {
+    use ark_vesta::Fr;
+    use ccs::circuit::BuildStructure;
+
+    let profile = <TestingHash as BuildStructure<Fr, 3, 3, 3, 5>>::profile();
+    println!("{profile}");
+}
+*/
+
 fn add_constants<V: Val, C: ConstraintSystem<V>>(
     cs: &mut C,
     state: &mut [Var<V>; 3],
