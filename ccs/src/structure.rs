@@ -1,10 +1,8 @@
 pub use crate::matrix::Matrix;
 use crate::{
     circuit::Var,
-    constraint_system::{
-        cs_prototype::{Equality, GateRegistry},
-        ConstraintSystem, Constraints, Gate, Val,
-    },
+    constraint_system::{cs_prototype::GateRegistry, ConstraintSystem, Constraints, Gate, Val},
+    gates::Equality,
 };
 use std::{
     cmp::Ordering,
