@@ -59,18 +59,24 @@ pub trait BuildStructure<
         let (public_out, _) = Self::circuit(&mut cs, public_input.map(Var));
         cs.link_outputs::<IN, OUT>(public_out.map(Var::unwrap));
         let gate_counts = cs.gate_counts();
-        CircuitProfile { gate_counts }
+        let witness_length = cs.vars().len();
+        CircuitProfile {
+            gate_counts,
+            witness_length,
+        }
     }
 }
 
 #[derive(Debug)]
 pub struct CircuitProfile {
+    witness_length: usize,
     gate_counts: Vec<(&'static str, usize)>,
 }
 
 impl Display for CircuitProfile {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         writeln!(f, "CircuitProfile\n")?;
+        writeln!(f, "witness length: {}", self.witness_length)?;
         writeln!(f, "gates used:")?;
         for (gate, count) in &self.gate_counts {
             writeln!(f, "{}: {}", gate, count)?;

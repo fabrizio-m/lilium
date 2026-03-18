@@ -146,6 +146,10 @@ impl Mul for WitnessIndex {
 impl Val for WitnessIndex {}
 
 impl<const MAX_IO: usize> StructureBuilder<MAX_IO> {
+    pub(crate) fn vars(&self) -> &[usize] {
+        &self.vars
+    }
+
     pub fn gate_counts(&self) -> Vec<(&'static str, usize)> {
         let registry = &self.registry;
         let constraints = &self.constraints;
