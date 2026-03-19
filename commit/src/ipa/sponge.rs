@@ -1,7 +1,3 @@
-use ark_ec::Group;
-use ark_ff::PrimeField;
-use std::marker::PhantomData;
-
 pub trait Sponge<F, G> {
     fn absorb_g(&mut self, x: G);
     fn absorb_f(&mut self, x: F);
@@ -9,7 +5,7 @@ pub trait Sponge<F, G> {
     fn squeeze_g(&mut self) -> G;
 }
 
-#[derive(Default)]
+/*#[derive(Default)]
 pub struct SimpleSponge<F> {
     hasher: blake3::Hasher,
     _f: PhantomData<F>,
@@ -44,3 +40,4 @@ impl<F: PrimeField, G: Group> Sponge<F, G> for SimpleSponge<F> {
         G::generator() * scalar
     }
 }
+*/

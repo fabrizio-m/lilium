@@ -11,7 +11,6 @@ sumcheck = { path = "../sumcheck"}
 transcript = { path = "../transcript"} 
 sponge = { path = "../sponge"} 
 hash-to-curve = { path = "../hash-to-curve"} 
-blake3 = "1.5"
 
 [dev-dependencies]
 ark-vesta = "0.4"
