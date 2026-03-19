@@ -204,11 +204,11 @@ fn print_nibble(nibble: &[bool]) {
     }
     print!("{:x}", byte)
 }
+
 #[allow(unused)]
 pub fn print_integer_big_endian(int: &[bool]) {
     let partial_bit_len = int.len() % 4;
-    let partial_bit: Vec<bool> = std::iter::repeat(false)
-        .take(4 - partial_bit_len)
+    let partial_bit: Vec<bool> = std::iter::repeat_n(false, 4 - partial_bit_len)
         .chain(int[0..partial_bit_len].to_owned())
         .collect();
     if partial_bit_len != 0 {
