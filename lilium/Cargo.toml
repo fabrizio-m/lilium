@@ -16,3 +16,8 @@ hash-to-curve = { path = "../hash-to-curve"}
 [dev-dependencies]
 rand = "0.8"
 ark-vesta = "0.4"
+criterion = { version = "0.8.2", features = ["html_reports"] }
+
+[[bench]]
+name = "runtime"
+harness = false
