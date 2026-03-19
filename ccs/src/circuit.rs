@@ -119,6 +119,7 @@ mod test {
     };
     use ark_ff::Field;
 
+    #[allow(dead_code)]
     struct MyCircuit;
 
     impl<F: Field> Circuit<F, 2, 1, 1> for MyCircuit {
@@ -140,6 +141,7 @@ mod test {
 
     // Composition.
 
+    #[allow(dead_code)]
     struct MyCircuit2;
 
     impl<F: Field> Circuit<F, 2, 1, 1> for MyCircuit2

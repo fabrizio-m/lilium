@@ -8,6 +8,7 @@ pub mod folding;
 mod instances;
 pub mod prove;
 mod proving;
+#[cfg(test)]
 mod test;
 pub mod testing;
 

@@ -19,7 +19,7 @@ impl<F: Field, S: Duplex<F>> Transcript<F, S> {
     pub fn print_state(&self) {
         self.sponge.print();
     }
-    pub fn guard<P>(&mut self, proof: P) -> TranscriptGuard<F, S, P> {
+    pub fn guard<P>(&mut self, proof: P) -> TranscriptGuard<'_, F, S, P> {
         TranscriptGuard::new(self, proof)
     }
 
@@ -118,7 +118,7 @@ impl<'a, F: Field, S: Duplex<F>, P> TranscriptGuard<'a, F, S, P> {
     pub fn new_guard<P2>(
         &mut self,
         proof: impl Into<MessageGuard<P2>>,
-    ) -> TranscriptGuard<F, S, P2> {
+    ) -> TranscriptGuard<'_, F, S, P2> {
         let proof: MessageGuard<P2> = proof.into();
         let proof = proof.0;
         TranscriptGuard {

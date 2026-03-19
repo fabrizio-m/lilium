@@ -182,7 +182,7 @@ where
         self.inner.eval();
     }
     /// Creates accumulator.
-    pub fn accumulator(&mut self, challenges: &S::Challs) -> EvalAccumulator<F, S> {
+    pub fn accumulator(&mut self, challenges: &S::Challs) -> EvalAccumulator<'_, F, S> {
         self.inner.set_stack(&self.accumulator_init);
         self.set_challs(challenges);
         EvalAccumulator(self)
