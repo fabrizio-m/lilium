@@ -69,8 +69,8 @@ pub trait BuildStructure<
 
 #[derive(Debug)]
 pub struct CircuitProfile {
-    witness_length: usize,
-    gate_counts: Vec<(&'static str, usize)>,
+    pub witness_length: usize,
+    pub gate_counts: Vec<(&'static str, usize)>,
 }
 
 impl Display for CircuitProfile {
