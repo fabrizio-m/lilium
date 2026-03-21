@@ -9,23 +9,23 @@ use sumcheck::{
     zerocheck::ZeroCheckMles,
 };
 
-pub struct FlcsReductionKey<F, const IO: usize>
+pub struct FlcsReductionKey<F, const IO: usize, const S: usize>
 where
     F: Field,
 {
     pub domain_vars: usize,
-    pub sumcheck_verifier: SumcheckVerifier<F, LcsSumcheck<F, IO, 4>>,
-    pub sumcheck_prover: SumcheckProver<F, LcsSumcheck<F, IO, 4>>,
-    pub structure: Rc<Vec<ZeroCheckMles<F, LcsMles<F, IO, 4>>>>,
+    pub sumcheck_verifier: SumcheckVerifier<F, LcsSumcheck<F, IO, S>>,
+    pub sumcheck_prover: SumcheckProver<F, LcsSumcheck<F, IO, S>>,
+    pub structure: Rc<Vec<ZeroCheckMles<F, LcsMles<F, IO, S>>>>,
     pub linear_combinations: Rc<LinearCombinations<IO>>,
 }
 
-impl<F, const IO: usize> FlcsReductionKey<F, IO>
+impl<F, const IO: usize, const S: usize> FlcsReductionKey<F, IO, S>
 where
     F: Field,
 {
     pub fn new(
-        structure: Rc<Vec<sumcheck_argument::LcsMles<F, IO, 4>>>,
+        structure: Rc<Vec<sumcheck_argument::LcsMles<F, IO, S>>>,
         linear_combinations: Rc<LinearCombinations<IO>>,
         gates: Vec<Vec<Exp<usize>>>,
     ) -> Self {

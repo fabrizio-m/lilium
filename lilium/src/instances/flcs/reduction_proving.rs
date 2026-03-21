@@ -15,25 +15,25 @@ use sumcheck::{
 };
 use transcript::{messages::SingleElement, Transcript};
 
-pub struct ReducedInstanceWitness<F, C, const I: usize, const IO: usize>
+pub struct ReducedInstanceWitness<F, C, const I: usize, const IO: usize, const S: usize>
 where
     F: Field,
     C: CommmitmentScheme<F>,
 {
-    pub linearized_instance: LinearizedInstance<F, C, IO, 4>,
+    pub linearized_instance: LinearizedInstance<F, C, IO, S>,
     pub linearized_witness: Vec<F>,
-    pub reduction_proof: FlcsReductionProof<F, IO>,
+    pub reduction_proof: FlcsReductionProof<F, IO, S>,
 }
 
-impl<F: Field, const IO: usize> FlcsReductionKey<F, IO> {
-    pub fn reduce_foldable_instance_witness<C, S, const I: usize>(
+impl<F: Field, const IO: usize, const S: usize> FlcsReductionKey<F, IO, S> {
+    pub fn reduce_foldable_instance_witness<C, D, const I: usize>(
         &self,
         instance: FoldableLcsInstance<F, C, I>,
         witness: Vec<F>,
-        transcript: &mut Transcript<F, S>,
-    ) -> ReducedInstanceWitness<F, C, I, IO>
+        transcript: &mut Transcript<F, D>,
+    ) -> ReducedInstanceWitness<F, C, I, IO, S>
     where
-        S: Duplex<F>,
+        D: Duplex<F>,
         C: CommmitmentScheme<F> + 'static,
     {
         //TODO: handle
@@ -60,7 +60,7 @@ impl<F: Field, const IO: usize> FlcsReductionKey<F, IO> {
         } = sumcheck_prover
             .prove_zerocheck(instance.zerocheck_powers, transcript, mles, &challs)
             .unwrap();
-        let evals: ZeroCheckMles<F, LcsMles<F, IO, 4>> = evals;
+        let evals: ZeroCheckMles<F, LcsMles<F, IO, S>> = evals;
 
         let reduction_proof = FlcsReductionProof::new(
             proof,
@@ -69,7 +69,7 @@ impl<F: Field, const IO: usize> FlcsReductionKey<F, IO> {
             *evals.inner().products(),
         );
 
-        let linearized_instance: LinearizedInstance<F, C, IO, 4> = LinearizedInstance {
+        let linearized_instance: LinearizedInstance<F, C, IO, S> = LinearizedInstance {
             witness_commit: instance.witness_commit,
             witness_eval: *evals.inner().w(),
             rx: point,
@@ -95,13 +95,13 @@ impl<F: Field, const IO: usize> FlcsReductionKey<F, IO> {
     }
 }
 
-fn fill_mles<F, const IO: usize>(
-    structure: &[ZeroCheckMles<F, LcsMles<F, IO, 4>>],
+fn fill_mles<F, const IO: usize, const S: usize>(
+    structure: &[ZeroCheckMles<F, LcsMles<F, IO, S>>],
     linear_combinations: &LinearCombinations<IO>,
     inputs: &[F],
     powers: &CompactPowers<F>,
     witness: &[F],
-) -> Vec<ZeroCheckMles<F, LcsMles<F, IO, 4>>>
+) -> Vec<ZeroCheckMles<F, LcsMles<F, IO, S>>>
 where
     F: Field,
 {

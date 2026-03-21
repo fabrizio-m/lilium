@@ -12,25 +12,25 @@ use commit::CommmitmentScheme;
 use spark::committed_spark::CommittedSpark;
 use std::rc::Rc;
 
-pub struct LcsProvingKey<F, C, const IO: usize>
+pub struct LcsProvingKey<F, C, const IO: usize, const S: usize>
 where
     F: Field,
     C: CommmitmentScheme<F>,
 {
-    pub flcs_reduction_key: FlcsReductionKey<F, IO>,
-    pub linearized_reduction_key: linearized::Key<F, C, IO, 4>,
+    pub flcs_reduction_key: FlcsReductionKey<F, IO, S>,
+    pub linearized_reduction_key: linearized::Key<F, C, IO, S>,
     pub matrix_eval_key: matrix_eval::Key<F, C, IO>,
     pub pcs: Rc<C>,
 }
 
-impl<F, C, const IO: usize> LcsProvingKey<F, C, IO>
+impl<F, C, const IO: usize, const S: usize> LcsProvingKey<F, C, IO, S>
 where
     F: Field,
     C: CommmitmentScheme<F>,
 {
     pub fn new(
         pcs: Rc<C>,
-        structure: Rc<Vec<LcsMles<F, IO, 4>>>,
+        structure: Rc<Vec<LcsMles<F, IO, S>>>,
         matrices: [Rc<Matrix>; IO],
         spark_keys: [CommittedSpark<F, C, 2>; IO],
         gates: Vec<Vec<Exp<usize>>>,

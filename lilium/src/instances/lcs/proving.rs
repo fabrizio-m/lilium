@@ -13,20 +13,22 @@ use commit::CommmitmentScheme;
 use sponge::sponge::Duplex;
 use transcript::Transcript;
 
-impl<F: Field, C: CommmitmentScheme<F>, const IO: usize> LcsProvingKey<F, C, IO> {
-    pub fn prove<S, const I: usize>(
+impl<F: Field, C: CommmitmentScheme<F>, const IO: usize, const S: usize>
+    LcsProvingKey<F, C, IO, S>
+{
+    pub fn prove<D, const I: usize>(
         &self,
         instance: LcsInstance<F, C, I>,
         witness: Vec<F>,
-        transcript: &mut Transcript<F, S>,
-    ) -> LcsProof<F, C, IO>
+        transcript: &mut Transcript<F, D>,
+    ) -> LcsProof<F, C, IO, S>
     where
-        S: Duplex<F>,
+        D: Duplex<F>,
         C: 'static,
     {
         let vars = self.flcs_reduction_key.domain_vars;
         let zerocheck_key = ZerocheckReductionKey::new(vars);
-        let instance = zerocheck_key.reduce::<F, C, S, I>(instance, transcript);
+        let instance = zerocheck_key.reduce::<F, C, D, I>(instance, transcript);
 
         let ReducedInstanceWitness {
             linearized_instance,
@@ -41,7 +43,7 @@ impl<F: Field, C: CommmitmentScheme<F>, const IO: usize> LcsProvingKey<F, C, IO>
             open_instances,
             open_witnesses,
             proof: linearized_proof,
-        } = self.linearized_reduction_key.prove::<I, S>(
+        } = self.linearized_reduction_key.prove::<I, D>(
             linearized_instance,
             linearized_witness,
             transcript,

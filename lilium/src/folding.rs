@@ -142,7 +142,7 @@ where
         };
         let mut transcript = self.folding_transcript.instanciate();
         let instance = MessageGuard::new([a, b]);
-        let instance = LcsFolding::<F, CS, IO, I>::verify_reduction(
+        let instance = LcsFolding::<F, CS, IO, I, S>::verify_reduction(
             &self.folding_key,
             instance,
             transcript.guard(proof),

@@ -17,16 +17,16 @@ use transcript::{
     MessageGuard, TranscriptBuilder, TranscriptGuard,
 };
 
-pub struct LcsProof<F: Field, C: CommmitmentScheme<F>, const IO: usize> {
-    reduction_proof: FlcsReductionProof<F, IO>,
+pub struct LcsProof<F: Field, C: CommmitmentScheme<F>, const IO: usize, const S: usize> {
+    reduction_proof: FlcsReductionProof<F, IO, S>,
     linearized_proof: LinearizedProof<F, IO>,
     matrix_eval_proof: MatrixEvalProof<F, C, IO>,
     open_proofs: [C::Proof; 2],
 }
 
-impl<F: Field, C: CommmitmentScheme<F>, const IO: usize> LcsProof<F, C, IO> {
+impl<F: Field, C: CommmitmentScheme<F>, const IO: usize, const S: usize> LcsProof<F, C, IO, S> {
     pub(crate) fn new(
-        reduction_proof: FlcsReductionProof<F, IO>,
+        reduction_proof: FlcsReductionProof<F, IO, S>,
         linearized_proof: LinearizedProof<F, IO>,
         matrix_eval_proof: MatrixEvalProof<F, C, IO>,
         open_proofs: [C::Proof; 2],
@@ -40,17 +40,17 @@ impl<F: Field, C: CommmitmentScheme<F>, const IO: usize> LcsProof<F, C, IO> {
     }
 }
 
-impl<F, C, const I: usize, const IO: usize> Protocol<F> for LcsProver<C, I, IO>
+impl<F, C, const I: usize, const IO: usize, const S: usize> Protocol<F> for LcsProver<C, I, IO, S>
 where
     F: Field,
     C: CommmitmentScheme<F> + 'static,
 {
-    type Key = LcsProvingKey<F, C, IO>;
+    type Key = LcsProvingKey<F, C, IO, S>;
 
     //TODO: add input size
     type Instance = LcsInstance<F, C, I>;
 
-    type Proof = LcsProof<F, C, IO>;
+    type Proof = LcsProof<F, C, IO, S>;
 
     type Error = ();
 
@@ -59,8 +59,8 @@ where
         let zerocheck_key = ZerocheckReductionKey::new(vars);
         builder
             .add_reduction_patter::<F, ZerocheckReduction<C, I>>(&zerocheck_key)
-            .add_reduction_patter::<F, FlcsReduction<C, I, IO>>(&key.flcs_reduction_key)
-            .add_reduction_patter::<F, LinearizedInstanceReduction<F, C, IO, 4>>(
+            .add_reduction_patter::<F, FlcsReduction<C, I, IO, S>>(&key.flcs_reduction_key)
+            .add_reduction_patter::<F, LinearizedInstanceReduction<F, C, IO, S>>(
                 &key.linearized_reduction_key,
             )
             .add_protocol_patter::<F, MatrixEvalProtocol<F, C, IO>>(&key.matrix_eval_key)
@@ -72,10 +72,10 @@ where
         todo!()
     }
 
-    fn verify<S: sponge::sponge::Duplex<F>>(
+    fn verify<D: sponge::sponge::Duplex<F>>(
         key: &Self::Key,
         instance: MessageGuard<Self::Instance>,
-        mut transcript: TranscriptGuard<F, S, Self::Proof>,
+        mut transcript: TranscriptGuard<F, D, Self::Proof>,
     ) -> Result<(), Self::Error> {
         let instance = {
             let vars = key.flcs_reduction_key.domain_vars;

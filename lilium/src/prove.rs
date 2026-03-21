@@ -22,7 +22,11 @@ where
     pub fn prove_from_inputs<const IN: usize, const OUT: usize, const PRIV_OUT: usize>(
         &self,
         inputs: [F; IN],
-    ) -> (LcsInstance<F, CS, I>, LcsProof<F, CS, IO>, C::PrivateOutput)
+    ) -> (
+        LcsInstance<F, CS, I>,
+        LcsProof<F, CS, IO, S>,
+        C::PrivateOutput,
+    )
     where
         C: Circuit<F, IN, OUT, PRIV_OUT>,
     {
@@ -45,7 +49,7 @@ where
         &self,
         instance: LcsInstance<F, CS, I>,
         witness: Witness<F>,
-    ) -> LcsProof<F, CS, IO> {
+    ) -> LcsProof<F, CS, IO, S> {
         let mut transcript = self.transcript.instanciate();
         let proof = self.lcs_key.prove(instance, witness.0, &mut transcript);
         //TODO:handle
@@ -54,7 +58,7 @@ where
     }
 
     // TODO: Move into its own module.
-    pub fn verify(&self, instance: LcsInstance<F, CS, I>, proof: LcsProof<F, CS, IO>) -> bool {
+    pub fn verify(&self, instance: LcsInstance<F, CS, I>, proof: LcsProof<F, CS, IO, S>) -> bool {
         let mut transcript = self.transcript.instanciate();
         let result = {
             let transcript = TranscriptGuard::new(&mut transcript, proof);

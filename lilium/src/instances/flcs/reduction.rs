@@ -22,17 +22,17 @@ use transcript::{
 
 /// Proof for the LCS -> Linearized reduction.
 #[derive(Debug, Clone)]
-pub struct FlcsReductionProof<F: Field, const IO: usize> {
-    sumcheck: sumcheck::sumcheck::Proof<F, LcsSumcheck<F, IO, 4>>,
-    selector_evals: [F; 4],
+pub struct FlcsReductionProof<F: Field, const IO: usize, const S: usize> {
+    sumcheck: sumcheck::sumcheck::Proof<F, LcsSumcheck<F, IO, S>>,
+    selector_evals: [F; S],
     witness_eval: F,
     products: [F; IO],
 }
 
-impl<F: Field, const IO: usize> FlcsReductionProof<F, IO> {
+impl<F: Field, const IO: usize, const S: usize> FlcsReductionProof<F, IO, S> {
     pub(crate) fn new(
-        sumcheck: sumcheck::sumcheck::Proof<F, LcsSumcheck<F, IO, 4>>,
-        selector_evals: [F; 4],
+        sumcheck: sumcheck::sumcheck::Proof<F, LcsSumcheck<F, IO, S>>,
+        selector_evals: [F; S],
         witness_eval: F,
         products: [F; IO],
     ) -> Self {
@@ -45,20 +45,21 @@ impl<F: Field, const IO: usize> FlcsReductionProof<F, IO> {
     }
 }
 
-pub struct FlcsReduction<C, const I: usize, const IO: usize>(PhantomData<C>);
+pub struct FlcsReduction<C, const I: usize, const IO: usize, const S: usize>(PhantomData<C>);
 
-impl<F, C, const I: usize, const IO: usize> Reduction<F> for FlcsReduction<C, I, IO>
+impl<F, C, const I: usize, const IO: usize, const S: usize> Reduction<F>
+    for FlcsReduction<C, I, IO, S>
 where
     F: Field,
     C: CommmitmentScheme<F> + 'static,
 {
     type A = FoldableLcsInstance<F, C, I>;
 
-    type B = LinearizedInstance<F, C, IO, 4>;
+    type B = LinearizedInstance<F, C, IO, S>;
 
-    type Key = FlcsReductionKey<F, IO>;
+    type Key = FlcsReductionKey<F, IO, S>;
 
-    type Proof = FlcsReductionProof<F, IO>;
+    type Proof = FlcsReductionProof<F, IO, S>;
 
     type Error = crate::Error<F, C>;
 
@@ -69,18 +70,18 @@ where
         let sumcheck_verifier = &key.sumcheck_verifier;
         builder
             .round::<F, Self::A, 1>()
-            .add_reduction_patter::<F, SumcheckVerifier<F, LcsSumcheck<F, IO, 4>>>(
+            .add_reduction_patter::<F, SumcheckVerifier<F, LcsSumcheck<F, IO, S>>>(
                 sumcheck_verifier,
             )
-            .round::<F, [SingleElement<F>; 4], 0>()
+            .round::<F, [SingleElement<F>; S], 0>()
             .round::<F, SingleElement<F>, 0>()
             .round::<F, [SingleElement<F>; IO], 0>()
     }
 
-    fn verify_reduction<S: Duplex<F>>(
+    fn verify_reduction<D: Duplex<F>>(
         key: &Self::Key,
         instance: MessageGuard<Self::A>,
-        mut transcript: TranscriptGuard<F, S, Self::Proof>,
+        mut transcript: TranscriptGuard<F, D, Self::Proof>,
     ) -> Result<Self::B, Self::Error> {
         // Unwrap isntance, get challenge for sumcheck.
         let (lcs_instance, [sumcheck_chall]) = transcript.unwrap_guard(instance)?;
@@ -107,9 +108,9 @@ where
         let check_point = MultiPoint::new(check.vars.clone());
 
         // Assembling different types of evals into a single one.
-        let evals: ZeroCheckMles<F, LcsMles<F, IO, 4>> = {
-            let small_evals_inner: LcsMles<Option<F>, IO, 4> =
-                LcsMles::<Option<F>, IO, 4>::small_evals(
+        let evals: ZeroCheckMles<F, LcsMles<F, IO, S>> = {
+            let small_evals_inner: LcsMles<Option<F>, IO, S> =
+                LcsMles::<Option<F>, IO, S>::small_evals(
                     check_point.clone(),
                     public_inputs.to_vec(),
                 );
@@ -140,11 +141,11 @@ where
             let products_inner = LcsMles::new_only_products(products);
             let products = ZeroCheckMles::new(None, products_inner);
             let evals = products.combine(&evals, Option::xor);
-            LcsSumcheck::<F, IO, 4>::map_evals(evals, Option::unwrap)
+            LcsSumcheck::<F, IO, S>::map_evals(evals, Option::unwrap)
         };
 
         // Instance to be verified for the matrix evals.
-        let linearized_instance: LinearizedInstance<F, C, IO, 4> = {
+        let linearized_instance: LinearizedInstance<F, C, IO, S> = {
             let products: [F; IO] = *evals.inner().products();
             let rx = check_point;
             let selector_evals = *evals.inner().gate_selectors();
@@ -158,7 +159,7 @@ where
             }
         };
 
-        let evals: ZeroCheckMles<F, LcsMles<F, IO, 4>> = evals;
+        let evals: ZeroCheckMles<F, LcsMles<F, IO, S>> = evals;
         let challs = ConstraintCombinationChallenge::from(sumcheck_chall);
 
         // Check evaluation on the point.

@@ -32,14 +32,14 @@ pub struct CircuitKey<
     _circuit: PhantomData<C>,
     pub(crate) transcript: TranscriptDescriptor<F, D>,
     pub(crate) committment_scheme: Rc<CS>,
-    pub(crate) lcs_key: LcsProvingKey<F, CS, IO>,
-    pub(crate) folding_key: LcsFoldingKey<F, IO>,
+    pub(crate) lcs_key: LcsProvingKey<F, CS, IO, S>,
+    pub(crate) folding_key: LcsFoldingKey<F, IO, S>,
     pub(crate) folding_transcript: TranscriptDescriptor<F, D>,
     /// For the zerocheck reduction used in certain cases of folding.
     pub(crate) zerocheck_transcript: TranscriptDescriptor<F, D>,
 }
 
-impl<F, T, C, CS, const I: usize, const IO: usize> CircuitKey<F, T, C, CS, I, IO, 4>
+impl<F, T, C, CS, const I: usize, const IO: usize, const S: usize> CircuitKey<F, T, C, CS, I, IO, S>
 where
     F: Field,
     T: Duplex<F>,
@@ -50,7 +50,7 @@ where
         C: Circuit<F, IN, OUT, PRIV_OUT>,
         CS: 'static,
     {
-        let ccs_structure: CcsStructure<IO, 4> = C::structure();
+        let ccs_structure: CcsStructure<IO, S> = C::structure();
         let vars = ccs_structure.vars();
         let spark_structure = ccs_structure.io_matrices.clone().map(|matrix: Matrix| {
             let mut evals: Vec<_> = matrix
@@ -93,12 +93,12 @@ where
         );
         let transcript_builder = TranscriptBuilder::new(vars, ParamResolver::new());
         let folding_transcript = transcript_builder
-            .add_reduction_patter::<F, LcsFolding<F, CS, IO, I>>(&folding_key)
+            .add_reduction_patter::<F, LcsFolding<F, CS, IO, I, S>>(&folding_key)
             .finish();
 
         let transcript_builder = TranscriptBuilder::new(vars, ParamResolver::new());
         let transcript = transcript_builder
-            .add_protocol_patter::<F, LcsProver<CS, I, IO>>(&lcs_key)
+            .add_protocol_patter::<F, LcsProver<CS, I, IO, S>>(&lcs_key)
             .finish();
         let transcript_builder = TranscriptBuilder::new(vars, ParamResolver::new());
         let zerocheck_transcript = transcript_builder

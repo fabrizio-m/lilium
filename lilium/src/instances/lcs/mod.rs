@@ -38,4 +38,4 @@ impl<F: Field, C: CommmitmentScheme<F>, const I: usize> Message<F> for LcsInstan
     }
 }
 
-pub struct LcsProver<C, const I: usize, const IO: usize>(PhantomData<C>);
+pub struct LcsProver<C, const I: usize, const IO: usize, const S: usize>(PhantomData<C>);

@@ -15,18 +15,19 @@ use transcript::{
     protocols::Reduction, MessageGuard, Transcript, TranscriptBuilder, TranscriptGuard,
 };
 
-pub struct LcsFolding<F, C, const IO: usize, const I: usize> {
+pub struct LcsFolding<F, C, const IO: usize, const I: usize, const S: usize> {
     _phantom: PhantomData<(F, C)>,
 }
 
-pub struct LcsFoldingKey<F: Field, const IO: usize> {
+pub struct LcsFoldingKey<F: Field, const IO: usize, const S: usize> {
     // vars: usize,
-    zerofold: ZeroFold<F, LcsSumfold<F, IO, 4>>,
-    structure: Rc<Vec<ZeroCheckMles<F, LcsMles<F, IO, 4>>>>,
+    zerofold: ZeroFold<F, LcsSumfold<F, IO, S>>,
+    structure: Rc<Vec<ZeroCheckMles<F, LcsMles<F, IO, S>>>>,
     linear_combinations: Rc<LinearCombinations<IO>>,
 }
 
-impl<F, C, const IO: usize, const I: usize> Reduction<F> for LcsFolding<F, C, IO, I>
+impl<F, C, const IO: usize, const I: usize, const S: usize> Reduction<F>
+    for LcsFolding<F, C, IO, I, S>
 where
     F: Field,
     C: CommmitmentScheme<F> + 'static,
@@ -35,7 +36,7 @@ where
 
     type B = FoldableLcsInstance<F, C, I>;
 
-    type Key = LcsFoldingKey<F, IO>;
+    type Key = LcsFoldingKey<F, IO, S>;
 
     type Proof = SumFoldProof<F>;
 
@@ -47,10 +48,10 @@ where
             .add_reduction_patter::<F, SumFold<F, _>>(key.zerofold.sumfold_key())
     }
 
-    fn verify_reduction<S: Duplex<F>>(
+    fn verify_reduction<D: Duplex<F>>(
         key: &Self::Key,
         instance: MessageGuard<Self::A>,
-        mut transcript: TranscriptGuard<F, S, Self::Proof>,
+        mut transcript: TranscriptGuard<F, D, Self::Proof>,
     ) -> Result<Self::B, Self::Error> {
         // TODO: handle.
         let (instances, []): ([FoldableLcsInstance<F, C, I>; 2], _) =
@@ -68,14 +69,14 @@ where
     }
 }
 
-impl<F: Field, const IO: usize> LcsFoldingKey<F, IO> {
+impl<F: Field, const IO: usize, const S: usize> LcsFoldingKey<F, IO, S> {
     pub fn new(
         gates: Vec<Vec<Exp<usize>>>,
         vars: usize,
-        structure: Rc<Vec<ZeroCheckMles<F, LcsMles<F, IO, 4>>>>,
+        structure: Rc<Vec<ZeroCheckMles<F, LcsMles<F, IO, S>>>>,
         linear_combinations: Rc<LinearCombinations<IO>>,
     ) -> Self {
-        let function = LcsSumcheck::<F, IO, 4>::new(gates, false);
+        let function = LcsSumcheck::<F, IO, S>::new(gates, false);
         let zerofold = ZeroFold::new(LcsSumfold::from(function), vars);
         Self {
             zerofold,
@@ -84,15 +85,15 @@ impl<F: Field, const IO: usize> LcsFoldingKey<F, IO> {
         }
     }
 
-    pub fn fold<C, S, const I: usize>(
+    pub fn fold<C, D, const I: usize>(
         &self,
         instances: [FoldableLcsInstance<F, C, I>; 2],
         witnesses: [Vec<F>; 2],
-        transcript: &mut Transcript<F, S>,
+        transcript: &mut Transcript<F, D>,
     ) -> (FoldableLcsInstance<F, C, I>, Vec<F>, SumFoldProof<F>)
     where
         C: CommmitmentScheme<F>,
-        S: Duplex<F>,
+        D: Duplex<F>,
     {
         let (w1, w2) = {
             let [w1, w2] = witnesses.each_ref();
@@ -129,12 +130,12 @@ impl<F: Field, const IO: usize> LcsFoldingKey<F, IO> {
     }
 }
 
-fn fill_mles<F, const IO: usize>(
-    structure: &[ZeroCheckMles<F, LcsMles<F, IO, 4>>],
+fn fill_mles<F, const IO: usize, const S: usize>(
+    structure: &[ZeroCheckMles<F, LcsMles<F, IO, S>>],
     linear_combinations: &LinearCombinations<IO>,
     inputs: &[F],
     witness: &[F],
-) -> Vec<LcsMles<F, IO, 4>>
+) -> Vec<LcsMles<F, IO, S>>
 where
     F: Field,
 {
