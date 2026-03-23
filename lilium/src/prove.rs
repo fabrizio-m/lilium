@@ -18,7 +18,7 @@ where
     CS: CommmitmentScheme<F> + 'static,
 {
     /// Creates witness from inputs, commits to it, creates instance and proves it.
-    /// Returns (proof, private_output)
+    /// Returns (instance, proof, private_output)
     pub fn prove_from_inputs<const IN: usize, const OUT: usize, const PRIV_OUT: usize>(
         &self,
         inputs: [F; IN],
@@ -42,6 +42,30 @@ where
         let instance: LcsInstance<F, CS, I> = LcsInstance::new(witness_commit, inputs);
         let proof = self.prove(instance.clone(), witness);
         (instance, proof, output)
+    }
+
+    /// Generates witness from inputs, commits to it, and returns an instance-witness
+    /// pair which can be proved or folded.
+    /// Returns (instance, witness, private_output)
+    pub fn commit_witness<const IN: usize, const OUT: usize, const PRIV_OUT: usize>(
+        &self,
+        inputs: [F; IN],
+    ) -> (LcsInstance<F, CS, I>, Witness<F>, C::PrivateOutput)
+    where
+        C: Circuit<F, IN, OUT, PRIV_OUT>,
+    {
+        assert_eq!(I, IN + OUT);
+        let (mut witness, output) = <C as Prove<_, IN, OUT, PRIV_OUT, IO>>::witness(inputs, true);
+        witness.pad_to_power();
+        let witness_commit = self.committment_scheme.commit_mle(&witness.0);
+
+        let mut inputs = [F::zero(); I];
+        assert!(witness.0.len() >= I);
+        inputs.copy_from_slice(&witness.0[0..I]);
+
+        let instance: LcsInstance<F, CS, I> = LcsInstance::new(witness_commit, inputs);
+
+        (instance, witness, output)
     }
 
     /// Proves (instance, witness) pair.
