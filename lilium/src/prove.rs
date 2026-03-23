@@ -30,16 +30,8 @@ where
     where
         C: Circuit<F, IN, OUT, PRIV_OUT>,
     {
-        assert_eq!(I, IN + OUT);
-        let (mut witness, output) = <C as Prove<_, IN, OUT, PRIV_OUT, IO>>::witness(inputs, true);
-        witness.pad_to_power();
-        let witness_commit = self.committment_scheme.commit_mle(&witness.0);
+        let (instance, witness, output) = self.commit_witness(inputs);
 
-        let mut inputs = [F::zero(); I];
-        assert!(witness.0.len() >= I);
-        inputs.copy_from_slice(&witness.0[0..I]);
-
-        let instance: LcsInstance<F, CS, I> = LcsInstance::new(witness_commit, inputs);
         let proof = self.prove(instance.clone(), witness);
         (instance, proof, output)
     }
