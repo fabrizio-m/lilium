@@ -41,6 +41,7 @@ pub struct WitnessGenerator<F: Field, const IO: usize> {
     check: bool,
 }
 
+#[derive(Clone, Debug)]
 pub struct Witness<F: Field>(pub Vec<F>);
 
 impl<F: Field> Witness<F> {
