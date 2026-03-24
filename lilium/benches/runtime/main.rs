@@ -119,9 +119,53 @@ fn folding(c: &mut Criterion) {
     fold::<5698>(&mut group, &mut rng);
 }
 
+fn commit_and_fold<const N: usize>(group: &mut BenchmarkGroup<'_, WallTime>, rng: &mut impl Rng)
+where
+    Fr: Field,
+    Scheme: CommmitmentScheme<Fr>,
+    Sponge: Duplex<Fr>,
+{
+    let profile = <HashChain<N> as BuildStructure<Fr, 1, 1, 1, 5>>::profile();
+
+    group.bench_with_input(
+        BenchmarkId::new("CommitFolding", profile.witness_length),
+        &(),
+        |b, _| {
+            let preimage = Fr::rand(rng);
+            let key = CircuitKey::<Fr, Sponge, HashChain<N>, Scheme, 2, 4, 5>::new();
+            let (instance1, witness1, _) = key.commit_witness([preimage]);
+
+            b.iter(|| {
+                let preimage = Fr::rand(rng);
+                let (instance2, witness2, _) = key.commit_witness([preimage]);
+                let instances = (instance1.clone(), instance2);
+                let witnesses = [witness1.clone(), witness2];
+                let _folded = key.fold(instances.clone(), witnesses.clone());
+            });
+        },
+    );
+}
+
+fn commit_folding(c: &mut Criterion) {
+    let mut group = c.benchmark_group("Commit and fold");
+    group.sampling_mode(SamplingMode::Flat);
+    let mut rng = StdRng::seed_from_u64(0);
+    commit_and_fold::<11>(&mut group, &mut rng);
+    commit_and_fold::<22>(&mut group, &mut rng);
+    commit_and_fold::<44>(&mut group, &mut rng);
+    commit_and_fold::<89>(&mut group, &mut rng);
+    commit_and_fold::<178>(&mut group, &mut rng);
+    commit_and_fold::<356>(&mut group, &mut rng);
+    commit_and_fold::<712>(&mut group, &mut rng);
+    commit_and_fold::<1424>(&mut group, &mut rng);
+    commit_and_fold::<2849>(&mut group, &mut rng);
+    commit_and_fold::<5698>(&mut group, &mut rng);
+}
+
 fn hash_chain_benchmarks(c: &mut Criterion) {
     proving(c);
     folding(c);
+    commit_folding(c);
 }
 
 criterion_group! {
