@@ -61,14 +61,15 @@ where
     Scheme: CommmitmentScheme<Fr>,
     Sponge: Duplex<Fr>,
 {
-    let preimage = Fr::rand(rng);
-    let key = CircuitKey::<Fr, Sponge, HashChain<N>, Scheme, 2, 4, 5>::new();
     let profile = <HashChain<N> as BuildStructure<Fr, 1, 1, 1, 5>>::profile();
 
     group.bench_with_input(
         BenchmarkId::new("Proving", profile.witness_length),
-        &key,
-        |b, key| {
+        &(),
+        |b, _| {
+            let preimage = Fr::rand(rng);
+            let key = CircuitKey::<Fr, Sponge, HashChain<N>, Scheme, 2, 4, 5>::new();
+
             b.iter(|| {
                 let (_instance, _proof, _output) = key.prove_from_inputs([preimage]);
             });
@@ -82,18 +83,19 @@ where
     Scheme: CommmitmentScheme<Fr>,
     Sponge: Duplex<Fr>,
 {
-    let preimage = Fr::rand(rng);
-    let key = CircuitKey::<Fr, Sponge, HashChain<N>, Scheme, 2, 4, 5>::new();
     let profile = <HashChain<N> as BuildStructure<Fr, 1, 1, 1, 5>>::profile();
-
-    let (instance, witness, _) = key.commit_witness([preimage]);
-    let instances = (instance.clone(), instance);
-    let witnesses = [witness.clone(), witness];
 
     group.bench_with_input(
         BenchmarkId::new("Folding", profile.witness_length),
-        &key,
-        |b, key| {
+        &(),
+        |b, _| {
+            let preimage = Fr::rand(rng);
+            let key = CircuitKey::<Fr, Sponge, HashChain<N>, Scheme, 2, 4, 5>::new();
+
+            let (instance, witness, _) = key.commit_witness([preimage]);
+            let instances = (instance.clone(), instance);
+            let witnesses = [witness.clone(), witness];
+
             b.iter(|| {
                 let _folded = key.fold(instances.clone(), witnesses.clone());
             });
