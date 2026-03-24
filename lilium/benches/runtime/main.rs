@@ -76,9 +76,55 @@ where
     );
 }
 
+fn fold<const N: usize>(group: &mut BenchmarkGroup<'_, WallTime>, rng: &mut impl Rng)
+where
+    Fr: Field,
+    Scheme: CommmitmentScheme<Fr>,
+    Sponge: Duplex<Fr>,
+{
+    let preimage = Fr::rand(rng);
+    let key = CircuitKey::<Fr, Sponge, HashChain<N>, Scheme, 2, 4, 5>::new();
+    let profile = <HashChain<N> as BuildStructure<Fr, 1, 1, 1, 5>>::profile();
+
+    let (instance, witness, _) = key.commit_witness([preimage]);
+    let instances = (instance.clone(), instance);
+    let witnesses = [witness.clone(), witness];
+
+    group.bench_with_input(
+        BenchmarkId::new("Folding", profile.witness_length),
+        &key,
+        |b, key| {
+            b.iter(|| {
+                let _folded = key.fold(instances.clone(), witnesses.clone());
+            });
+        },
+    );
+}
+
+fn folding(c: &mut Criterion) {
+    let mut group = c.benchmark_group("Folding Time");
+    group.sampling_mode(SamplingMode::Flat);
+    let mut rng = StdRng::seed_from_u64(0);
+    fold::<11>(&mut group, &mut rng);
+    fold::<22>(&mut group, &mut rng);
+    fold::<44>(&mut group, &mut rng);
+    fold::<89>(&mut group, &mut rng);
+    fold::<178>(&mut group, &mut rng);
+    fold::<356>(&mut group, &mut rng);
+    fold::<712>(&mut group, &mut rng);
+    fold::<1424>(&mut group, &mut rng);
+    fold::<2849>(&mut group, &mut rng);
+    fold::<5698>(&mut group, &mut rng);
+}
+
+fn hash_chain_benchmarks(c: &mut Criterion) {
+    proving(c);
+    folding(c);
+}
+
 criterion_group! {
     name = hash_chain;
     config = Criterion::default().sample_size(10);
-    targets = proving
+    targets = hash_chain_benchmarks
 }
 criterion_main!(hash_chain);
