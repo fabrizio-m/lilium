@@ -92,9 +92,10 @@ impl<F: Field, const IO: usize, const S: usize> LcsFoldingKey<F, IO, S> {
         transcript: &mut Transcript<F, D>,
     ) -> (FoldableLcsInstance<F, C, I>, Vec<F>, SumFoldProof<F>)
     where
-        C: CommmitmentScheme<F>,
+        C: CommmitmentScheme<F> + 'static,
         D: Duplex<F>,
     {
+        let [] = transcript.send_message(&instances).unwrap();
         let (w1, w2) = {
             let [w1, w2] = witnesses.each_ref();
             let structure = &self.structure;
