@@ -15,7 +15,7 @@ impl<F: Field> Circuit<F, 3, 3, 3> for TestingHash {
 
     type PrivateOutput = [F; 3];
 
-    fn circuit<V: Val, C: ConstraintSystem<V>>(
+    fn circuit<V: Val, C: ConstraintSystem<F, V>>(
         cs: &mut C,
         public_input: [Var<V>; 3],
     ) -> ([Var<V>; 3], [Var<V>; 3]) {
@@ -60,7 +60,7 @@ fn profile_hash() {
 }
 */
 
-fn add_constants<V: Val, C: ConstraintSystem<V>>(
+fn add_constants<F, V: Val, C: ConstraintSystem<F, V>>(
     cs: &mut C,
     state: &mut [Var<V>; 3],
     constant: &Var<V>,
@@ -69,12 +69,12 @@ fn add_constants<V: Val, C: ConstraintSystem<V>>(
     *state = new_state;
 }
 
-fn sbox<V: Val, C: ConstraintSystem<V>>(cs: &mut C, state: &mut [Var<V>; 3]) {
+fn sbox<F, V: Val, C: ConstraintSystem<F, V>>(cs: &mut C, state: &mut [Var<V>; 3]) {
     let new_state = state.clone().map(|x| cs.pow::<7>(x));
     *state = new_state;
 }
 
-fn apply_matrix<V: Val, C: ConstraintSystem<V>>(cs: &mut C, state: &mut [Var<V>; 3]) {
+fn apply_matrix<F, V: Val, C: ConstraintSystem<F, V>>(cs: &mut C, state: &mut [Var<V>; 3]) {
     let [s0, s1, s2] = state.clone();
     let sum = cs.add_n::<4, 3>(state.clone());
     let s0 = cs.add(sum.clone(), s0);
@@ -91,7 +91,7 @@ impl<F: Field, const N: usize> Circuit<F, 1, 1, 1> for HashChain<N> {
 
     type PrivateOutput = F;
 
-    fn circuit<V: Val, C: ConstraintSystem<V>>(
+    fn circuit<V: Val, C: ConstraintSystem<F, V>>(
         cs: &mut C,
         public_input: [Var<V>; 1],
     ) -> ([Var<V>; 1], [Var<V>; 1]) {

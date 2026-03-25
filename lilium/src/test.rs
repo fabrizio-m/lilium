@@ -12,7 +12,7 @@ impl<F: Field> Circuit<F, 2, 1, 0> for Circuit1 {
 
     type PrivateOutput = ();
 
-    fn circuit<V: Val, C: ConstraintSystem<V>>(
+    fn circuit<V: Val, C: ConstraintSystem<F, V>>(
         cs: &mut C,
         public_input: [Var<V>; 2],
     ) -> ([Var<V>; 1], [Var<V>; 0]) {

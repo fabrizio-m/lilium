@@ -1,7 +1,7 @@
 use crate::{circuit::Var, structure::Exp};
 use std::ops;
 
-pub trait ConstraintSystem<V> {
+pub trait ConstraintSystem<F, V> {
     fn execute<G, const IO: usize, const I: usize, const O: usize>(
         &mut self,
         i: [Var<V>; I],
@@ -9,6 +9,11 @@ pub trait ConstraintSystem<V> {
     where
         G: Gate<IO, I, O> + 'static,
         V: Val;
+
+    /// Creates a new variable with the provided value.
+    /// The variable is not constrained to have the provided value, or any
+    /// particular value at all.
+    fn free_variable(&mut self, value: F) -> Var<V>;
 }
 
 pub trait Val:
@@ -160,9 +165,9 @@ pub mod cs_prototype {
         }
     }
     impl Add {
-        pub fn add<V: Val, CS>(cs: &mut CS, a: Var<V>, b: Var<V>) -> Var<V>
+        pub fn add<F, V: Val, CS>(cs: &mut CS, a: Var<V>, b: Var<V>) -> Var<V>
         where
-            CS: ConstraintSystem<V>,
+            CS: ConstraintSystem<F, V>,
         {
             //let [c] = Add::run(cs, [a, b]);
             let [c] = cs.execute::<Self, 3, 2, 1>([a, b]);

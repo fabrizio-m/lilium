@@ -27,7 +27,7 @@ pub trait Circuit<F: Field, const IN: usize = 0, const OUT: usize = 0, const PRI
     ///() if you don't care
     type PrivateOutput;
 
-    fn circuit<V: Val, C: ConstraintSystem<V>>(
+    fn circuit<V: Val, C: ConstraintSystem<F, V>>(
         cs: &mut C,
         public_input: [Var<V>; IN],
     ) -> ([Var<V>; OUT], [Var<V>; PRIV_OUT]);
@@ -127,12 +127,12 @@ mod test {
 
         type PrivateOutput = ();
 
-        fn circuit<V: Val, C: ConstraintSystem<V>>(
+        fn circuit<V: Val, C: ConstraintSystem<F, V>>(
             cs: &mut C,
             public_input: [super::Var<V>; 2],
         ) -> ([super::Var<V>; 1], [super::Var<V>; 1]) {
             let [a, b] = public_input;
-            let c = Add::add(cs, a, b);
+            let c = Add::add::<F, V, C>(cs, a, b);
             ([c.clone()], [c])
         }
 
@@ -152,7 +152,7 @@ mod test {
 
         type PrivateOutput = ();
 
-        fn circuit<V: Val, C: ConstraintSystem<V>>(
+        fn circuit<V: Val, C: ConstraintSystem<F, V>>(
             cs: &mut C,
             public_input: [Var<V>; 2],
         ) -> ([Var<V>; 1], [Var<V>; 1]) {

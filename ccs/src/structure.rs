@@ -189,7 +189,10 @@ impl<const MAX_IO: usize> StructureBuilder<MAX_IO> {
     pub fn link_outputs<const I: usize, const O: usize>(&mut self, outputs: [WitnessIndex; O]) {
         for (i, b) in outputs.into_iter().enumerate() {
             let a = WitnessIndex(i + I + 1);
-            Self::execute::<Equality, 2, 2, 0>(self, [a, b].map(Var));
+            <Self as ConstraintSystem<(), WitnessIndex>>::execute::<Equality, 2, 2, 0>(
+                self,
+                [a, b].map(Var),
+            );
         }
     }
     /*fn bit_decomposition<const BITS: usize>(mut selector: usize) -> [bool; BITS] {
@@ -243,7 +246,7 @@ impl<const MAX_IO: usize> StructureBuilder<MAX_IO> {
     }
 }
 
-impl<const MAX_IO: usize> ConstraintSystem<WitnessIndex> for StructureBuilder<MAX_IO> {
+impl<F, const MAX_IO: usize> ConstraintSystem<F, WitnessIndex> for StructureBuilder<MAX_IO> {
     fn execute<G, const IO: usize, const I: usize, const O: usize>(
         &mut self,
         inputs: [Var<WitnessIndex>; I],
@@ -267,6 +270,10 @@ impl<const MAX_IO: usize> ConstraintSystem<WitnessIndex> for StructureBuilder<MA
         };
         self.constraints.push(constraint);
         output.map(Var)
+    }
+
+    fn free_variable(&mut self, _value: F) -> Var<WitnessIndex> {
+        Var(self.var())
     }
 }
 

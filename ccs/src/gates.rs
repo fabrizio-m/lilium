@@ -184,7 +184,7 @@ impl Gate<1, 1, 0> for Binary {
 */
 
 /// Trait providing easier use of standard gates, implemented for any `ConstraintSystem`.
-pub trait StandardGates<V> {
+pub trait StandardGates<F, V> {
     /// Makes use of `Add2`
     fn add(&mut self, a: Var<V>, b: Var<V>) -> Var<V>;
     /// Makes use of `AddN<IO,I>'
@@ -207,9 +207,9 @@ pub trait StandardGates<V> {
     fn pow<const EXP: u8>(&mut self, x: Var<V>) -> Var<V>;
 }
 
-impl<V, T> StandardGates<V> for T
+impl<F, V, T> StandardGates<F, V> for T
 where
-    T: ConstraintSystem<V>,
+    T: ConstraintSystem<F, V>,
     V: Val,
 {
     fn add(&mut self, a: Var<V>, b: Var<V>) -> Var<V> {

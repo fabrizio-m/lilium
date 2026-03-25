@@ -51,7 +51,7 @@ impl<F: Field> Witness<F> {
     }
 }
 
-impl<F: Field, const MAX_IO: usize> ConstraintSystem<Fi<F>> for WitnessGenerator<F, MAX_IO> {
+impl<F: Field, const MAX_IO: usize> ConstraintSystem<F, Fi<F>> for WitnessGenerator<F, MAX_IO> {
     fn execute<G, const IO: usize, const I: usize, const O: usize>(
         &mut self,
         i: [Var<Fi<F>>; I],
@@ -74,6 +74,12 @@ impl<F: Field, const MAX_IO: usize> ConstraintSystem<Fi<F>> for WitnessGenerator
             }
         }
         out.map(Var)
+    }
+
+    fn free_variable(&mut self, value: F) -> Var<Fi<F>> {
+        let value = Fi(value);
+        self.witness.push(value);
+        Var(value)
     }
 }
 
