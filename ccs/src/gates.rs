@@ -167,6 +167,21 @@ impl<const EXP: u8> Gate<2, 1, 1> for Pow<EXP> {
     }
 }
 
+/// Constraints the input to be either 0 or 1.
+pub struct Binary;
+
+impl Gate<1, 1, 0> for Binary {
+    fn gate<V: Val>(_: [V; 1]) -> [V; 0] {
+        []
+    }
+
+    fn check<V: Val>([x]: [V; 1], _: [V; 0]) -> Constraints<V> {
+        // (x - 1) * (x - 0)
+        // x^2 - x
+        Constraints::from(x.clone() * x.clone() - x)
+    }
+}
+
 //TODO: this requires constants
 /*
 /// Gate to enforce its only input is 0 or 1.
