@@ -1,7 +1,9 @@
 pub use crate::matrix::Matrix;
 use crate::{
     circuit::Var,
-    constraint_system::{cs_prototype::GateRegistry, ConstraintSystem, Constraints, Gate, Val},
+    constraint_system::{
+        cs_prototype::GateRegistry, ConstraintSystem, Constraints, Gate, Val, WitnessAccess,
+    },
     gates::Equality,
 };
 use std::{
@@ -272,7 +274,15 @@ impl<F, const MAX_IO: usize> ConstraintSystem<F, WitnessIndex> for StructureBuil
         output.map(Var)
     }
 
-    fn free_variable(&mut self, _value: F) -> Var<WitnessIndex> {
+    fn read(&self, _var: &Var<WitnessIndex>, _token: &WitnessAccess) -> F {
+        // This should be unreacheable due to the capability token preventing the call.
+        panic!("can't access witness during constraint building");
+    }
+
+    fn free_variable<W>(&mut self, _value: W) -> Var<WitnessIndex>
+    where
+        W: for<'a> FnOnce(&mut Self, &'a WitnessAccess) -> F,
+    {
         Var(self.var())
     }
 }
