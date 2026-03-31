@@ -4,6 +4,7 @@ use std::marker::PhantomData;
 use sumcheck::SumcheckError;
 
 pub mod circuit_key;
+pub mod circuits;
 pub mod folding;
 mod instances;
 pub mod prove;
