@@ -9,6 +9,7 @@ pub mod folding;
 mod instances;
 pub mod prove;
 mod proving;
+pub mod simple_cs;
 #[cfg(test)]
 mod test;
 pub mod testing;
