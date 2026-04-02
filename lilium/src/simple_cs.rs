@@ -31,7 +31,7 @@ const S: usize = 10;
 type Permutation<F> = sponge::poseidon2::PoseidonDefault<F>;
 type Sponge<F> = sponge::sponge::Sponge<F, Permutation<F>, 1, 2, 3>;
 
-type Proof<F, CS> = LcsProof<F, CS, IO, S>;
+pub type Proof<F, CS> = LcsProof<F, CS, IO, S>;
 
 pub struct CircuitKey<F, C, CS, const I: usize>
 where
