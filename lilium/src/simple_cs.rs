@@ -31,6 +31,8 @@ const S: usize = 10;
 type Permutation<F> = sponge::poseidon2::PoseidonDefault<F>;
 type Sponge<F> = sponge::sponge::Sponge<F, Permutation<F>, 1, 2, 3>;
 
+type Proof<F, CS> = LcsProof<F, CS, IO, S>;
+
 pub struct CircuitKey<F, C, CS, const I: usize>
 where
     F: PrimeField,
@@ -79,11 +81,7 @@ where
     pub fn prove_from_inputs<const IN: usize, const OUT: usize, const PRIV_OUT: usize>(
         &self,
         inputs: [F; IN],
-    ) -> (
-        LcsInstance<F, CS, I>,
-        LcsProof<F, CS, IO, S>,
-        C::PrivateOutput,
-    )
+    ) -> (LcsInstance<F, CS, I>, Proof<F, CS>, C::PrivateOutput)
     where
         C: Circuit<F, IN, OUT, PRIV_OUT>,
     {
@@ -104,11 +102,7 @@ where
     }
 
     /// Proves (instance, witness) pair.
-    pub fn prove(
-        &self,
-        instance: LcsInstance<F, CS, I>,
-        witness: Witness<F>,
-    ) -> LcsProof<F, CS, IO, S> {
+    pub fn prove(&self, instance: LcsInstance<F, CS, I>, witness: Witness<F>) -> Proof<F, CS> {
         self.inner.prove(instance, witness)
     }
 
