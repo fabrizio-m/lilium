@@ -15,9 +15,10 @@ pub use crate::{
     folding::InstancePair,
     instances::lcs::{verifying::LcsProof, LcsInstance},
 };
-use ark_ff::PrimeField;
+pub use ark_ff::{Field, PrimeField};
 pub use ccs::{
-    circuit::Circuit,
+    circuit::{Circuit, Var},
+    constraint_system::{ConstraintSystem, Val},
     gates::{self, StandardGates},
     witness::Witness,
 };
