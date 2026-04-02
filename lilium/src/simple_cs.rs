@@ -110,3 +110,14 @@ where
         self.inner.verify(instance, proof)
     }
 }
+
+#[cfg(feature = "simple")]
+pub mod field_and_pcs {
+    pub use ark_vesta::Fr;
+    use ark_vesta::{Projective, VestaConfig};
+    use commit::ipa::poly_comm::IpaCommitmentScheme;
+    use hash_to_curve::svdw::SvdwMap;
+
+    /// Commitment scheme for [Fr].
+    pub type FrScheme = IpaCommitmentScheme<Fr, Projective, SvdwMap<VestaConfig>>;
+}
