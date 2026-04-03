@@ -23,5 +23,9 @@ criterion = { version = "0.8.2", features = ["html_reports"] }
 name = "runtime"
 harness = false
 
+[[example]]
+name = "example1"
+required-features = ["simple"]
+
 [features]
 simple = ["dep:ark-vesta"]
