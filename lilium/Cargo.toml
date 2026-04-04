@@ -27,5 +27,9 @@ harness = false
 name = "example1"
 required-features = ["simple"]
 
+[[example]]
+name = "example2"
+required-features = ["simple"]
+
 [features]
 simple = ["dep:ark-vesta"]
