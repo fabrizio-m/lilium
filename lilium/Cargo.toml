@@ -31,5 +31,9 @@ required-features = ["simple"]
 name = "example2"
 required-features = ["simple"]
 
+[[example]]
+name = "example3"
+required-features = ["simple"]
+
 [features]
 simple = ["dep:ark-vesta"]
