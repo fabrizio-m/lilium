@@ -16,6 +16,7 @@ pub use crate::{
     instances::lcs::{verifying::LcsProof, LcsInstance},
 };
 pub use ark_ff::{Field, PrimeField};
+use ccs::circuit::{BuildStructure, CircuitProfile};
 pub use ccs::{
     circuit::{Circuit, Var},
     constraint_system::{ConstraintSystem, Val},
@@ -108,6 +109,15 @@ where
 
     pub fn verify(&self, instance: LcsInstance<F, CS, I>, proof: LcsProof<F, CS, IO, S>) -> bool {
         self.inner.verify(instance, proof)
+    }
+
+    pub fn profile<const IN: usize, const OUT: usize, const PRIV_OUT: usize>(
+        &self,
+    ) -> CircuitProfile
+    where
+        C: Circuit<F, IN, OUT, PRIV_OUT>,
+    {
+        <C as BuildStructure<F, IN, OUT, PRIV_OUT, IO>>::profile()
     }
 }
 
