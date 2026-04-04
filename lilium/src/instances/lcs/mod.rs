@@ -24,6 +24,11 @@ impl<F: Field, C: CommmitmentScheme<F>, const I: usize> LcsInstance<F, C, I> {
             public_inputs,
         }
     }
+
+    /// Gives access to [inputs..,outputs..] as a single array.
+    pub fn public_io(&self) -> [F; I] {
+        self.public_inputs
+    }
 }
 
 impl<F: Field, C: CommmitmentScheme<F>, const I: usize> Message<F> for LcsInstance<F, C, I> {
