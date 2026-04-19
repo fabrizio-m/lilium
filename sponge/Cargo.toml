@@ -2,6 +2,7 @@
 name = "lilium-sponge"
 version = "0.1.0"
 edition = "2021"
+description = "Lilium's sponge traits and implementations"
 
 [dependencies]
 ark-ff = { version = "0.4", default-features = false }

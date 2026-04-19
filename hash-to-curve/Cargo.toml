@@ -2,6 +2,7 @@
 name = "lilium-htc"
 version = "0.1.0"
 edition = "2021"
+description = "Hash-to-curve implementation"
 
 [dependencies]
 ark-ff = "0.4"
