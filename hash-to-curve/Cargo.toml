@@ -3,6 +3,8 @@ name = "lilium-htc"
 version = "0.1.0"
 edition = "2021"
 description = "Hash-to-curve implementation"
+repository = "https://github.com/fabrizio-m/lilium"
+license = "MIT OR Apache-2.0"
 
 [dependencies]
 ark-ff = "0.4"

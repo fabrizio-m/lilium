@@ -3,5 +3,7 @@ name = "lilium-automata"
 version = "0.1.0"
 edition = "2021"
 description = "Abstract machine utilities used in Lilium"
+repository = "https://github.com/fabrizio-m/lilium"
+license = "MIT OR Apache-2.0"
 
 [dependencies]
