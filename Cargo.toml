@@ -11,4 +11,15 @@ members = [
     "sumcheck",
     "hash-to-curve",
     "shout"]
+
 resolver = "2"
+
+[workspace.dependencies]
+ccs           = { path = "ccs",           version = "0.1.0", package = "lilium-lcs" }
+hash-to-curve = { path = "hash-to-curve", version = "0.1.0", package = "lilium-htc" }
+automata      = { path = "automata",      version = "0.1.0", package = "lilium-automata" }
+sponge        = { path = "sponge",        version = "0.1.0", package = "lilium-sponge" }
+transcript    = { path = "transcript",    version = "0.1.0", package = "lilium-transcript" }
+commit        = { path = "commit",        version = "0.1.0", package = "lilium-commit" }
+sumcheck      = { path = "sumcheck",      version = "0.1.0", package = "lilium-sumcheck" }
+spark         = { path = "spark",         version = "0.1.0", package = "lilium-spark" }

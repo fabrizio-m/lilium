@@ -1,5 +1,5 @@
 [package]
-name = "hash-to-curve"
+name = "lilium-htc"
 version = "0.1.0"
 edition = "2021"
 

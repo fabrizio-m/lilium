@@ -1,8 +1,8 @@
 [package]
-name = "transcript"
+name = "lilium-transcript"
 version = "0.1.0"
 edition = "2021"
 
 [dependencies]
 ark-ff = { version = "0.4", default-features = false }
-sponge = { path = "../sponge"}
+sponge = { workspace = true } 

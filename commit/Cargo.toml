@@ -1,5 +1,5 @@
 [package]
-name = "commit"
+name = "lilium-commit"
 version = "0.1.0"
 edition = "2021"
 
@@ -7,10 +7,10 @@ edition = "2021"
 ark-ff = "0.4"
 ark-ec = "0.4"
 rand = "0.8"
-sumcheck = { path = "../sumcheck"} 
-transcript = { path = "../transcript"} 
-sponge = { path = "../sponge"} 
-hash-to-curve = { path = "../hash-to-curve"} 
+sumcheck = { workspace = true } 
+transcript = { workspace = true } 
+sponge = { workspace = true } 
+hash-to-curve = { workspace = true } 
 
 [dev-dependencies]
 ark-vesta = "0.4"

@@ -1,5 +1,5 @@
 [package]
-name = "automata"
+name = "lilium-automata"
 version = "0.1.0"
 edition = "2021"
 

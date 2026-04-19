@@ -1,5 +1,5 @@
 [package]
-name = "sumcheck"
+name = "lilium-sumcheck"
 version = "0.1.0"
 edition = "2021"
 
@@ -8,9 +8,9 @@ edition = "2021"
 [dependencies]
 ark-ff = "0.4"
 ark-poly = "0.4"
-transcript = { path = "../transcript"} 
-sponge = { path = "../sponge"} 
-automata = { path = "../automata"} 
+transcript = { workspace = true } 
+sponge = { workspace = true } 
+automata = { workspace = true } 
 
 [dev-dependencies]
 rand = "0.8.5"

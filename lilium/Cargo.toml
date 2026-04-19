@@ -7,13 +7,13 @@ repository = "https://github.com/fabrizio-m/lilium"
 
 [dependencies]
 ark-ff = { version = "0.4", default-features = false }
-ccs = { version = "0.1.0", path = "../ccs"}
-sumcheck = { version = "0.1.0", path = "../sumcheck"}
-commit = { version = "0.1.0", path = "../commit"}
-spark = { version = "0.1.0", path = "../spark"}
-sponge = { version = "0.1.0", path = "../sponge"}
-transcript = { version = "0.1.0", path = "../transcript"}
-hash-to-curve = { version = "0.1.0", path = "../hash-to-curve"}
+ccs = { workspace = true }
+sumcheck = { workspace = true }
+commit = { workspace = true }
+spark = { workspace = true}
+sponge = { workspace = true } 
+transcript = { workspace = true }
+hash-to-curve = { workspace = true } 
 ark-vesta = { version = "0.4", optional = true }
 
 [dev-dependencies]
