@@ -1,6 +1,8 @@
+use std::rc::Rc;
+
 use crate::{
     committed_spark::{CommittedSparkInstance, Error},
-    spark2::{CommittedSpark, CommittedSparkProof},
+    spark2::{CommittedSpark, CommittedSparkProof, SparkSparseMle},
 };
 use ark_ff::Field;
 use commit::{CommmitmentScheme, OpenInstance};
@@ -22,6 +24,43 @@ pub enum FlexibleSpark<F: Field, C: CommmitmentScheme<F>> {
     S6(CommittedSpark<F, C, 6>),
     S7(CommittedSpark<F, C, 7>),
     S8(CommittedSpark<F, C, 8>),
+}
+
+impl<F: Field, C: CommmitmentScheme<F>> FlexibleSpark<F, C> {
+    fn inner_key<const N: usize>(evals: Vec<(u64, F)>, scheme: &C) -> CommittedSpark<F, C, N> {
+        let (addresses, values) = evals
+            .into_iter()
+            .map(|(addr, val)| {
+                let bytes: [u8; 8] = addr.to_le_bytes();
+                let mut address_segments = [0; N];
+                address_segments.copy_from_slice(&bytes[0..N]);
+                (address_segments, val)
+            })
+            .unzip();
+        let mle = SparkSparseMle::new(addresses, values);
+        CommittedSpark::new(Rc::new(mle), scheme)
+    }
+
+    pub fn new(evals: Vec<(u64, F)>, scheme: &C) -> Self {
+        assert!(evals.len().is_power_of_two());
+        let max: u64 = evals
+            .iter()
+            .fold(0, |acc, (addr, _)| std::cmp::max(acc, *addr));
+        let bits = max.next_power_of_two().ilog2();
+
+        use FlexibleSpark::*;
+        match bits {
+            0..8 => S1(Self::inner_key(evals, scheme)),
+            8..16 => S2(Self::inner_key(evals, scheme)),
+            16..24 => S3(Self::inner_key(evals, scheme)),
+            24..32 => S4(Self::inner_key(evals, scheme)),
+            32..40 => S5(Self::inner_key(evals, scheme)),
+            40..48 => S6(Self::inner_key(evals, scheme)),
+            48..56 => S7(Self::inner_key(evals, scheme)),
+            56..64 => S8(Self::inner_key(evals, scheme)),
+            _ => panic!("unsupported (and impossible) size"),
+        }
+    }
 }
 
 pub struct Instance<F: Field> {
@@ -93,6 +132,7 @@ where
 
     fn transcript_pattern(key: &Self::Key, builder: TranscriptBuilder) -> TranscriptBuilder {
         use FlexibleSpark::*;
+        let builder = builder.round::<F, Self::A, 0>();
         match key {
             S1(key) => CommittedSpark::transcript_pattern(key, builder),
             S2(key) => CommittedSpark::transcript_pattern(key, builder),
