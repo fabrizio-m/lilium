@@ -118,6 +118,7 @@ impl<F: Field> Message<F> for Instance<F> {
     }
 }
 
+#[derive(Clone, Debug)]
 pub enum Proof<F: Field, C: CommmitmentScheme<F>> {
     S1(CommittedSparkProof<F, C, 1>),
     S2(CommittedSparkProof<F, C, 2>),
