@@ -5,6 +5,7 @@ use std::rc::Rc;
 use sumcheck::sumcheck::SumcheckVerifier;
 
 mod evals;
+pub mod flexible;
 mod prove;
 mod reduction;
 mod sumcheck_argument;
