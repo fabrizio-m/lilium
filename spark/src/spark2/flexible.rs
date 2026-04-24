@@ -61,6 +61,20 @@ impl<F: Field, C: CommmitmentScheme<F>> FlexibleSpark<F, C> {
             _ => panic!("unsupported (and impossible) size"),
         }
     }
+
+    fn segments(&self) -> usize {
+        use FlexibleSpark::*;
+        match self {
+            S1(_) => 1,
+            S2(_) => 2,
+            S3(_) => 3,
+            S4(_) => 4,
+            S5(_) => 5,
+            S6(_) => 6,
+            S7(_) => 7,
+            S8(_) => 8,
+        }
+    }
 }
 
 pub struct Instance<F: Field> {
@@ -133,7 +147,8 @@ where
     fn transcript_pattern(key: &Self::Key, builder: TranscriptBuilder) -> TranscriptBuilder {
         use FlexibleSpark::*;
         let builder = builder.round::<F, Self::A, 0>();
-        match key {
+        let params = ParamResolver::new().set::<SegmentsParam>(key.segments());
+        builder.with_params(params, |builder| match key {
             S1(key) => CommittedSpark::transcript_pattern(key, builder),
             S2(key) => CommittedSpark::transcript_pattern(key, builder),
             S3(key) => CommittedSpark::transcript_pattern(key, builder),
@@ -142,7 +157,7 @@ where
             S6(key) => CommittedSpark::transcript_pattern(key, builder),
             S7(key) => CommittedSpark::transcript_pattern(key, builder),
             S8(key) => CommittedSpark::transcript_pattern(key, builder),
-        }
+        })
     }
 
     fn verify_reduction<S: Duplex<F>>(
