@@ -33,8 +33,8 @@ pub struct CommittedSpark<F: Field, C: CommmitmentScheme<F>, const D: usize> {
 }
 
 pub struct CommittedSparkInstance<F: Field, const D: usize> {
-    point: [MultiPoint<F>; D],
-    eval: F,
+    pub point: [MultiPoint<F>; D],
+    pub eval: F,
 }
 
 impl<F: Field, const D: usize> CommittedSparkInstance<F, D> {

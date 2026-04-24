@@ -1,14 +1,16 @@
 use crate::spark2::{evals::SparkOpen, sumcheck_argument::SparkOpenSumcheck};
-use ::sumcheck::sumcheck::SumcheckVerifier;
 use ark_ff::Field;
 use commit::{committed_structure::CommittedStructure, CommmitmentScheme};
 use std::rc::Rc;
+use sumcheck::sumcheck::SumcheckVerifier;
 
 mod evals;
 mod prove;
 mod reduction;
 mod sumcheck_argument;
 mod trusted_commit;
+
+pub use prove::ProverOutput;
 
 const BYTE: usize = 256;
 
