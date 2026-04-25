@@ -131,7 +131,7 @@ impl<F: Field, C: CommmitmentScheme<F>, const N: usize> CommittedSpark<F, C, N> 
                 .flat_map(|i| {
                     let inverse = fraction_lookup_commitments[i].clone();
                     let elc = eq_lookup_commitments[i].clone();
-                    [inverse, elc]
+                    [elc, inverse]
                 })
                 .collect();
             self.committed_structure.instance_commit(commitments)

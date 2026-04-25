@@ -148,7 +148,7 @@ where
             let commitments: Vec<C::Commitment> = eq_lookup_commitments
                 .into_iter()
                 .zip(fraction_lookup_commitments)
-                .flat_map(|(eq, frac)| [frac, eq])
+                .flat_map(|(eq, frac)| [eq, frac])
                 .collect();
 
             let (instance_evals, []) = transcript
