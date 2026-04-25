@@ -1,4 +1,4 @@
-use std::rc::Rc;
+use std::{iter::repeat, rc::Rc};
 
 use crate::{
     committed_spark::{CommittedSparkInstance, Error},
@@ -86,6 +86,16 @@ pub struct Instance<F: Field> {
 impl<F: Field> Instance<F> {
     pub fn slice<const N: usize>(self) -> CommittedSparkInstance<F, N> {
         let Self { point, eval } = self;
+        let original_len = point.vars();
+        assert!(
+            N * 8 - original_len < 8,
+            "only the last segment may be incomplete"
+        );
+
+        let mut vars = point.inner();
+        vars.resize(N * 8, F::zero());
+        let point = MultiPoint::new(vars);
+
         //TODO: this is enforcing by alignment, may want to remove.
         assert_eq!(point.vars(), N * 8);
 
