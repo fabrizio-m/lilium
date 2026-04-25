@@ -121,7 +121,7 @@ impl<F: Field, C: CommmitmentScheme<F>, const N: usize> CommittedSpark<F, C, N> 
             proof: sumcheck_proof,
             evals,
         } = sumcheck_prover
-            .prove(transcript, mles.clone(), &challenges)
+            .prove_symbolic(transcript, mles.clone(), &challenges)
             .unwrap();
 
         let (eq_lookup_commitments, fraction_lookup_commitments) = commitments;
