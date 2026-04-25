@@ -73,11 +73,11 @@ where
         builder
             .round::<F, CommittedSparkInstance<F, N>, 0>()
             // Lookup and compression challenges
-            .round::<F, C::Commitment, 2>()
+            .round::<F, [C::Commitment; N], 2>()
             // Random point for zerocheck.
             .point()
             // Combination challenge.
-            .round::<F, [[C::Commitment; 2]; N], 1>()
+            .round::<F, [C::Commitment; N], 1>()
             .add_reduction_patter::<F, SumcheckVerifier<F, SparkOpenSumcheck<N>>>(
                 &key.sumcheck_verifier,
             )
