@@ -147,17 +147,19 @@ where
 
     fn transcript_pattern(key: &Self::Key, builder: TranscriptBuilder) -> TranscriptBuilder {
         use FlexibleSpark::*;
-        let builder = builder.round::<F, Self::A, 0>();
         let params = ParamResolver::new().set::<SegmentsParam>(key.segments());
-        builder.with_params(params, |builder| match key {
-            S1(key) => CommittedSpark::transcript_pattern(key, builder),
-            S2(key) => CommittedSpark::transcript_pattern(key, builder),
-            S3(key) => CommittedSpark::transcript_pattern(key, builder),
-            S4(key) => CommittedSpark::transcript_pattern(key, builder),
-            S5(key) => CommittedSpark::transcript_pattern(key, builder),
-            S6(key) => CommittedSpark::transcript_pattern(key, builder),
-            S7(key) => CommittedSpark::transcript_pattern(key, builder),
-            S8(key) => CommittedSpark::transcript_pattern(key, builder),
+        builder.with_params(params, |builder| {
+            let builder = builder.round::<F, Self::A, 0>();
+            match key {
+                S1(key) => CommittedSpark::transcript_pattern(key, builder),
+                S2(key) => CommittedSpark::transcript_pattern(key, builder),
+                S3(key) => CommittedSpark::transcript_pattern(key, builder),
+                S4(key) => CommittedSpark::transcript_pattern(key, builder),
+                S5(key) => CommittedSpark::transcript_pattern(key, builder),
+                S6(key) => CommittedSpark::transcript_pattern(key, builder),
+                S7(key) => CommittedSpark::transcript_pattern(key, builder),
+                S8(key) => CommittedSpark::transcript_pattern(key, builder),
+            }
         })
     }
 
