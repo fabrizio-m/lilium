@@ -195,9 +195,9 @@ where
         );
 
         // Finally, check the sumcheck evaluation.
-        let checks = key
-            .sumcheck_verifier
-            .check_evals_at_r(evals, reduced.eval, &challenges);
+        let checks =
+            key.sumcheck_verifier
+                .check_evals_at_r_symbolic(evals, reduced.eval, &challenges);
 
         if checks {
             Ok(open_instance)
