@@ -2,15 +2,15 @@ use std::rc::Rc;
 
 use crate::{
     committed_spark::{CommittedSparkInstance, Error},
-    spark2::{CommittedSpark, CommittedSparkProof, SparkSparseMle},
+    spark2::{prove, CommittedSpark, CommittedSparkProof, SparkSparseMle},
 };
 use ark_ff::Field;
 use commit::{CommmitmentScheme, OpenInstance};
 use sponge::sponge::Duplex;
 use sumcheck::polynomials::MultiPoint;
 use transcript::{
-    params::ParamResolver, protocols::Reduction, Message, MessageGuard, TranscriptBuilder,
-    TranscriptGuard,
+    params::ParamResolver, protocols::Reduction, Message, MessageGuard, Transcript,
+    TranscriptBuilder, TranscriptGuard,
 };
 
 /// Wrapper which dynamically chooses N as required, currently implemented up to
@@ -207,6 +207,75 @@ where
             }
             S8(key) => {
                 verify!(Proof::S8, key)
+            }
+        }
+    }
+}
+
+pub struct ProverOutput<F: Field, C: CommmitmentScheme<F>> {
+    pub open_instance: OpenInstance<F, C::Commitment>,
+    pub witness: Vec<F>,
+    pub proof: Proof<F, C>,
+}
+
+impl<F, C> FlexibleSpark<F, C>
+where
+    F: Field,
+    C: CommmitmentScheme<F> + 'static,
+{
+    pub fn prove<S: Duplex<F>>(
+        &self,
+        transcript: &mut Transcript<F, S>,
+        instance: Instance<F>,
+        scheme: &C,
+    ) -> ProverOutput<F, C>
+    where
+        C: 'static,
+    {
+        use FlexibleSpark::*;
+
+        macro_rules! prove {
+            ($variant:path,$key:ident) => {{
+                let instance = instance.slice();
+                let out = $key.prove(transcript, instance, scheme);
+                let prove::ProverOutput {
+                    open_instance,
+                    witness,
+                    proof,
+                } = out;
+                let proof = $variant(proof);
+                ProverOutput {
+                    open_instance,
+                    witness,
+                    proof,
+                }
+            }};
+        }
+
+        match self {
+            S1(key) => {
+                prove!(Proof::S1, key)
+            }
+            S2(key) => {
+                prove!(Proof::S2, key)
+            }
+            S3(key) => {
+                prove!(Proof::S3, key)
+            }
+            S4(key) => {
+                prove!(Proof::S4, key)
+            }
+            S5(key) => {
+                prove!(Proof::S5, key)
+            }
+            S6(key) => {
+                prove!(Proof::S6, key)
+            }
+            S7(key) => {
+                prove!(Proof::S7, key)
+            }
+            S8(key) => {
+                prove!(Proof::S8, key)
             }
         }
     }
