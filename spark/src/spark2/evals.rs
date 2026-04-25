@@ -89,17 +89,17 @@ impl<F: Field, const N: usize> SparkOpen<F, N> {
 
         for (i, point) in points.iter().enumerate() {
             let eq_evals = eq::eq(point);
-            let table: Vec<F> = eq_evals
-                .into_iter()
+            let indexed_table: Vec<F> = eq_evals
+                .iter()
                 .enumerate()
                 .map(|(i, eq)| F::from(i as u8) * compression_challenge + eq + lookup_challenge)
                 .collect();
-            let mut inverses = table.clone();
+            let mut inverses = indexed_table.clone();
             batch_inversion(&mut inverses);
 
             for (evals, address) in mles.iter_mut().zip(&sparse_mle.addresses) {
                 let address_segment = address[i];
-                let lookup = table[address_segment as usize];
+                let lookup = eq_evals[address_segment as usize];
                 let inverse = inverses[address_segment as usize];
                 evals.dimensions[i].eq_lookup = lookup;
                 evals.dimensions[i].inverse = inverse;
