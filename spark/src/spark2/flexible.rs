@@ -236,6 +236,8 @@ where
     {
         use FlexibleSpark::*;
 
+        let [] = transcript.send_message(&instance).unwrap();
+
         macro_rules! prove {
             ($variant:path,$key:ident) => {{
                 let instance = instance.slice();
