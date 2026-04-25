@@ -49,7 +49,7 @@ impl<F: Field, C: CommmitmentScheme<F>> FlexibleSpark<F, C> {
         let bits = max.next_power_of_two().ilog2();
 
         use FlexibleSpark::*;
-        match bits {
+        match bits - 1 {
             0..8 => S1(Self::inner_key(evals, scheme)),
             8..16 => S2(Self::inner_key(evals, scheme)),
             16..24 => S3(Self::inner_key(evals, scheme)),
