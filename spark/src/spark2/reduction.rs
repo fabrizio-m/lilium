@@ -32,7 +32,7 @@ impl<const N: usize> MinorStructure<N> {
 
         #[allow(clippy::needless_range_loop)]
         for i in 0..N {
-            let point = &point[0];
+            let point = &point[i];
             let counts = &self.counts[i];
             let mut denominators = eq::eq(point);
             for (i, e) in denominators.iter_mut().enumerate() {
