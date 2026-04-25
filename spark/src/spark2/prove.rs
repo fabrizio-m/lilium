@@ -113,7 +113,7 @@ impl<F: Field, C: CommmitmentScheme<F>, const N: usize> CommittedSpark<F, C, N> 
         // The eval could be used to double check result.
         let CommittedSparkInstance { point, eval: _ } = instance;
 
-        let sumcheck_prover = SumcheckProver::<F, SparkOpenSumcheck<N>>::new(vars);
+        let sumcheck_prover = SumcheckProver::new_symbolic(vars, &SparkOpenSumcheck);
 
         let (mles, challenges, commitments) = self.mles(point, transcript, scheme);
         let sumcheck::sumcheck::ProverOutput {

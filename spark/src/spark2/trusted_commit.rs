@@ -49,8 +49,7 @@ impl<F: Field, C: CommmitmentScheme<F>, const N: usize> CommittedSpark<F, C, N> 
         let committed_structure = CommittedStructure::new(Rc::clone(&major_structure), scheme);
 
         let minor_structure = MinorStructure::new(&mle);
-        let sumcheck_verifier: SumcheckVerifier<F, SparkOpenSumcheck<N>> =
-            SumcheckVerifier::new(vars);
+        let sumcheck_verifier = SumcheckVerifier::new_symbolic(SparkOpenSumcheck, vars);
 
         Self {
             committed_structure,
