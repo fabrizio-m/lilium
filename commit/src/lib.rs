@@ -69,6 +69,19 @@ where
 
     fn new(vars: usize) -> Self;
     fn commit_mle(&self, evals: &[F]) -> Self::Commitment;
+    /// Specialized case of commit where all evaluations belong to a set of 256 elements.
+    /// Something many schemes can take advantage of for considerable optimization.
+    fn commit_small_set(&self, evals: &[u8], set: [F; 256]) -> Self::Commitment {
+        let evals: Vec<F> = evals.iter().map(|i| set[*i as usize]).collect();
+        self.commit_mle(evals.as_slice())
+    }
+    /// Further specialized version of [Self::commit_small_set], where the set is
+    /// [0..256].
+    fn commit_bytes(&self, evals: &[u8]) -> Self::Commitment {
+        let set: Vec<F> = (0..256).map(|i| F::from(i as u8)).collect();
+        let set: [F; 256] = set.try_into().unwrap();
+        self.commit_small_set(evals, set)
+    }
     /// Creates an open instance for a given commitment on a given point.
     /// The instance can be proved and verified together with the proof.
     fn open_instance(
