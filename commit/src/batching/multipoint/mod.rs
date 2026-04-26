@@ -6,6 +6,7 @@ mod reduction;
 mod sumcheck;
 
 pub use prove::ProverOutput;
+pub use reduction::BatchingProof;
 
 /// A reduction allowing to batch opening proofs over different points.
 #[derive(Clone, Copy, Debug)]
