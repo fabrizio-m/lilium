@@ -20,7 +20,7 @@ impl<C, const N: usize> MultipointBatching<C, N> {
     pub fn prove<F, S>(
         instance: [OpenInstance<F, C::Commitment>; N],
         witness: [Vec<F>; N],
-        mut transcript: Transcript<F, S>,
+        transcript: &mut Transcript<F, S>,
     ) -> ProverOutput<F, C, N>
     where
         F: Field,
@@ -52,7 +52,7 @@ impl<C, const N: usize> MultipointBatching<C, N> {
 
         let challs = MultipointChall(chall);
         let reduced = sumcheck_prover
-            .prove_symbolic(&mut transcript, mles, &challs)
+            .prove_symbolic(transcript, mles, &challs)
             .unwrap();
 
         let evals = reduced.evals.map(|e| e.poly);
