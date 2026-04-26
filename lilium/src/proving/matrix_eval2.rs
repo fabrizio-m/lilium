@@ -30,7 +30,7 @@ where
     C: CommmitmentScheme<F> + 'static,
 {
     pub fn new(evals: [Vec<([usize; 2], F)>; IO], pcs: Rc<C>) -> Self {
-        assert!(evals.len().is_power_of_two());
+        assert!(evals[0].len().is_power_of_two());
         let spark_keys = evals.map(|evals| {
             let vars = evals.len().ilog2() as usize;
             let evals: Vec<(u64, F)> = evals

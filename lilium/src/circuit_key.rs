@@ -4,7 +4,6 @@ use ccs::{
     structure::{CcsStructure, Exp, Matrix},
 };
 use commit::CommmitmentScheme;
-use spark::{committed_spark::CommittedSpark, structure::SparkMatrix};
 use sponge::sponge::Duplex;
 use std::{marker::PhantomData, rc::Rc};
 use transcript::{params::ParamResolver, TranscriptBuilder, TranscriptDescriptor};
@@ -61,14 +60,9 @@ where
                 })
                 .collect();
             evals.resize(1 << vars, ([0, 0], F::zero()));
-            SparkMatrix::<F>::new(evals)
+            evals
         });
-        let spark_structure = spark_structure.map(Rc::new);
         let committment_scheme = Rc::new(CS::new(vars));
-
-        let spark_commitments = spark_structure
-            .each_ref()
-            .map(|s| CommittedSpark::new(Rc::clone(s), committment_scheme.as_ref()));
 
         let structure = Rc::new(structure(ccs_structure.clone()));
         let gates: Vec<Vec<Exp<usize>>> = ccs_structure
@@ -81,7 +75,7 @@ where
             Rc::clone(&committment_scheme),
             structure,
             matrices,
-            spark_commitments.clone(),
+            spark_structure,
             gates.clone(),
         );
 

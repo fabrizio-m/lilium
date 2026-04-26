@@ -1,7 +1,7 @@
 use crate::{
     flcs::FlcsReductionKey,
     instances::{lcs::sumcheck_argument::LcsMles, linearized},
-    proving::matrix_eval,
+    proving::matrix_eval2,
 };
 use ark_ff::Field;
 use ccs::{
@@ -9,7 +9,6 @@ use ccs::{
     witness::LinearCombinations,
 };
 use commit::CommmitmentScheme;
-use spark::committed_spark::CommittedSpark;
 use std::rc::Rc;
 
 pub struct LcsProvingKey<F, C, const IO: usize, const S: usize>
@@ -19,20 +18,20 @@ where
 {
     pub flcs_reduction_key: FlcsReductionKey<F, IO, S>,
     pub linearized_reduction_key: linearized::Key<F, C, IO, S>,
-    pub matrix_eval_key: matrix_eval::Key<F, C, IO>,
+    pub matrix_eval_key: matrix_eval2::Key<F, C, IO>,
     pub pcs: Rc<C>,
 }
 
 impl<F, C, const IO: usize, const S: usize> LcsProvingKey<F, C, IO, S>
 where
     F: Field,
-    C: CommmitmentScheme<F>,
+    C: CommmitmentScheme<F> + 'static,
 {
     pub fn new(
         pcs: Rc<C>,
         structure: Rc<Vec<LcsMles<F, IO, S>>>,
         matrices: [Rc<Matrix>; IO],
-        spark_keys: [CommittedSpark<F, C, 2>; IO],
+        spark_evals: [Vec<([usize; 2], F)>; IO],
         gates: Vec<Vec<Exp<usize>>>,
     ) -> Self {
         let linear_combinations = {
@@ -52,7 +51,7 @@ where
             Rc::clone(&pcs),
             matrices,
         );
-        let matrix_eval_key = matrix_eval::Key::new(spark_keys, Rc::clone(&pcs));
+        let matrix_eval_key = matrix_eval2::Key::new(spark_evals, Rc::clone(&pcs));
         Self {
             flcs_reduction_key,
             linearized_reduction_key,

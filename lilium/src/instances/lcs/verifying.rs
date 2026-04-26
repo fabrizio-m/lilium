@@ -8,7 +8,7 @@ use crate::{
         },
         linearized::proving::{LinearizedInstanceReduction, LinearizedProof},
     },
-    proving::matrix_eval::{MatrixEvalProof, MatrixEvalProtocol},
+    proving::matrix_eval2::{MatrixEvalProof, MatrixEvalProtocol},
 };
 use ark_ff::Field;
 use commit::CommmitmentScheme;
