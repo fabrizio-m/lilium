@@ -199,6 +199,15 @@ where
     fn commit_mle(&self, evals: &[F]) -> Self::Commitment {
         IpaCommitment(self.0.commit(evals))
     }
+
+    fn commit_small_set(&self, evals: &[u8], set: [F; 256]) -> Self::Commitment {
+        IpaCommitment(self.0.commit_small_set(evals, set))
+    }
+
+    fn commit_bytes(&self, evals: &[u8]) -> Self::Commitment {
+        IpaCommitment(self.0.commit_bytes(evals))
+    }
+
     fn open_instance(
         &self,
         commitment: Self::Commitment,

@@ -90,9 +90,33 @@ where
         let map = M::new();
         Self { vector_basis, map }
     }
+
     pub fn commit(&self, a: &[F]) -> G {
         assert_eq!(a.len(), self.vector_basis.len());
         G::msm_unchecked(&self.vector_basis, a)
+    }
+
+    pub fn commit_small_set(&self, a: &[u8], set: [F; 256]) -> G {
+        assert_eq!(a.len(), self.vector_basis.len());
+        let mut bucket = [G::zero(); 256];
+        for (i, base) in a.iter().zip(&self.vector_basis) {
+            bucket[*i as usize] += base;
+        }
+        let bucket = G::batch_convert_to_mul_base(&bucket);
+        G::msm_unchecked(&bucket, &set)
+    }
+
+    pub fn commit_bytes(&self, a: &[u8]) -> G {
+        assert_eq!(a.len(), self.vector_basis.len());
+        let mut bucket = [G::zero(); 256];
+        for (i, base) in a.iter().zip(&self.vector_basis) {
+            bucket[*i as usize] += base;
+        }
+        bucket
+            .into_iter()
+            .skip(1)
+            .rev()
+            .fold(G::zero(), |acc, byte| acc.double() + byte)
     }
 
     pub fn round<S: Duplex<F>>(
