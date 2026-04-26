@@ -44,13 +44,14 @@ impl<F: Field, const D: usize> CommittedSparkInstance<F, D> {
 }
 
 impl<F: Field, const D: usize> Message<F> for CommittedSparkInstance<F, D> {
-    fn len(vars: usize, _param_resolver: &ParamResolver) -> usize {
-        vars * D + 1
+    fn len(_vars: usize, _param_resolver: &ParamResolver) -> usize {
+        8 * D + 1
     }
 
     fn to_field_elements(&self) -> Vec<F> {
-        let mut elems = Vec::with_capacity(self.point[0].vars() * D + 1);
+        let mut elems = Vec::with_capacity(8 * D + 1);
         elems.extend(self.point.iter().cloned().flat_map(MultiPoint::inner));
+        elems.resize(8 * D, F::zero());
         elems.push(self.eval);
         elems
     }

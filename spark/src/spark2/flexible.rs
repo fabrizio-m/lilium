@@ -1,5 +1,3 @@
-use std::{iter::repeat, rc::Rc};
-
 use crate::{
     committed_spark::{CommittedSparkInstance, Error},
     spark2::{prove, CommittedSpark, CommittedSparkProof, SparkSparseMle},
@@ -7,6 +5,7 @@ use crate::{
 use ark_ff::Field;
 use commit::{CommmitmentScheme, OpenInstance};
 use sponge::sponge::Duplex;
+use std::rc::Rc;
 use sumcheck::polynomials::MultiPoint;
 use transcript::{
     params::ParamResolver, protocols::Reduction, Message, MessageGuard, Transcript,
@@ -123,6 +122,9 @@ impl<F: Field> Message<F> for Instance<F> {
     fn to_field_elements(&self) -> Vec<F> {
         let mut elems = Vec::with_capacity(self.point.vars() + 1);
         elems.extend(self.point.inner_ref());
+        if elems.len() % 8 != 0 {
+            elems.resize((elems.len() / 8 + 1) * 8, F::zero());
+        }
         elems.push(self.eval);
         elems
     }
