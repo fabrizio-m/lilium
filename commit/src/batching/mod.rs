@@ -3,6 +3,7 @@ use ark_ff::Field;
 use sumcheck::{polynomials::MultiPoint, SumcheckError};
 use transcript::Message;
 
+pub mod multipoint;
 pub mod reduction;
 pub mod structured;
 
@@ -28,6 +29,8 @@ pub enum BatchingError<F: Field, C: CommmitmentScheme<F>> {
     /// Inner PCS error
     Pcs(C::Error),
     Sumcheck(SumcheckError),
+    /// Failure checking sumcheck's claimed evaluation.
+    EvalCheck,
 }
 
 impl<F: Field, C: CommmitmentScheme<F>> From<transcript::Error> for BatchingError<F, C> {
