@@ -1,6 +1,6 @@
 use crate::CommmitmentScheme;
 use ark_ff::Field;
-use sumcheck::polynomials::MultiPoint;
+use sumcheck::{polynomials::MultiPoint, SumcheckError};
 use transcript::Message;
 
 pub mod reduction;
@@ -27,6 +27,19 @@ pub enum BatchingError<F: Field, C: CommmitmentScheme<F>> {
     Transcript(transcript::Error),
     /// Inner PCS error
     Pcs(C::Error),
+    Sumcheck(SumcheckError),
+}
+
+impl<F: Field, C: CommmitmentScheme<F>> From<transcript::Error> for BatchingError<F, C> {
+    fn from(value: transcript::Error) -> Self {
+        Self::Transcript(value)
+    }
+}
+
+impl<F: Field, C: CommmitmentScheme<F>> From<SumcheckError> for BatchingError<F, C> {
+    fn from(value: SumcheckError) -> Self {
+        Self::Sumcheck(value)
+    }
 }
 
 pub struct CommitsNumber;

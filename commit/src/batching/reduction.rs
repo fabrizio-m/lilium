@@ -36,9 +36,8 @@ where
         instance: MessageGuard<Self::A>,
         mut transcript: TranscriptGuard<F, D, Self::Proof>,
     ) -> Result<Self::B, Self::Error> {
-        let (instance, [chall]) = transcript
-            .unwrap_guard(instance)
-            .map_err(BatchingError::Transcript)?;
+        let (instance, [chall]) = transcript.unwrap_guard(instance)?;
+
         let BatchEval {
             point,
             commitments_and_evals,
