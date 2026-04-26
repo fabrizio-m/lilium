@@ -42,7 +42,7 @@ impl<C, const N: usize> MultipointBatching<C, N> {
             }
             let eq = eq::eq(&instance[i].point);
             for (e, eq) in mles.iter_mut().zip(eq) {
-                e[i].poly = eq;
+                e[i].eq = eq;
             }
         }
 
