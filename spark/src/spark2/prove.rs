@@ -2,12 +2,10 @@ use crate::{
     challenges::SparkChallenges,
     committed_spark::CommittedSparkInstance,
     spark2::{
-        evals::{DimensionIndex, SparkIndex, SparkOpen},
-        sumcheck_argument::SparkOpenSumcheck,
-        CommittedSpark, CommittedSparkProof,
+        evals::SparkOpen, sumcheck_argument::SparkOpenSumcheck, CommittedSpark, CommittedSparkProof,
     },
 };
-use ark_ff::Field;
+use ark_ff::{batch_inversion, Field};
 use commit::{CommmitmentScheme, OpenInstance};
 use sponge::sponge::Duplex;
 use sumcheck::{
@@ -40,30 +38,25 @@ impl<F: Field, C: CommmitmentScheme<F>, const N: usize> CommittedSpark<F, C, N> 
         S: Duplex<F>,
         C: 'static,
     {
-        let vars = self.committed_structure.vars();
-
         let eqs = points.clone().map(|point| eq::eq(&point));
-        let mut eqs = eqs.iter();
 
-        let eq_lookups: [Vec<F>; N] = (0..N)
+        let eq_lookup_commitments: [C::Commitment; N] = (0..N)
             .map(|i| {
-                let mut lookups = Vec::with_capacity(1 << vars);
+                let eq = &eqs[i];
+                let eq: [F; 256] = eq.clone().try_into().unwrap();
 
-                let eq = eqs.next().unwrap();
-                for segments in &self.mle.addresses {
-                    let segment = segments[i];
-                    lookups.push(eq[segment as usize]);
-                }
+                let evals: Vec<u8> = self
+                    .mle
+                    .addresses
+                    .iter()
+                    .map(|segments| segments[i])
+                    .collect();
 
-                lookups
+                scheme.commit_small_set(&evals, eq)
             })
             .collect::<Vec<_>>()
             .try_into()
             .unwrap();
-
-        let eq_lookup_commitments: [C::Commitment; N] = eq_lookups
-            .each_ref()
-            .map(|lookups| scheme.commit_mle(lookups));
 
         let [c1, c2] = transcript.send_message(&eq_lookup_commitments).unwrap();
         let lookup_challenge = c1;
@@ -83,10 +76,23 @@ impl<F: Field, C: CommmitmentScheme<F>, const N: usize> CommittedSpark<F, C, N> 
         let mut inverse_commitments = [(); N].map(|_| None);
 
         for (i, commitments) in inverse_commitments.iter_mut().enumerate() {
-            let index = SparkIndex::Dimension(DimensionIndex::Inverse, i);
-            let inverse: Vec<F> = mles.iter().map(|evals| *evals.index(index)).collect();
-            let inverse_commit = scheme.commit_mle(&inverse);
-            *commitments = Some(inverse_commit);
+            let evals: Vec<u8> = self
+                .mle
+                .addresses
+                .iter()
+                .map(|segments| segments[i])
+                .collect();
+
+            let eq = &eqs[i];
+            let eq: [F; 256] = eq.clone().try_into().unwrap();
+            let mut inverses = eq;
+
+            for (i, eq) in inverses.iter_mut().enumerate() {
+                *eq = F::from(i as u8) * compression_challenge + *eq + lookup_challenge
+            }
+            batch_inversion(&mut inverses);
+
+            *commitments = Some(scheme.commit_small_set(&evals, inverses));
         }
 
         let inverse_commitments = inverse_commitments.map(Option::unwrap);
