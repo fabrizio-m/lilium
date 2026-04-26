@@ -74,27 +74,6 @@ fn shape_fixed_count<F: Field, V: Var<F>>(set: V, frac: V, chall: V) -> V {
     frac * (set + chall) - F::one()
 }
 
-/// Multiset equality check between 2 multisets
-pub fn multiset_check<F, V>(
-    multisets: (V, V),
-    fracs: (V, V),
-    chall: V,
-) -> ([ZeroCheck<V>; 2], ZeroSumcheck<V>)
-where
-    F: Field,
-    V: Var<F>,
-{
-    let (set1, set2) = multisets;
-    let (frac1, frac2) = fracs;
-    let left_check = shape_fixed_count(set1, frac1.clone(), chall.clone());
-    let right_check = shape_fixed_count(set2, frac2.clone(), chall);
-    let equality = frac1 - frac2;
-    (
-        [ZeroCheck(left_check), ZeroCheck(right_check)],
-        ZeroSumcheck(equality),
-    )
-}
-
 /// Lookups where [counts] states how many times each element in the table
 /// appears in the lookups
 pub fn lookup<F, V>(

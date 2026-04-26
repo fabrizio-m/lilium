@@ -43,9 +43,6 @@ pub trait CompressionChallenge<F: Field> {
 pub trait LookupChallenge<F: Field> {
     fn lookup_challenge(&self) -> &F;
 }
-pub trait CombinationChallenge<F: Field> {
-    fn combination_challenge(&self) -> &F;
-}
 
 impl<F: Field> CompressionChallenge<F> for SparkChallenges<F> {
     fn compression_challenge(&self) -> &F {
@@ -56,12 +53,6 @@ impl<F: Field> CompressionChallenge<F> for SparkChallenges<F> {
 impl<F: Field> LookupChallenge<F> for SparkChallenges<F> {
     fn lookup_challenge(&self) -> &F {
         &self.lookup_challenge
-    }
-}
-
-impl<F: Field> CombinationChallenge<F> for SparkChallenges<F> {
-    fn combination_challenge(&self) -> &F {
-        &self.combination_challenge
     }
 }
 

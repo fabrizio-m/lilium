@@ -258,20 +258,6 @@ impl<F: Field> DimensionEval<F> {
     }
 }
 
-impl<V: Copy, const D: usize> SparkEval<Option<V>, D> {
-    /// merge 2 partial evals into one, there should be exactly 1 Some
-    /// for each field
-    pub fn merge_small_evals(self, other: Self) -> SparkEval<V, D> {
-        let a = self.flatten_vec();
-        let b = other.flatten_vec();
-        let merge = a.into_iter().zip(b).map(|x| match x {
-            (Some(_), Some(_)) => panic!("present on both sides of merge"),
-            (None, None) => panic!("no value to merge"),
-            (None, Some(x)) | (Some(x), None) => x,
-        });
-        SparkEval::unflatten_vec(merge.collect())
-    }
-}
 impl<V, const D: usize> SparkEval<V, D> {
     pub const fn kinds() -> SparkEval<EvalKind, D> {
         let dimensions = [DimensionEval::<()>::kind(); D];
