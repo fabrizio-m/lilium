@@ -1,10 +1,12 @@
 use crate::{instances::matrix_eval::BatchMatrixEvalInstance, Error};
 use ark_ff::Field;
+use commit::batching::multipoint::{self, BatchingProof, MultipointBatching};
 use commit::{CommmitmentScheme, OpenInstance};
 use spark::spark2::flexible::{self, FlexibleSpark};
 use sponge::sponge::Duplex;
 use std::{marker::PhantomData, rc::Rc};
 use sumcheck::polynomials::MultiPoint;
+use sumcheck::sumcheck::SumcheckVerifier;
 use transcript::{
     protocols::{Protocol, Reduction},
     MessageGuard, Transcript, TranscriptGuard,
@@ -15,6 +17,7 @@ type ProverResult<T, F, C> = Result<T, Error<F, C>>;
 pub struct Key<F: Field, C: CommmitmentScheme<F>, const IO: usize> {
     pub spark_keys: [flexible::FlexibleSpark<F, C>; IO],
     pub pcs: Rc<C>,
+    pub batching: SumcheckVerifier<F, MultipointBatching<C, IO>>,
 }
 
 fn merge_points<F: Field>(points: [MultiPoint<F>; 2]) -> MultiPoint<F> {
@@ -31,8 +34,9 @@ where
 {
     pub fn new(evals: [Vec<([usize; 2], F)>; IO], pcs: Rc<C>) -> Self {
         assert!(evals[0].len().is_power_of_two());
+        let vars = evals[0].len().ilog2() as usize;
         let spark_keys = evals.map(|evals| {
-            let vars = evals.len().ilog2() as usize;
+            assert_eq!(vars, evals.len().ilog2() as usize);
             let evals: Vec<(u64, F)> = evals
                 .iter()
                 .map(|(addr, val)| {
@@ -42,7 +46,12 @@ where
                 .collect();
             FlexibleSpark::new(evals, pcs.as_ref())
         });
-        Self { spark_keys, pcs }
+        let batching = SumcheckVerifier::new_symbolic(MultipointBatching::default(), vars);
+        Self {
+            spark_keys,
+            pcs,
+            batching,
+        }
     }
 
     pub(crate) fn prove<S>(
@@ -77,15 +86,25 @@ where
         }
 
         let spark_proofs: [flexible::Proof<F, C>; IO] = proofs.try_into().unwrap();
-        let open_proofs = open_pairs.map(|e| {
-            let (open_instance, witness) = e.unwrap();
-            self.pcs
-                .open_prove(open_instance, &witness, transcript)
-                .unwrap()
-        });
+        let instance = open_pairs
+            .each_ref()
+            .map(|pair| pair.as_ref().unwrap().0.clone());
+        let witness = open_pairs.map(|pair| pair.unwrap().1);
+        let multipoint::ProverOutput {
+            instance,
+            witness,
+            proof: batching_proof,
+        } = MultipointBatching::prove::<F, S>(instance, witness, transcript);
+
+        let open_proof = self
+            .pcs
+            .open_prove(instance, &witness, transcript)
+            .map_err(Error::Pcs)?;
+
         Ok(MatrixEvalProof {
             spark_proofs,
-            open_proofs,
+            batching_proof,
+            open_proof,
         })
     }
 }
@@ -99,7 +118,8 @@ where
     CS: CommmitmentScheme<F>,
 {
     spark_proofs: [flexible::Proof<F, CS>; IO],
-    open_proofs: [CS::OpenProof; IO],
+    batching_proof: BatchingProof<F, CS, IO>,
+    open_proof: CS::OpenProof,
 }
 
 impl<F, CS, const IO: usize> Protocol<F> for MatrixEvalProtocol<F, CS, IO>
@@ -124,7 +144,8 @@ where
             .repeat::<IO, _>(|builder, i| {
                 FlexibleSpark::transcript_pattern(&key.spark_keys[i], builder)
             })
-            .repeat::<IO, _>(|builder, _| CS::transcript_pattern(&key.pcs, builder))
+            .add_reduction_patter::<F, MultipointBatching<CS, IO>>(&key.batching)
+            .add_protocol_patter::<F, CS>(&key.pcs)
     }
 
     fn verify<S: Duplex<F>>(
@@ -161,23 +182,19 @@ where
         let open_instances: [OpenInstance<F, CS::Commitment>; IO] =
             open_instances.map(Option::unwrap);
 
-        // verifiying commitment openings
-        let open_proofs: [MessageGuard<CS::OpenProof>; IO] = transcript
-            .receive_message_delayed(|proof| proof.open_proofs.clone())
-            .transpose();
-        let mut open_proofs = open_proofs.into_iter();
+        let instance = MessageGuard::new(open_instances);
+        let proof = transcript.receive_message_delayed(|proof| proof.batching_proof.clone());
+        let open_instance = MultipointBatching::verify_reduction(
+            &key.batching,
+            instance,
+            transcript.new_guard(proof),
+        )?;
 
-        // TODO: they can't be batched by the available reduction, as they are over
-        // different point.
-        // Should be batched, but also spark will be batched making this not an issue.
-        for instance in open_instances {
-            let scheme = &key.pcs;
-            let instance = MessageGuard::new(instance);
-            let proof: MessageGuard<CS::OpenProof> = open_proofs.next().unwrap();
+        let instance = MessageGuard::new(open_instance);
+        let proof = transcript.receive_message_delayed(|proof| proof.open_proof.clone());
 
-            let verifies = CS::verify(scheme, instance, transcript.new_guard(proof));
-            verifies.map_err(Error::Pcs)?;
-        }
+        CS::verify(&key.pcs, instance, transcript.new_guard(proof)).map_err(Error::Pcs)?;
+
         Ok(())
     }
 
