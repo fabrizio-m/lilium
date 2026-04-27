@@ -450,17 +450,31 @@ And the report should appear in `target/criterion`.
 
 ### Single-threaded
 
-All the benchmarks are based on the [HashChain](https://github.com/fabrizio-m/lilium/blob/master/lilium/src/testing/utils.rs#L87)circuit. A circuit which computes a
-poseidon2 chain of desired length.
+All the benchmarks are based on the [HashChain](https://github.com/fabrizio-m/lilium/blob/master/lilium/src/testing/utils.rs#L87)
+circuit.
+A circuit which computes aposeidon2 chain of desired length.
 The lengths are chosen so that the number of constraints is just
 below the next power of 2, and the reports show the number of constraints,
 not chain length. If you are interested in chain length, the values measured
 correspond to `[11, 22, 44, 89, 178, 356, 712, 1424, 2849, 5698]` and result
-in constraint counts from $$2^12$$ to $$2^21$$.
+in constraint counts from $$2^{12}$$ to $$2^{21}$$.
 
-#### Proving
+#### Proving time
 
 ![Proving time benchmark](https://github.com/fabrizio-m/lilium/blob/master/data/benchmarks/single_threaded/Proving%20Time/report/lines.svg)
+
+#### Folding time
+
+![Folding time benchmark](https://github.com/fabrizio-m/lilium/blob/master/data/benchmarks/single_threaded/Folding%20Time/report/lines.svg)
+
+#### Commit and fold
+
+You rarely just have 2 instances around to fold, most commonly you have 1 running
+instance and create a new instance to fold with it.
+This benchmark measures the time of committing to an instance in addition to that
+of folding, providing a more realistic point of comparison with proving.
+
+![Commmit and fold benchmark](https://github.com/fabrizio-m/lilium/blob/master/data/benchmarks/single_threaded/Commit%20and%20fold/report/lines.svg)
 
 ## Design considerations
 
