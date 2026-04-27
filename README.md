@@ -457,7 +457,8 @@ The lengths are chosen so that the number of constraints is just
 below the next power of 2, and the reports show the number of constraints,
 not chain length. If you are interested in chain length, the values measured
 correspond to `[11, 22, 44, 89, 178, 356, 712, 1424, 2849, 5698]` and result
-in constraint counts from $$2^{12}$$ to $$2^{21}$$.
+in constraint counts from $$2^{12}$$ to $$2^{21}$$.  
+The benchmarks were run in an Azure Standard FX2mds VM.
 
 #### Proving time
 
