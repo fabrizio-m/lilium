@@ -21,7 +21,7 @@ pub struct LcsProof<F: Field, C: CommmitmentScheme<F>, const IO: usize, const S:
     reduction_proof: FlcsReductionProof<F, IO, S>,
     linearized_proof: LinearizedProof<F, IO>,
     matrix_eval_proof: MatrixEvalProof<F, C, IO>,
-    open_proofs: [C::Proof; 2],
+    open_proofs: [C::Proof; 3],
 }
 
 impl<F: Field, C: CommmitmentScheme<F>, const IO: usize, const S: usize> LcsProof<F, C, IO, S> {
@@ -29,7 +29,7 @@ impl<F: Field, C: CommmitmentScheme<F>, const IO: usize, const S: usize> LcsProo
         reduction_proof: FlcsReductionProof<F, IO, S>,
         linearized_proof: LinearizedProof<F, IO>,
         matrix_eval_proof: MatrixEvalProof<F, C, IO>,
-        open_proofs: [C::Proof; 2],
+        open_proofs: [C::Proof; 3],
     ) -> Self {
         Self {
             reduction_proof,
@@ -63,7 +63,8 @@ where
             .add_reduction_patter::<F, LinearizedInstanceReduction<F, C, IO, S>>(
                 &key.linearized_reduction_key,
             )
-            .add_protocol_patter::<F, MatrixEvalProtocol<F, C, IO>>(&key.matrix_eval_key)
+            .add_reduction_patter::<F, MatrixEvalProtocol<F, C, IO>>(&key.matrix_eval_key)
+            .add_protocol_patter::<F, C>(&key.pcs)
             .add_protocol_patter::<F, C>(&key.pcs)
             .add_protocol_patter::<F, C>(&key.pcs)
     }
@@ -113,7 +114,7 @@ where
 
         let matrix_eval_instance = MessageGuard::new(matrix_eval_instance);
         let proof = transcript.receive_message_delayed(|proof| proof.matrix_eval_proof.clone());
-        MatrixEvalProtocol::verify(
+        let open_instance3 = MatrixEvalProtocol::verify_reduction(
             &key.matrix_eval_key,
             matrix_eval_instance,
             transcript.new_guard(proof),
@@ -129,6 +130,10 @@ where
 
         let proof = transcript.receive_message_delayed(|proof| proof.open_proofs[1].clone());
         let instance = MessageGuard::new(open_instance2);
+        C::verify(scheme, instance, transcript.new_guard(proof)).unwrap();
+
+        let proof = transcript.receive_message_delayed(|proof| proof.open_proofs[2].clone());
+        let instance = MessageGuard::new(open_instance3);
         C::verify(scheme, instance, transcript.new_guard(proof)).unwrap();
         Ok(())
     }

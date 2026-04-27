@@ -7,6 +7,7 @@ use crate::{
         },
         linearized::reduction_proving,
     },
+    proving::matrix_eval2,
 };
 use ark_ff::Field;
 use commit::CommmitmentScheme;
@@ -49,7 +50,11 @@ impl<F: Field, C: CommmitmentScheme<F>, const IO: usize, const S: usize>
             transcript,
         );
 
-        let matrix_eval_proof = self
+        let matrix_eval2::ProverOutput {
+            matrix_eval_proof,
+            open_instance,
+            open_witness,
+        } = self
             .matrix_eval_key
             .prove(matrix_eval_instance, transcript)
             .unwrap();
@@ -63,8 +68,12 @@ impl<F: Field, C: CommmitmentScheme<F>, const IO: usize, const S: usize>
             .pcs
             .open_prove(open_ry, &open_witnesses[1], transcript)
             .unwrap();
+        let open_proof3 = self
+            .pcs
+            .open_prove(open_instance, &open_witness, transcript)
+            .unwrap();
 
-        let open_proofs = [open_proof_rx, open_proof_ry];
+        let open_proofs = [open_proof_rx, open_proof_ry, open_proof3];
         LcsProof::new(
             reduction_proof,
             linearized_proof,

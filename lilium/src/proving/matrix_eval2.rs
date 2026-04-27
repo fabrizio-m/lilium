@@ -7,12 +7,19 @@ use sponge::sponge::Duplex;
 use std::{marker::PhantomData, rc::Rc};
 use sumcheck::polynomials::MultiPoint;
 use sumcheck::sumcheck::SumcheckVerifier;
-use transcript::{
-    protocols::{Protocol, Reduction},
-    MessageGuard, Transcript, TranscriptGuard,
-};
+use transcript::{protocols::Reduction, MessageGuard, Transcript, TranscriptGuard};
 
 type ProverResult<T, F, C> = Result<T, Error<F, C>>;
+
+pub struct ProverOutput<F, C, const IO: usize>
+where
+    F: Field,
+    C: CommmitmentScheme<F>,
+{
+    pub matrix_eval_proof: MatrixEvalProof<F, C, IO>,
+    pub open_instance: OpenInstance<F, C::Commitment>,
+    pub open_witness: Vec<F>,
+}
 
 pub struct Key<F: Field, C: CommmitmentScheme<F>, const IO: usize> {
     pub spark_keys: [flexible::FlexibleSpark<F, C>; IO],
@@ -58,7 +65,7 @@ where
         &self,
         instance: BatchMatrixEvalInstance<F, IO>,
         transcript: &mut Transcript<F, S>,
-    ) -> ProverResult<MatrixEvalProof<F, C, IO>, F, C>
+    ) -> ProverResult<ProverOutput<F, C, IO>, F, C>
     where
         C: 'static,
         S: Duplex<F>,
@@ -96,15 +103,15 @@ where
             proof: batching_proof,
         } = MultipointBatching::prove::<F, S>(instance, witness, transcript);
 
-        let open_proof = self
-            .pcs
-            .open_prove(instance, &witness, transcript)
-            .map_err(Error::Pcs)?;
-
-        Ok(MatrixEvalProof {
+        let matrix_eval_proof = MatrixEvalProof {
             spark_proofs,
             batching_proof,
-            open_proof,
+        };
+
+        Ok(ProverOutput {
+            matrix_eval_proof,
+            open_instance: instance,
+            open_witness: witness,
         })
     }
 }
@@ -119,15 +126,16 @@ where
 {
     spark_proofs: [flexible::Proof<F, CS>; IO],
     batching_proof: BatchingProof<F, CS, IO>,
-    open_proof: CS::OpenProof,
 }
 
-impl<F, CS, const IO: usize> Protocol<F> for MatrixEvalProtocol<F, CS, IO>
+impl<F, CS, const IO: usize> Reduction<F> for MatrixEvalProtocol<F, CS, IO>
 where
     F: Field,
     CS: CommmitmentScheme<F> + 'static,
 {
-    type Instance = BatchMatrixEvalInstance<F, IO>;
+    type A = BatchMatrixEvalInstance<F, IO>;
+
+    type B = OpenInstance<F, CS::Commitment>;
 
     type Key = Key<F, CS, IO>;
 
@@ -140,19 +148,18 @@ where
         builder: transcript::TranscriptBuilder,
     ) -> transcript::TranscriptBuilder {
         builder
-            .round::<F, Self::Instance, 0>()
+            .round::<F, Self::A, 0>()
             .repeat::<IO, _>(|builder, i| {
                 FlexibleSpark::transcript_pattern(&key.spark_keys[i], builder)
             })
             .add_reduction_patter::<F, MultipointBatching<CS, IO>>(&key.batching)
-            .add_protocol_patter::<F, CS>(&key.pcs)
     }
 
-    fn verify<S: Duplex<F>>(
+    fn verify_reduction<S: Duplex<F>>(
         key: &Self::Key,
-        instance: MessageGuard<Self::Instance>,
+        instance: MessageGuard<Self::A>,
         mut transcript: TranscriptGuard<F, S, Self::Proof>,
-    ) -> Result<(), Self::Error> {
+    ) -> Result<Self::B, Self::Error> {
         let (instance, []) = transcript.unwrap_guard(instance)?;
 
         let BatchMatrixEvalInstance {
@@ -190,15 +197,6 @@ where
             transcript.new_guard(proof),
         )?;
 
-        let instance = MessageGuard::new(open_instance);
-        let proof = transcript.receive_message_delayed(|proof| proof.open_proof.clone());
-
-        CS::verify(&key.pcs, instance, transcript.new_guard(proof)).map_err(Error::Pcs)?;
-
-        Ok(())
-    }
-
-    fn prove(_instance: Self::Instance) -> Self::Proof {
-        todo!()
+        Ok(open_instance)
     }
 }
