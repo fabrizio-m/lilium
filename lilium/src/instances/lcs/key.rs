@@ -8,8 +8,9 @@ use ccs::{
     structure::{Exp, Matrix},
     witness::LinearCombinations,
 };
-use commit::CommmitmentScheme;
+use commit::{batching::multipoint::MultipointBatching, CommmitmentScheme};
 use std::rc::Rc;
+use sumcheck::sumcheck::SumcheckVerifier;
 
 pub struct LcsProvingKey<F, C, const IO: usize, const S: usize>
 where
@@ -20,6 +21,7 @@ where
     pub linearized_reduction_key: linearized::Key<F, C, IO, S>,
     pub matrix_eval_key: matrix_eval2::Key<F, C, IO>,
     pub pcs: Rc<C>,
+    pub batching: SumcheckVerifier<F, MultipointBatching<C, 3>>,
 }
 
 impl<F, C, const IO: usize, const S: usize> LcsProvingKey<F, C, IO, S>
@@ -52,11 +54,14 @@ where
             matrices,
         );
         let matrix_eval_key = matrix_eval2::Key::new(spark_evals, Rc::clone(&pcs));
+
+        let batching = SumcheckVerifier::new_symbolic(MultipointBatching::default(), domain_vars);
         Self {
             flcs_reduction_key,
             linearized_reduction_key,
             matrix_eval_key,
             pcs,
+            batching,
         }
     }
 }

@@ -10,7 +10,10 @@ use crate::{
     proving::matrix_eval2,
 };
 use ark_ff::Field;
-use commit::CommmitmentScheme;
+use commit::{
+    batching::multipoint::{self, MultipointBatching},
+    CommmitmentScheme,
+};
 use sponge::sponge::Duplex;
 use transcript::Transcript;
 
@@ -60,25 +63,24 @@ impl<F: Field, C: CommmitmentScheme<F>, const IO: usize, const S: usize>
             .unwrap();
 
         let [open_rx, open_ry] = open_instances;
-        let open_proof_rx = self
-            .pcs
-            .open_prove(open_rx, &open_witnesses[0], transcript)
-            .unwrap();
-        let open_proof_ry = self
-            .pcs
-            .open_prove(open_ry, &open_witnesses[1], transcript)
-            .unwrap();
-        let open_proof3 = self
-            .pcs
-            .open_prove(open_instance, &open_witness, transcript)
-            .unwrap();
+        let instance = [open_rx, open_ry, open_instance];
+        let [w1, w2] = open_witnesses;
+        let witness = [w1, w2, open_witness];
 
-        let open_proofs = [open_proof_rx, open_proof_ry, open_proof3];
+        let multipoint::ProverOutput {
+            instance,
+            witness,
+            proof: batching_proof,
+        } = MultipointBatching::prove(instance, witness, transcript);
+
+        let open_proof = self.pcs.open_prove(instance, &witness, transcript).unwrap();
+
         LcsProof::new(
             reduction_proof,
             linearized_proof,
             matrix_eval_proof,
-            open_proofs,
+            batching_proof,
+            open_proof,
         )
     }
 }
