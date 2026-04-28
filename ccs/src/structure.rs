@@ -1,9 +1,7 @@
 pub use crate::matrix::Matrix;
 use crate::{
     circuit::Var,
-    constraint_system::{
-        cs_prototype::GateRegistry, ConstraintSystem, Constraints, Gate, Val, WitnessAccess,
-    },
+    constraint_system::{ConstraintSystem, Constraints, Gate, GateRegistry, Val, WitnessAccess},
     gates::Equality,
 };
 use std::{
