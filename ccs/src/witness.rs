@@ -81,7 +81,7 @@ impl<F: Field, const MAX_IO: usize> ConstraintSystem<F, Fi<F>> for WitnessGenera
 
     fn free_variable<W>(&mut self, value: W) -> Var<Fi<F>>
     where
-        W: for<'a> FnOnce(Self::Reader<'a>) -> F,
+        W: for<'a> Fn(Self::Reader<'a>) -> F,
     {
         let reader = VarReader;
         let value = value(reader);

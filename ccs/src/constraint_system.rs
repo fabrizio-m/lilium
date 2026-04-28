@@ -29,7 +29,7 @@ pub trait ConstraintSystem<F, V> {
     /// behind a [Var<F>].
     fn free_variable<W>(&mut self, value: W) -> Var<V>
     where
-        W: for<'a> FnOnce(Self::Reader<'a>) -> F;
+        W: for<'a> Fn(Self::Reader<'a>) -> F;
 }
 
 pub trait Val:

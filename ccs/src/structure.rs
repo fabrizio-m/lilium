@@ -256,7 +256,7 @@ impl<F, const MAX_IO: usize> ConstraintSystem<F, WitnessIndex> for StructureBuil
 
     fn free_variable<W>(&mut self, _value: W) -> Var<WitnessIndex>
     where
-        W: for<'a> FnOnce(Self::Reader<'a>) -> F,
+        W: for<'a> Fn(Self::Reader<'a>) -> F,
     {
         Var(self.var())
     }
