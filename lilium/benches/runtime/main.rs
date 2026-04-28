@@ -7,7 +7,7 @@ use criterion::{
     SamplingMode,
 };
 use hash_to_curve::svdw::SvdwMap;
-use lilium::{circuit_key::CircuitKey, testing::utils::HashChain};
+use lilium::{testing::utils::HashChain, CircuitKey};
 use rand::{rngs::StdRng, Rng, SeedableRng};
 use sponge::{self, sponge::Duplex};
 

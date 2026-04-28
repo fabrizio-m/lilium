@@ -3,17 +3,19 @@ use commit::{batching::BatchingError, CommmitmentScheme};
 use std::marker::PhantomData;
 use sumcheck::SumcheckError;
 
-pub mod circuit_key;
+mod circuit_key;
 pub mod circuits;
-pub mod folding;
+mod folding;
 mod instances;
-pub mod prove;
+mod prove;
 mod proving;
 pub mod simple_cs;
 #[cfg(test)]
 mod test;
 pub mod testing;
 
+pub use circuit_key::CircuitKey;
+pub use folding::InstancePair;
 pub(crate) use instances::flcs;
 
 pub struct Prover<F: Field, const IO: usize = 0> {
