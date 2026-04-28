@@ -42,7 +42,7 @@ pub trait BuildStructure<
 >: Circuit<F, IN, OUT, PRIV_OUT>
 {
     fn structure<const S: usize>() -> CcsStructure<IO, S> {
-        let (mut cs, public_input) = StructureBuilder::<IO>::with_inputs::<IN>();
+        let (mut cs, public_input) = StructureBuilder::<F, IO>::with_inputs::<IN>();
         cs.reserve_outputs::<OUT>();
         let (public_out, private_out) = Self::circuit(&mut cs, public_input.map(Var));
         //unnecessary for this
@@ -53,7 +53,7 @@ pub trait BuildStructure<
     }
 
     fn profile() -> CircuitProfile {
-        let (mut cs, public_input) = StructureBuilder::<IO>::with_inputs::<IN>();
+        let (mut cs, public_input) = StructureBuilder::<F, IO>::with_inputs::<IN>();
         cs.reserve_outputs::<OUT>();
         let (public_out, _) = Self::circuit(&mut cs, public_input.map(Var));
         cs.link_outputs::<IN, OUT>(public_out.map(Var::unwrap));

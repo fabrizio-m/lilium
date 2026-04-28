@@ -4,10 +4,12 @@ use crate::{
     constraint_system::{ConstraintSystem, Constraints, Gate, GateRegistry, Val, WitnessReader},
     gates::Equality,
 };
+use ark_ff::Field;
 use std::{
     cmp::Ordering,
     collections::BTreeMap,
     fmt::Display,
+    marker::PhantomData,
     ops::{Add, Mul, Sub},
 };
 
@@ -82,11 +84,12 @@ struct Constraint<T, const IO: usize> {
 
 /// Builder creates the structure for a circuit through symbolic variables.
 #[derive(Debug, Default)]
-pub struct StructureBuilder<const IO: usize> {
+pub struct StructureBuilder<F: Field, const IO: usize> {
     next: usize,
     vars: Vec<usize>,
     registry: GateRegistry,
     constraints: Vec<Constraint<WitnessIndex, IO>>,
+    _f: PhantomData<F>,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -128,7 +131,7 @@ impl Mul for WitnessIndex {
 
 impl Val for WitnessIndex {}
 
-impl<const MAX_IO: usize> StructureBuilder<MAX_IO> {
+impl<F: Field, const MAX_IO: usize> StructureBuilder<F, MAX_IO> {
     pub(crate) fn vars(&self) -> &[usize] {
         &self.vars
     }
@@ -176,7 +179,7 @@ impl<const MAX_IO: usize> StructureBuilder<MAX_IO> {
     pub fn link_outputs<const I: usize, const O: usize>(&mut self, outputs: [WitnessIndex; O]) {
         for (i, b) in outputs.into_iter().enumerate() {
             let a = WitnessIndex(i + I + 1);
-            <Self as ConstraintSystem<(), WitnessIndex>>::execute::<Equality, 2, 2, 0>(
+            <Self as ConstraintSystem<F, WitnessIndex>>::execute::<Equality, 2, 2, 0>(
                 self,
                 [a, b].map(Var),
             );
@@ -226,7 +229,9 @@ impl<const MAX_IO: usize> StructureBuilder<MAX_IO> {
     }
 }
 
-impl<F, const MAX_IO: usize> ConstraintSystem<F, WitnessIndex> for StructureBuilder<MAX_IO> {
+impl<F: Field, const MAX_IO: usize> ConstraintSystem<F, WitnessIndex>
+    for StructureBuilder<F, MAX_IO>
+{
     fn execute<G, const IO: usize, const I: usize, const O: usize>(
         &mut self,
         inputs: [Var<WitnessIndex>; I],

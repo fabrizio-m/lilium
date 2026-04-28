@@ -2,6 +2,7 @@ use crate::{
     circuit::Var,
     constraint_system::{ConstraintSystem, Constraints, Gate, Val},
 };
+use ark_ff::Field;
 
 pub enum AddN<const IO: usize, const I: usize> {}
 
@@ -224,6 +225,7 @@ pub trait StandardGates<F, V> {
 
 impl<F, V, T> StandardGates<F, V> for T
 where
+    F: Field,
     T: ConstraintSystem<F, V>,
     V: Val,
 {

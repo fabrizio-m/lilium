@@ -60,7 +60,7 @@ fn profile_hash() {
 }
 */
 
-fn add_constants<F, V: Val, C: ConstraintSystem<F, V>>(
+fn add_constants<F: Field, V: Val, C: ConstraintSystem<F, V>>(
     cs: &mut C,
     state: &mut [Var<V>; 3],
     constant: &Var<V>,
@@ -69,12 +69,12 @@ fn add_constants<F, V: Val, C: ConstraintSystem<F, V>>(
     *state = new_state;
 }
 
-fn sbox<F, V: Val, C: ConstraintSystem<F, V>>(cs: &mut C, state: &mut [Var<V>; 3]) {
+fn sbox<F: Field, V: Val, C: ConstraintSystem<F, V>>(cs: &mut C, state: &mut [Var<V>; 3]) {
     let new_state = state.clone().map(|x| cs.pow::<7>(x));
     *state = new_state;
 }
 
-fn apply_matrix<F, V: Val, C: ConstraintSystem<F, V>>(cs: &mut C, state: &mut [Var<V>; 3]) {
+fn apply_matrix<F: Field, V: Val, C: ConstraintSystem<F, V>>(cs: &mut C, state: &mut [Var<V>; 3]) {
     let [s0, s1, s2] = state.clone();
     let sum = cs.add_n::<4, 3>(state.clone());
     let s0 = cs.add(sum.clone(), s0);

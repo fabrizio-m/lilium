@@ -1,4 +1,5 @@
 use crate::{circuit::Var, structure::Exp};
+use ark_ff::Field;
 use std::{
     any::{type_name, Any, TypeId},
     collections::BTreeMap,
@@ -10,7 +11,7 @@ pub trait WitnessReader<'a, F, V> {
     fn read(&self, var: &Var<V>) -> F;
 }
 
-pub trait ConstraintSystem<F, V> {
+pub trait ConstraintSystem<F: Field, V> {
     fn execute<G, const IO: usize, const I: usize, const O: usize>(
         &mut self,
         i: [Var<V>; I],
