@@ -9,6 +9,7 @@ use transcript::{protocols::Protocol, Message, Transcript};
 
 pub mod batching;
 pub mod committed_structure;
+#[cfg(feature = "ipa")]
 pub mod ipa;
 
 #[derive(Debug, Clone)]

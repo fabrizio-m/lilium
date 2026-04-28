@@ -8,12 +8,15 @@ license = "MIT OR Apache-2.0"
 
 [dependencies]
 ark-ff = "0.4"
-ark-ec = "0.4"
+ark-ec = { version = "0.4", optional = true }
 rand = "0.8"
 sumcheck = { workspace = true } 
 transcript = { workspace = true } 
 sponge = { workspace = true } 
-hash-to-curve = { workspace = true } 
+hash-to-curve = { workspace = true, optional = true } 
 
 [dev-dependencies]
 ark-vesta = "0.4"
+
+[features]
+ipa = ["dep:ark-ec", "dep:hash-to-curve"]

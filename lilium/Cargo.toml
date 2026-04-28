@@ -14,13 +14,17 @@ commit = { workspace = true }
 spark = { workspace = true}
 sponge = { workspace = true } 
 transcript = { workspace = true }
-hash-to-curve = { workspace = true } 
+hash-to-curve = { workspace = true, optional = true } 
 ark-vesta = { version = "0.4", optional = true }
 
 [dev-dependencies]
 rand = "0.8"
 ark-vesta = "0.4"
 criterion = { version = "0.8.2", features = ["html_reports"] }
+
+[features]
+ipa = ["commit/ipa", "dep:hash-to-curve"]
+simple = ["dep:ark-vesta", "ipa"]
 
 [[bench]]
 name = "runtime"
@@ -38,5 +42,3 @@ required-features = ["simple"]
 name = "example3"
 required-features = ["simple"]
 
-[features]
-simple = ["dep:ark-vesta"]

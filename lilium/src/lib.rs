@@ -10,7 +10,7 @@ mod instances;
 mod prove;
 mod proving;
 pub mod simple_cs;
-#[cfg(test)]
+#[cfg(all(test, feature = "ipa"))]
 mod test;
 pub mod testing;
 
