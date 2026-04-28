@@ -1,7 +1,7 @@
 pub use crate::matrix::Matrix;
 use crate::{
     circuit::Var,
-    constraint_system::{ConstraintSystem, Constraints, Gate, GateRegistry, Val, WitnessAccess},
+    constraint_system::{ConstraintSystem, Constraints, Gate, GateRegistry, Val, WitnessReader},
     gates::Equality,
 };
 use std::{
@@ -252,16 +252,24 @@ impl<F, const MAX_IO: usize> ConstraintSystem<F, WitnessIndex> for StructureBuil
         output.map(Var)
     }
 
-    fn read(&self, _var: &Var<WitnessIndex>, _token: &WitnessAccess) -> F {
-        // This should be unreacheable due to the capability token preventing the call.
-        panic!("can't access witness during constraint building");
-    }
+    type Reader<'a> = EmptyReader;
 
     fn free_variable<W>(&mut self, _value: W) -> Var<WitnessIndex>
     where
-        W: for<'a> FnOnce(&mut Self, &'a WitnessAccess) -> F,
+        W: for<'a> FnOnce(Self::Reader<'a>) -> F,
     {
         Var(self.var())
+    }
+}
+
+#[derive(Clone, Copy)]
+/// A a value of such type can't exist, it can implement most
+/// traits trivially.
+pub enum EmptyReader {}
+
+impl<'a, F, V> WitnessReader<'a, F, V> for EmptyReader {
+    fn read(&self, _var: &Var<V>) -> F {
+        match *self {}
     }
 }
 

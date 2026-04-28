@@ -30,8 +30,8 @@ impl<F: Field> Circuit<F> for MyCircuit {
         // It takes a closure (_,_) -> F, which should return the value of the new
         // variable, the 2 arguments allow to read the value of existing variables,
         // something we don't need in this case.
-        let x = cs.free_variable(|_, _| my_number());
-        let w = cs.free_variable(|_, _| my_number::<F>().sqrt().expect("number is not square"));
+        let x = cs.free_variable(|_| my_number());
+        let w = cs.free_variable(|_| my_number::<F>().sqrt().expect("number is not square"));
 
         // Gates create new variables from existing variables, and enforce certain
         // constraints between them.

@@ -5,13 +5,9 @@ use std::{
     ops,
 };
 
-/// Capability token that allows reading the field element behind a `Var<F>`.
-pub struct WitnessAccess(());
-
-impl WitnessAccess {
-    pub(crate) fn new() -> Self {
-        WitnessAccess(())
-    }
+pub trait WitnessReader<'a, F, V> {
+    /// Read the witness value under the variable.
+    fn read(&self, var: &Var<V>) -> F;
 }
 
 pub trait ConstraintSystem<F, V> {
@@ -23,22 +19,17 @@ pub trait ConstraintSystem<F, V> {
         G: Gate<IO, I, O> + 'static,
         V: Val;
 
-    /// Read the witness value under the variable, the token should be available
-    /// only
-    fn read(&self, var: &Var<V>, token: &WitnessAccess) -> F;
+    type Reader<'a>: WitnessReader<'a, F, V>;
+
     /// Creates a new variable with the provided value.
     /// The variable is not constrained to have the provided value, or any
     /// particular value at all.
-    /// The value is provided through a function which receives a [WitnessAccess]
-    /// token and may use it to call [ConstraintSystem::read] to access the value
+    /// The value is provided through a function which receives a [Self::Reader]
+    /// and may use it to call [WitnessReader::read] to access the value
     /// behind a [Var<F>].
-    /// While calling this method means you already have `&mut ConstraintSystem`,
-    /// you wouldn't be able to call [ConstraintSystem::read] as that would create
-    /// a `&ConstraintSystem` at the same time. For that reason `&mut ConstraintSystem`
-    /// is provided again to you as an argument for `W`.
     fn free_variable<W>(&mut self, value: W) -> Var<V>
     where
-        W: for<'a> FnOnce(&mut Self, &'a WitnessAccess) -> F;
+        W: for<'a> FnOnce(Self::Reader<'a>) -> F;
 }
 
 pub trait Val:

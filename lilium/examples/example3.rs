@@ -25,7 +25,7 @@ impl<F: Field> Circuit<F, 1, 0, 1> for MyCircuit {
         let [minimum] = public_input;
 
         //TODO: use for private inputs.
-        let amount = cs.free_variable(|_, _| balance());
+        let amount = cs.free_variable(|_| balance());
         // Creating the int is enough to constraint the original value to the
         // be a 32 bits element.
         let _int: Uint<V, 32> = Uint::new(cs, amount.clone());

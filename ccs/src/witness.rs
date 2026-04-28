@@ -1,6 +1,6 @@
 use crate::{
     circuit::Var,
-    constraint_system::{ConstraintSystem, Gate, Val, WitnessAccess},
+    constraint_system::{ConstraintSystem, Gate, Val, WitnessReader},
     matrix::Matrix,
 };
 use ark_ff::Field;
@@ -77,18 +77,26 @@ impl<F: Field, const MAX_IO: usize> ConstraintSystem<F, Fi<F>> for WitnessGenera
         out.map(Var)
     }
 
-    fn read(&self, var: &Var<Fi<F>>, _token: &WitnessAccess) -> F {
-        var.0 .0
-    }
+    type Reader<'a> = VarReader<MAX_IO>;
 
     fn free_variable<W>(&mut self, value: W) -> Var<Fi<F>>
     where
-        W: for<'a> FnOnce(&mut Self, &'a WitnessAccess) -> F,
+        W: for<'a> FnOnce(Self::Reader<'a>) -> F,
     {
-        let token = WitnessAccess::new();
-        let value = value(self, &token);
+        let reader = VarReader;
+        let value = value(reader);
         self.witness.push(Fi(value));
         Var(Fi(value))
+    }
+}
+
+pub struct VarReader<const IO: usize>;
+// Will be useful later
+// pub struct VarReader<'a, F: Field, const IO: usize>(&'a WitnessGenerator<F, IO>);
+
+impl<'a, F: Field, const IO: usize> WitnessReader<'a, F, Fi<F>> for VarReader<IO> {
+    fn read(&self, var: &Var<Fi<F>>) -> F {
+        var.0 .0
     }
 }
 

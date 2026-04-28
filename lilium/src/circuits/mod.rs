@@ -1,7 +1,7 @@
 use ark_ff::{BigInteger, Field, PrimeField};
 use ccs::{
     circuit::Var,
-    constraint_system::{ConstraintSystem, Val},
+    constraint_system::{ConstraintSystem, Val, WitnessReader},
     gates::{Binary, StandardGates},
 };
 
@@ -21,10 +21,10 @@ impl<V: Val, const N: usize> Uint<V, N> {
 
         let bits: [usize; N] = (0..N).collect::<Vec<usize>>().try_into().unwrap();
         let bits = bits.map(|i| {
-            let bit = cs.free_variable(|cs, token| {
+            let bit = cs.free_variable(|reader| {
                 // TODO: panic if there is more than one non-zero element.
-                let bit = cs
-                    .read(&x, token)
+                let bit = reader
+                    .read(&x)
                     .to_base_prime_field_elements()
                     .next()
                     .unwrap()
