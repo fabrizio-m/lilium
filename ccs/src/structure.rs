@@ -52,7 +52,7 @@ impl Ord for MatrixIndex {
 }
 
 #[derive(Clone, Debug)]
-pub struct CcsStructure<const IO: usize, const S: usize> {
+pub struct CcsStructure<F, const IO: usize, const S: usize> {
     pub io_matrices: [Matrix; IO],
     /// Where each entry is in 0..S reprensenting the gate to active.
     pub gate_selectors: Vec<usize>,
@@ -61,9 +61,10 @@ pub struct CcsStructure<const IO: usize, const S: usize> {
     pub gates: Vec<Constraints<Exp<usize>>>,
     /// public_io + witness + 1
     pub trace_len: usize,
+    pub constants: BTreeMap<usize, F>,
 }
 
-impl<const IO: usize, const S: usize> CcsStructure<IO, S> {
+impl<F, const IO: usize, const S: usize> CcsStructure<F, IO, S> {
     /// vars needed to fir the trace
     pub fn vars(&self) -> usize {
         let len_padded = self.trace_len.next_power_of_two();
@@ -185,10 +186,11 @@ impl<F: Field, const MAX_IO: usize> StructureBuilder<F, MAX_IO> {
         }
     }
 
-    pub fn build<const S: usize>(self, public_io_len: usize) -> CcsStructure<MAX_IO, S> {
+    pub fn build<const S: usize>(self, public_io_len: usize) -> CcsStructure<F, MAX_IO, S> {
         let Self {
             registry,
             constraints,
+            constant_table,
             ..
         } = self;
 
@@ -214,6 +216,11 @@ impl<F: Field, const MAX_IO: usize> StructureBuilder<F, MAX_IO> {
             }
         }
 
+        let constants = constant_table
+            .into_iter()
+            .map(|(constant, index)| (index.0, constant))
+            .collect();
+
         let gates = registry.expressions_sorted();
 
         let trace_len = self.vars.len();
@@ -224,6 +231,7 @@ impl<F: Field, const MAX_IO: usize> StructureBuilder<F, MAX_IO> {
             gate_selectors,
             gates,
             trace_len,
+            constants,
         }
     }
 }

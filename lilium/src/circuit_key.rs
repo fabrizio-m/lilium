@@ -49,7 +49,7 @@ where
         C: Circuit<F, IN, OUT, PRIV_OUT>,
         CS: 'static,
     {
-        let ccs_structure: CcsStructure<IO, S> = C::structure();
+        let ccs_structure: CcsStructure<F, IO, S> = C::structure();
         let vars = ccs_structure.vars();
         let spark_structure = ccs_structure.io_matrices.clone().map(|matrix: Matrix| {
             let mut evals: Vec<_> = matrix
@@ -112,7 +112,7 @@ where
 }
 
 fn structure<F: Field, const IO: usize, const S: usize>(
-    ccs_structure: CcsStructure<IO, S>,
+    ccs_structure: CcsStructure<F, IO, S>,
 ) -> Vec<LcsMles<F, IO, S>> {
     let len = ccs_structure.trace_len.next_power_of_two();
     let mut mles = Vec::with_capacity(len);
