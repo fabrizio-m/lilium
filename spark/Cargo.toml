@@ -10,7 +10,6 @@ license = "MIT OR Apache-2.0"
 
 [dependencies]
 ark-ff = "0.4"
-ark-poly = "0.4"
 sumcheck = { workspace = true } 
 transcript = { workspace = true } 
 sponge = { workspace = true } 
