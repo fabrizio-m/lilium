@@ -47,7 +47,7 @@ impl<F: Field, const N: usize> SumcheckFunction<F> for SparkOpenSumcheck<N> {
         //   f + µ
         let get = |i, idx| env.get(SparkIndex::Dimension(idx, i));
 
-        let chall = env.get_chall(ChallIdx::CombinationChallenge);
+        let chall = env.get_chall(ChallIdx::Combination);
 
         let mut checks = form_check(&env, 0);
         let mut eq = get(0, DimensionIndex::EqLookup);
@@ -85,13 +85,13 @@ where
     let address = get(DimensionIndex::Address);
     let lookup = get(DimensionIndex::EqLookup);
 
-    let compression_chall = env.get_chall(ChallIdx::CompressionChallenge);
+    let compression_chall = env.get_chall(ChallIdx::Compression);
 
     let indexed_lookup = address * compression_chall + lookup;
 
     let inverse = get(DimensionIndex::Inverse);
 
-    let lookup_challenge = env.get_chall(ChallIdx::LookupChallenge);
+    let lookup_challenge = env.get_chall(ChallIdx::Lookup);
 
     let product = inverse * (indexed_lookup + lookup_challenge);
 

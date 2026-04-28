@@ -30,7 +30,7 @@ impl<F: Field, const D: usize> SumcheckFunction<F> for SparkEvalCheck<D> {
         let mut eval = val;
         let mut all_checks = env.get(SparkIndex::zero());
         //let combination_challenge = *challs.combination_challenge();
-        let combination_challenge = env.get_chall(ChallIdx::CombinationChallenge);
+        let combination_challenge = env.get_chall(ChallIdx::Combination);
         for i in 0..D {
             let (dim, checks) = dimension(&env, i, normal_index.clone());
 
@@ -80,7 +80,7 @@ where
 
     let eq_evals = env.get(eq_eval);
 
-    let compression_challenge = env.get_chall(ChallIdx::CompressionChallenge);
+    let compression_challenge = env.get_chall(ChallIdx::Compression);
     let table = collapse_columns(normal_index, eq_evals, compression_challenge.clone());
     let dimension_index = env.get(dimension_index);
     let dimension_lookups = env.get(dimension_lookups);
@@ -90,7 +90,7 @@ where
         compression_challenge,
     );
 
-    let lookup_challenge = env.get_chall(ChallIdx::LookupChallenge);
+    let lookup_challenge = env.get_chall(ChallIdx::Lookup);
     let ([c1, c2], c3) = mvlookup::lookup(lookups, table, counts, fracs, lookup_challenge);
     let checks = [
         SparkIndex::zero_check(&env, c1),

@@ -16,11 +16,11 @@ pub struct SparkChallenges<F: Field> {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum ChallIdx {
     /// The shift used in the denominator in lookups/multiset check
-    LookupChallenge,
+    Lookup,
     /// used to combine multiple sucheck statements into one
-    CombinationChallenge,
+    Combination,
     /// Used to compress several polynomials into 1
-    CompressionChallenge,
+    Compression,
 }
 
 impl<F: Field> Index<ChallIdx> for SparkChallenges<F> {
@@ -29,9 +29,9 @@ impl<F: Field> Index<ChallIdx> for SparkChallenges<F> {
     fn index(&self, index: ChallIdx) -> &Self::Output {
         use ChallIdx::*;
         match index {
-            LookupChallenge => &self.lookup_challenge,
-            CombinationChallenge => &self.combination_challenge,
-            CompressionChallenge => &self.compression_challenge,
+            Lookup => &self.lookup_challenge,
+            Combination => &self.combination_challenge,
+            Compression => &self.compression_challenge,
         }
     }
 }

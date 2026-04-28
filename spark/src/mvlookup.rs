@@ -209,13 +209,13 @@ mod test {
             let fracs_1 = env.get(4);
             let fracs_2 = env.get(5);
             let fracs = (fracs_1, fracs_2);
-            let lookup_challenge = env.get_chall(ChallIdx::LookupChallenge);
+            let lookup_challenge = env.get_chall(ChallIdx::Lookup);
             let ([c1, c2], c3) = super::lookup(lookups, table, counts, fracs, lookup_challenge);
             let c1 = ZeroCheckAvailable::zero_check(&env, c1);
             let c2 = ZeroCheckAvailable::zero_check(&env, c2);
 
             //let comb_chall = challs.combination_challenge();
-            let comb_chall = env.get_chall(ChallIdx::CombinationChallenge);
+            let comb_chall = env.get_chall(ChallIdx::Combination);
             let checks = c1.0;
             let checks = (checks * comb_chall.clone()) + c2.0;
             (checks * comb_chall) + c3.0
