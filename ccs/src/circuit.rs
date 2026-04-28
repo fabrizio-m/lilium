@@ -1,11 +1,10 @@
-use std::fmt::Display;
-
 use crate::{
     constraint_system::{ConstraintSystem, Val},
     structure::{CcsStructure, StructureBuilder},
     witness::{unwrap_output, Witness, WitnessGenerator},
 };
 use ark_ff::Field;
+use std::fmt::Display;
 
 #[derive(Clone, Copy)]
 /// Symbolic circuit variable.

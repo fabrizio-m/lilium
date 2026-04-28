@@ -45,6 +45,7 @@ pub struct WitnessGenerator<F: Field, const IO: usize> {
 pub struct Witness<F: Field>(pub Vec<F>);
 
 impl<F: Field> Witness<F> {
+    /// Pad with 0s to the next power of 2.
     pub fn pad_to_power(&mut self) {
         let len = self.0.len().next_power_of_two();
         self.0.resize(len, F::zero());
@@ -68,7 +69,7 @@ impl<F: Field, const MAX_IO: usize> ConstraintSystem<F, Fi<F>> for WitnessGenera
             let constraints = G::check(i, out);
             for constraint in constraints {
                 if !constraint.0.is_zero() {
-                    //it may be better to store all errors and report at the end instead of this
+                    // It may be better to store all errors and report at the end instead of this.
                     panic!("constraint evaluates to non zero");
                 }
             }

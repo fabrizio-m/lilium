@@ -13,7 +13,7 @@ use std::{
     ops::{Add, Mul, Sub},
 };
 
-///with key being the variable and the value the number of times it appears (or its exponent)
+/// With key being the variable and the value the number of times it appears (or its exponent).
 #[derive(Clone, Debug)]
 pub struct MultiSet<T>(BTreeMap<T, usize>);
 
@@ -22,23 +22,6 @@ impl<T> Default for MultiSet<T> {
         Self(Default::default())
     }
 }
-
-/*
-/// considering that each row will either be 0 or 1 just in the first element,
-/// it can be represented with just Vec<bool>
-#[derive(Default)]
-pub struct SelectorMatrix {
-    rows: Vec<bool>,
-}
-
-impl SelectorMatrix {
-    fn with_capacity(capacity: usize) -> Self {
-        Self {
-            rows: Vec::with_capacity(capacity),
-        }
-    }
-}
-*/
 
 #[derive(PartialEq, Eq, Clone)]
 pub enum MatrixIndex {
@@ -170,6 +153,7 @@ impl<const MAX_IO: usize> StructureBuilder<MAX_IO> {
         named_counts
     }
 
+    /// Allocate new variable, returning its index.
     fn var(&mut self) -> WitnessIndex {
         //in this way 0 is reserved for the 1
         self.next += 1;
@@ -177,17 +161,20 @@ impl<const MAX_IO: usize> StructureBuilder<MAX_IO> {
         self.vars.push(v);
         WitnessIndex(v)
     }
+
     pub fn with_inputs<const I: usize>() -> (Self, [WitnessIndex; I]) {
         let mut new = Self::default();
         let inputs = [(); I].map(|_| new.var());
         (new, inputs)
     }
+
     /// reserve space for the public output
     pub fn reserve_outputs<const O: usize>(&mut self) {
         for _ in 0..O {
             let _ = self.var();
         }
     }
+
     pub fn link_outputs<const I: usize, const O: usize>(&mut self, outputs: [WitnessIndex; O]) {
         for (i, b) in outputs.into_iter().enumerate() {
             let a = WitnessIndex(i + I + 1);
@@ -197,14 +184,7 @@ impl<const MAX_IO: usize> StructureBuilder<MAX_IO> {
             );
         }
     }
-    /*fn bit_decomposition<const BITS: usize>(mut selector: usize) -> [bool; BITS] {
-        let mut bits = [false; BITS];
-        for i in 0..BITS {
-            bits[i] = selector & 1 == 1;
-            selector = selector >> 1;
-        }
-        bits
-    }*/
+
     pub fn build<const S: usize>(self, public_io_len: usize) -> CcsStructure<MAX_IO, S> {
         let Self {
             registry,
@@ -331,17 +311,6 @@ impl<T: Display> Display for MultiSet<T> {
         writeln!(f)
     }
 }
-
-/*impl<T: Ord> Mul<Self> for MultiSet<T> {
-    type Output = Self;
-
-    fn mul(mut self, rhs: Self) -> Self::Output {
-        for (i, n) in rhs.0.into_iter() {
-            *self.0.entry(i).or_insert(0) += n;
-        }
-        self
-    }
-}*/
 
 impl<T: Ord + Clone> Exp<T> {
     pub fn map<V, F>(self, f: &F) -> Exp<V>

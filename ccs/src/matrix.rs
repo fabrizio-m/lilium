@@ -1,15 +1,14 @@
 use core::slice;
 use std::ops::Index;
 
-///sparse matrix
+/// Sparse matrix.
 #[derive(Default, Clone, Debug)]
 pub struct Matrix {
     ///assumes each non zero value to be one, should be enough to represent plonk
     /// considering that most rows will likely have a single 1 the vector represation may be suboptimal
     rows: Vec<Vec<usize>>,
-    //generalized version that supports arbitrary values
-    //rows: Vec<Vec<(usize, F)>>,
 }
+
 impl Matrix {
     /// number of rows
     pub fn len(&self) -> usize {
