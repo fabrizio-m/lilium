@@ -42,7 +42,7 @@ fn test_end_to_end() {
     use hash_to_curve::svdw::SvdwMap;
     use sponge;
 
-    type Scheme = commit::ipa::poly_comm::IpaCommitmentScheme<Fr, Projective, SvdwMap<VestaConfig>>;
+    type Scheme = commit::ipa::IpaCommitmentScheme<Fr, Projective, SvdwMap<VestaConfig>>;
     type Permutation = sponge::poseidon2::PoseidonDefault<Fr>;
     type Sponge = sponge::sponge::Sponge<Fr, Permutation, 1, 2, 3>;
     type Key = CircuitKey<Fr, Sponge, Circuit1, Scheme, 3, 3, 4>;

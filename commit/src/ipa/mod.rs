@@ -2,16 +2,16 @@ use ::sponge::sponge::Duplex;
 use ark_ec::{AffineRepr, CurveGroup, Group, VariableBaseMSM};
 use ark_ff::Field;
 use hash_to_curve::CurveMap;
-use poly_comm::IpaCommitment;
 use rand::{rngs::StdRng, SeedableRng};
-use sponge::Sponge;
-use vector_utils::{challenge_combinations, compute_inner_product, fold_basis, fold_vec};
+use vector_utils::{fold_basis, fold_vec};
 
-pub mod poly_comm;
+mod poly_comm;
 mod sponge;
 #[cfg(test)]
 mod tests;
 mod vector_utils;
+
+pub use poly_comm::{IpaCommitment, IpaCommitmentScheme, IpaError};
 
 /// computes the 2 crossed commitments between the 2 vector
 /// a_low X b_high * G + a_low X g_high
@@ -45,7 +45,7 @@ where
 }
 
 #[derive(Debug, Clone)]
-pub struct IpaScheme<F, G, M>
+struct IpaScheme<F, G, M>
 where
     F: Field,
     G: VariableBaseMSM<ScalarField = F> + CurveGroup,
@@ -56,7 +56,7 @@ where
     pub map: M,
 }
 
-pub struct Round<F, G: VariableBaseMSM<ScalarField = F>> {
+struct Round<F, G: VariableBaseMSM<ScalarField = F>> {
     a: Vec<F>,
     b: Vec<F>,
     basis: Vec<G::MulBase>,
@@ -86,11 +86,6 @@ where
     G: VariableBaseMSM<ScalarField = F> + CurveGroup,
     M: CurveMap<G>,
 {
-    pub fn new(vector_basis: Vec<G::MulBase>) -> Self {
-        let map = M::new();
-        Self { vector_basis, map }
-    }
-
     pub fn commit(&self, a: &[F]) -> G {
         assert_eq!(a.len(), self.vector_basis.len());
         G::msm_unchecked(&self.vector_basis, a)
@@ -119,7 +114,7 @@ where
             .fold(G::zero(), |acc, byte| acc.double() + byte)
     }
 
-    pub fn round<S: Duplex<F>>(
+    fn round<S: Duplex<F>>(
         round: Round<F, G>,
         transcript: &mut Transcript<F, S>,
         product_base: G,
@@ -146,7 +141,7 @@ where
         };
         Ok((round, (cl, cr)))
     }
-    pub fn reduce<S: Duplex<F>>(
+    fn reduce<S: Duplex<F>>(
         round: Round<F, G>,
         transcript: &mut Transcript<F, S>,
         u: G,
@@ -192,7 +187,7 @@ where
         let [] = transcript.send_message(&SingleElement(a[0]))?;
         Ok(Proof { messages, a: a[0] })
     }
-    pub fn verify<S: Sponge<F, G>>(
+    /*pub fn verify<S: Sponge<F, G>>(
         &self,
         sponge: &mut S,
         commitment: G,
@@ -226,7 +221,8 @@ where
         // Checking that C = aG + abU
         let open = (u * folded_b + folded_g) * a;
         commitment == open
-    }
+    }*/
+
     /// Creates SRS from seed for length 2^k for provided k
     pub fn init(len_log: usize, seed: Option<u64>) -> Self {
         let seed = seed.unwrap_or(0);

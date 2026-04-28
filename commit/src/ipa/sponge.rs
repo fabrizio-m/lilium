@@ -1,9 +1,9 @@
-pub trait Sponge<F, G> {
+/*pub trait Sponge<F, G> {
     fn absorb_g(&mut self, x: G);
     fn absorb_f(&mut self, x: F);
     fn squeeze_f(&mut self) -> F;
     fn squeeze_g(&mut self) -> G;
-}
+}*/
 
 /*#[derive(Default)]
 pub struct SimpleSponge<F> {
