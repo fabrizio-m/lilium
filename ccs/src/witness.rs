@@ -88,6 +88,11 @@ impl<F: Field, const MAX_IO: usize> ConstraintSystem<F, Fi<F>> for WitnessGenera
         self.witness.push(Fi(value));
         Var(Fi(value))
     }
+
+    fn constant(&mut self, value: F) -> Var<Fi<F>> {
+        //TODO: maybe check against structure
+        Var(Fi(value))
+    }
 }
 
 pub struct VarReader<const IO: usize>;

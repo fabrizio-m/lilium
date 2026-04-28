@@ -9,7 +9,6 @@ use std::{
     cmp::Ordering,
     collections::BTreeMap,
     fmt::Display,
-    marker::PhantomData,
     ops::{Add, Mul, Sub},
 };
 
@@ -89,7 +88,7 @@ pub struct StructureBuilder<F: Field, const IO: usize> {
     vars: Vec<usize>,
     registry: GateRegistry,
     constraints: Vec<Constraint<WitnessIndex, IO>>,
-    _f: PhantomData<F>,
+    constant_table: BTreeMap<F, WitnessIndex>,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -264,6 +263,22 @@ impl<F: Field, const MAX_IO: usize> ConstraintSystem<F, WitnessIndex>
         W: for<'a> Fn(Self::Reader<'a>) -> F,
     {
         Var(self.var())
+    }
+
+    fn constant(&mut self, value: F) -> Var<WitnessIndex> {
+        let _ = self.constant_table.get(&value);
+        panic!("not yet usable");
+        /*
+        match existing {
+            Some(v) => Var(*v),
+            None => {
+                let var = self.var();
+                //TODO: add gate
+                let existing = self.constant_table.insert(value, var);
+                assert!(existing.is_none());
+                Var(var)
+            }
+        }*/
     }
 }
 

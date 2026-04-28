@@ -31,6 +31,12 @@ pub trait ConstraintSystem<F: Field, V> {
     fn free_variable<W>(&mut self, value: W) -> Var<V>
     where
         W: for<'a> Fn(Self::Reader<'a>) -> F;
+
+    /// Creates a variable with a constant value, the method
+    /// is idempotent over the value.
+    /// Multiple calls with the same constant value will allocate
+    /// a single variable.
+    fn constant(&mut self, value: F) -> Var<V>;
 }
 
 pub trait Val:
