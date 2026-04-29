@@ -47,6 +47,11 @@ impl<F: Field, C: CommmitmentScheme<F>> FlexibleSpark<F, C> {
             .fold(0, |acc, (addr, _)| std::cmp::max(acc, *addr));
         let bits = max.next_power_of_two().ilog2();
 
+        // Edge case when some matrix is unused.
+        if bits == 0 {
+            return S1(Self::inner_key(evals, scheme));
+        }
+
         use FlexibleSpark::*;
         match bits - 1 {
             0..8 => S1(Self::inner_key(evals, scheme)),
