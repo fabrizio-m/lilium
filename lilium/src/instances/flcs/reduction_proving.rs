@@ -67,6 +67,7 @@ impl<F: Field, const IO: usize, const S: usize> FlcsReductionKey<F, IO, S> {
             *evals.inner().gate_selectors(),
             *evals.inner().w(),
             *evals.inner().products(),
+            *evals.inner().constants(),
         );
 
         let linearized_instance: LinearizedInstance<F, C, IO, S> = LinearizedInstance {
@@ -75,6 +76,7 @@ impl<F: Field, const IO: usize, const S: usize> FlcsReductionKey<F, IO, S> {
             rx: point,
             products: *evals.inner().products(),
             selector_evals: *evals.inner().gate_selectors(),
+            constants: *evals.inner().constants(),
         };
 
         let selector_evals = linearized_instance.selector_evals.map(SingleElement);
@@ -82,6 +84,8 @@ impl<F: Field, const IO: usize, const S: usize> FlcsReductionKey<F, IO, S> {
         let [] = transcript.send_message(&selector_evals).unwrap();
         let witness_eval = SingleElement(*evals.inner().w());
         let [] = transcript.send_message(&witness_eval).unwrap();
+        let constants_eval = SingleElement(*evals.inner().constants());
+        let [] = transcript.send_message(&constants_eval).unwrap();
         //TODO: Handle
         let products = linearized_instance.products.map(SingleElement);
         let [] = transcript.send_message(&products).unwrap();

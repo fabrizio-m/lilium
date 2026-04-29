@@ -1,4 +1,4 @@
-use crate::{circuit::Var, structure::Exp};
+use crate::{circuit::Var, gates::Constant, structure::Exp};
 use ark_ff::Field;
 use std::{
     any::{type_name, Any, TypeId},
@@ -159,7 +159,12 @@ impl GateRegistry {
         let entry = self.gate_registry.entry(id);
         let entry = entry.or_insert_with(|| {
             self.next_selector += 1;
-            let exp = eval_gate_constraints::<G, IO, I, O>();
+            let exp = if id == TypeId::of::<Constant>() {
+                // Special case for constants
+                Constraints::from(Exp::Constant)
+            } else {
+                eval_gate_constraints::<G, IO, I, O>()
+            };
             (self.next_selector - 1, exp, type_name::<G>())
         });
         entry.0

@@ -4,7 +4,10 @@ use crate::{
     matrix::Matrix,
 };
 use ark_ff::Field;
-use std::ops::{Add, Index, Mul, Sub};
+use std::{
+    collections::BTreeSet,
+    ops::{Add, Index, Mul, Sub},
+};
 
 #[derive(Clone, Copy)]
 /// `Field` wrapper which implements `Var`.
@@ -38,6 +41,7 @@ impl<F: Field> Val for Fi<F> {}
 
 pub struct WitnessGenerator<F: Field, const IO: usize> {
     witness: Vec<Fi<F>>,
+    constants: BTreeSet<F>,
     check: bool,
 }
 
@@ -91,7 +95,15 @@ impl<F: Field, const MAX_IO: usize> ConstraintSystem<F, Fi<F>> for WitnessGenera
 
     fn constant(&mut self, value: F) -> Var<Fi<F>> {
         //TODO: maybe check against structure
-        Var(Fi(value))
+        if self.constants.contains(&value) {
+            // If the constant has been seen, just return it.
+            Var(Fi(value))
+        } else {
+            // If not, add it to the witness and mark it as seen.
+            self.witness.push(Fi(value));
+            self.constants.insert(value);
+            Var(Fi(value))
+        }
     }
 }
 
@@ -108,7 +120,11 @@ impl<'a, F: Field, const IO: usize> WitnessReader<'a, F, Fi<F>> for VarReader<IO
 impl<F: Field, const MAX_IO: usize> WitnessGenerator<F, MAX_IO> {
     fn new(check: bool) -> Self {
         let witness = vec![Fi(F::one())];
-        Self { witness, check }
+        Self {
+            witness,
+            check,
+            constants: BTreeSet::default(),
+        }
     }
 
     pub fn with_io<const I: usize, const O: usize>(

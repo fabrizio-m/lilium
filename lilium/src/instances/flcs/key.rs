@@ -36,7 +36,8 @@ where
             .iter()
             .map(|inner| {
                 let (input_selector, gate_selectors) = inner.selectors();
-                let inner = LcsMles::new_structure(input_selector, gate_selectors);
+                let constants = inner.constants();
+                let inner = LcsMles::new_structure(input_selector, gate_selectors, constants);
                 ZeroCheckMles::new(F::zero(), inner)
             })
             .collect();

@@ -131,10 +131,16 @@ fn structure<F: Field, const IO: usize, const S: usize>(
             None => [F::zero(); S],
         };
 
-        let row = LcsMles::new_structure(input_selector, gate_selectors);
+        let constant = ccs_structure
+            .constants
+            .get(&i)
+            .cloned()
+            .unwrap_or(F::zero());
+
+        let row = LcsMles::new_structure(input_selector, gate_selectors, constant);
         mles.push(row)
     }
-    let padding_row = LcsMles::new_structure(F::zero(), [F::zero(); S]);
+    let padding_row = LcsMles::new_structure(F::zero(), [F::zero(); S], F::zero());
     mles.resize(len, padding_row);
     mles
 }

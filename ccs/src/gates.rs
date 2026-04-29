@@ -183,6 +183,21 @@ impl Gate<1, 1, 0> for Binary {
     }
 }
 
+/// Gate used to introduce constants to the circuit, it is handled
+/// in a special way and it shouldn't be manually instanciated.
+pub struct Constant;
+
+impl Gate<1, 1, 0> for Constant {
+    fn gate<V: Val>(_: [V; 1]) -> [V; 0] {
+        []
+    }
+
+    fn check<V: Val>(_: [V; 1], _: [V; 0]) -> Constraints<V> {
+        // This will be replaced by Exp::Constant
+        Constraints::Empty
+    }
+}
+
 //TODO: this requires constants
 /*
 /// Gate to enforce its only input is 0 or 1.

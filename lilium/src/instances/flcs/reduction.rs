@@ -27,6 +27,7 @@ pub struct FlcsReductionProof<F: Field, const IO: usize, const S: usize> {
     selector_evals: [F; S],
     witness_eval: F,
     products: [F; IO],
+    constants_eval: F,
 }
 
 impl<F: Field, const IO: usize, const S: usize> FlcsReductionProof<F, IO, S> {
@@ -35,12 +36,14 @@ impl<F: Field, const IO: usize, const S: usize> FlcsReductionProof<F, IO, S> {
         selector_evals: [F; S],
         witness_eval: F,
         products: [F; IO],
+        constants_eval: F,
     ) -> Self {
         Self {
             sumcheck,
             selector_evals,
             witness_eval,
             products,
+            constants_eval,
         }
     }
 }
@@ -73,7 +76,9 @@ where
             .add_reduction_patter::<F, SumcheckVerifier<F, LcsSumcheck<F, IO, S>>>(
                 sumcheck_verifier,
             )
+            // selectors, w, constants, products
             .round::<F, [SingleElement<F>; S], 0>()
+            .round::<F, SingleElement<F>, 0>()
             .round::<F, SingleElement<F>, 0>()
             .round::<F, [SingleElement<F>; IO], 0>()
     }
@@ -123,8 +128,13 @@ where
                 transcript.receive_message(|proof| proof.selector_evals.map(SingleElement))?;
             let (w_eval, []) =
                 transcript.receive_message(|proof| SingleElement(proof.witness_eval))?;
-            let committed_evals_inner =
-                LcsMles::from_committed_evals(w_eval.0, selector_evals.map(SingleElement::inner));
+            let (constants_eval, []) =
+                transcript.receive_message(|proof| SingleElement(proof.constants_eval))?;
+            let committed_evals_inner = LcsMles::from_committed_evals(
+                w_eval.0,
+                selector_evals.map(SingleElement::inner),
+                constants_eval.0,
+            );
             let committed_evals = ZeroCheckMles::new(None, committed_evals_inner);
 
             let evals = committed_evals.combine(&small_evals, Option::xor);
@@ -150,12 +160,14 @@ where
             let rx = check_point;
             let selector_evals = *evals.inner().gate_selectors();
             let witness_eval = *evals.inner().w();
+            let constants = *evals.inner().constants();
             LinearizedInstance {
                 witness_commit,
                 witness_eval,
                 rx,
                 products,
                 selector_evals,
+                constants,
             }
         };
 

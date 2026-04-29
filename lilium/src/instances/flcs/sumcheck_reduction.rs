@@ -34,6 +34,7 @@ pub struct LcsMles<V, const IO: usize, const S: usize> {
     inputs: V,
     input_selector: V,
     gate_selectors: [V; S],
+    constants: V,
 }
 
 impl<V, const IO: usize, const S: usize> Default for LcsMles<Option<V>, IO, S> {
@@ -44,12 +45,13 @@ impl<V, const IO: usize, const S: usize> Default for LcsMles<Option<V>, IO, S> {
             inputs: None,
             input_selector: None,
             gate_selectors: [(); S].map(|_| None),
+            constants: None,
         }
     }
 }
 
 impl<V, const IO: usize, const S: usize> LcsMles<V, IO, S> {
-    pub fn new_structure(input_selector: V, gate_selectors: [V; S]) -> Self
+    pub fn new_structure(input_selector: V, gate_selectors: [V; S], constants: V) -> Self
     where
         V: Field,
     {
@@ -59,6 +61,7 @@ impl<V, const IO: usize, const S: usize> LcsMles<V, IO, S> {
             inputs: V::zero(),
             input_selector,
             gate_selectors,
+            constants,
         }
     }
 
@@ -74,6 +77,10 @@ impl<V, const IO: usize, const S: usize> LcsMles<V, IO, S> {
         &self.w
     }
 
+    pub fn constants(&self) -> &V {
+        &self.constants
+    }
+
     /// Create eval with provided products and everything else set to `None`.
     pub fn new_only_products(products: [V; IO]) -> LcsMles<Option<V>, IO, S> {
         let products = products.map(Option::Some);
@@ -83,10 +90,15 @@ impl<V, const IO: usize, const S: usize> LcsMles<V, IO, S> {
         }
     }
 
-    pub fn from_committed_evals(w: V, selector_evals: [V; S]) -> LcsMles<Option<V>, IO, S> {
+    pub fn from_committed_evals(
+        w: V,
+        selector_evals: [V; S],
+        constants: V,
+    ) -> LcsMles<Option<V>, IO, S> {
         LcsMles {
             w: Some(w),
             gate_selectors: selector_evals.map(Some),
+            constants: Some(constants),
             ..Default::default()
         }
     }
@@ -110,6 +122,7 @@ impl<V, const IO: usize, const S: usize> LcsMles<V, IO, S> {
             inputs,
             input_selector,
             gate_selectors: [None; S],
+            constants: None,
         }
     }
 
@@ -133,6 +146,7 @@ pub enum Index {
     /// 1 where input expected, 0 otherwise
     InputsSelector,
     GateSelector(usize),
+    Constants,
 }
 
 impl<V: Copy, const IO: usize, const S: usize> Evals<V> for LcsMles<V, IO, S> {
@@ -145,6 +159,7 @@ impl<V: Copy, const IO: usize, const S: usize> Evals<V> for LcsMles<V, IO, S> {
             Index::Inputs => &self.inputs,
             Index::InputsSelector => &self.input_selector,
             Index::GateSelector(i) => &self.gate_selectors[i],
+            Index::Constants => &self.constants,
         }
     }
 
@@ -164,6 +179,7 @@ impl<V: Copy, const IO: usize, const S: usize> Evals<V> for LcsMles<V, IO, S> {
             .for_each(|(a, b)| {
                 *a = f(*a, b);
             });
+        let constants = f(self.constants, other.constants);
 
         Self {
             products,
@@ -171,6 +187,7 @@ impl<V: Copy, const IO: usize, const S: usize> Evals<V> for LcsMles<V, IO, S> {
             inputs,
             input_selector,
             gate_selectors,
+            constants,
         }
     }
 
@@ -180,6 +197,7 @@ impl<V: Copy, const IO: usize, const S: usize> Evals<V> for LcsMles<V, IO, S> {
         vec.push(self.inputs);
         vec.push(self.input_selector);
         vec.extend(self.gate_selectors);
+        vec.push(self.constants);
     }
 
     fn unflatten(elems: &mut std::vec::IntoIter<V>) -> Self {
@@ -194,6 +212,7 @@ impl<V: Copy, const IO: usize, const S: usize> Evals<V> for LcsMles<V, IO, S> {
         };
         let [w, inputs, input_selector] = [(); 3].map(|_| elems.next().unwrap());
         let gate_selectors = [(); S].map(|_| elems.next().unwrap());
+        let constants = elems.next().unwrap();
 
         Self {
             products,
@@ -201,6 +220,7 @@ impl<V: Copy, const IO: usize, const S: usize> Evals<V> for LcsMles<V, IO, S> {
             inputs,
             input_selector,
             gate_selectors,
+            constants,
         }
     }
 }
@@ -212,6 +232,7 @@ const fn kinds<const IO: usize, const S: usize>(
     let inputs = EvalKind::FixedSmall;
     let input_selector = EvalKind::FixedSmall;
     let gate_selectors = [EvalKind::Committed(CommitType::Structure); S];
+    let constants = EvalKind::Committed(CommitType::Structure);
 
     let inner = LcsMles {
         products,
@@ -219,6 +240,7 @@ const fn kinds<const IO: usize, const S: usize>(
         inputs,
         input_selector,
         gate_selectors,
+        constants,
     };
     ZeroCheckMles::new(EvalKind::FixedSmall, inner)
 }
@@ -266,12 +288,14 @@ where
             let inputs = f(inner.inputs);
             let input_selector = f(inner.input_selector);
             let gate_selectors = inner.gate_selectors.map(&f);
+            let constants = f(inner.constants);
             LcsMles {
                 products,
                 w,
                 inputs,
                 input_selector,
                 gate_selectors,
+                constants,
             }
         })
     }
@@ -299,9 +323,16 @@ where
         let mut acc = inputs_check;
         for (i, constraints) in self.gates.iter().enumerate() {
             let selector = inner(Index::GateSelector(i));
+
             for constraint in constraints {
-                let exp = constraint.clone();
-                let exp = eval_exp(&|idx| env.get(ZeroCheckIdx::Inner(idx)), exp);
+                let exp = if matches!(constraint, Exp::Constant) {
+                    let product = inner(Index::Product(0));
+                    let constants = inner(Index::Constants);
+                    product - constants
+                } else {
+                    let exp = constraint.clone();
+                    eval_exp(&|idx| env.get(ZeroCheckIdx::Inner(idx)), exp)
+                };
                 acc = if self.multi_constraint {
                     acc * &chall + exp * &selector
                 } else {
@@ -336,6 +367,7 @@ where
             let e2 = eval_exp(resolver, *exp2);
             e1 - e2
         }
+        Exp::Constant => panic!("Constant shouldn't have been evaluated"),
     }
 }
 
@@ -387,12 +419,14 @@ where
         let inputs = f(evals.inputs);
         let input_selector = f(evals.input_selector);
         let gate_selectors = evals.gate_selectors.map(&f);
+        let constants = f(evals.constants);
         LcsMles {
             products,
             w,
             inputs,
             input_selector,
             gate_selectors,
+            constants,
         }
     }
 
@@ -426,8 +460,14 @@ where
                 "folding can not be used with multi-constraint gates"
             );
             for constraint in constraints {
-                let exp = constraint.clone();
-                let exp = eval_exp(&|idx| env.get(idx), exp);
+                let exp = if matches!(constraint, Exp::Constant) {
+                    let product = env.get(Index::Product(0));
+                    let constants = env.get(Index::Constants);
+                    product - constants
+                } else {
+                    let exp = constraint.clone();
+                    eval_exp(&|idx| env.get(idx), exp)
+                };
                 acc = acc + exp * &selector;
             }
         }

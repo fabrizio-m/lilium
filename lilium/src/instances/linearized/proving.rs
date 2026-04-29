@@ -81,6 +81,7 @@ where
             rx,
             products,
             selector_evals,
+            constants,
         } = instance;
 
         let n_vars = key.domain_vars;
@@ -102,8 +103,10 @@ where
         // Proving evaluations of selectors at rx.
         let dynamic_batch =
             BatchEval::new(rx.clone(), vec![(witness_commit.clone(), witness_eval)]);
+        let mut structured_evals = selector_evals.to_vec();
+        structured_evals.push(constants);
         let committed_open_instance: StructuredBatchEval<F, CS> =
-            StructuredBatchEval::new(dynamic_batch, selector_evals.to_vec());
+            StructuredBatchEval::new(dynamic_batch, structured_evals);
         let instance = MessageGuard::new(committed_open_instance);
         //TODO: handle
         let (open_instance_rx, evals) =

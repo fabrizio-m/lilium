@@ -2,10 +2,11 @@ pub use crate::matrix::Matrix;
 use crate::{
     circuit::Var,
     constraint_system::{ConstraintSystem, Constraints, Gate, GateRegistry, Val, WitnessReader},
-    gates::Equality,
+    gates::{Constant, Equality},
 };
 use ark_ff::Field;
 use std::{
+    any::TypeId,
     cmp::Ordering,
     collections::BTreeMap,
     fmt::Display,
@@ -61,6 +62,7 @@ pub struct CcsStructure<F, const IO: usize, const S: usize> {
     pub gates: Vec<Constraints<Exp<usize>>>,
     /// public_io + witness + 1
     pub trace_len: usize,
+    /// Maps Constant constraints to their constant.
     pub constants: BTreeMap<usize, F>,
 }
 
@@ -197,9 +199,32 @@ impl<F: Field, const MAX_IO: usize> StructureBuilder<F, MAX_IO> {
         let mut io_matrices = [(); MAX_IO].map(|_| Matrix::with_capacity(constraints.len()));
         let mut gate_selectors = vec![];
 
-        for constraint in constraints.into_iter() {
+        let constant_selector = registry.gate_registry.iter().find_map(|(id, gate)| {
+            if TypeId::of::<Constant>() == *id {
+                assert!(matches!(gate.1, Constraints::Constraint(Exp::Constant)));
+                Some(gate.0)
+            } else {
+                None
+            }
+        });
+
+        let reverse_constant_table: BTreeMap<usize, F> = constant_table
+            .into_iter()
+            .map(|(constant, index)| (index.0, constant))
+            .collect();
+
+        let mut constants: BTreeMap<usize, F> = BTreeMap::new();
+
+        for (i, constraint) in constraints.into_iter().enumerate() {
             let constraint: Constraint<WitnessIndex, MAX_IO> = constraint;
             let Constraint { io, len, selector } = constraint;
+
+            if let Some(constant_selector) = constant_selector {
+                if constant_selector == selector {
+                    let constant = reverse_constant_table.get(&io[0].0).unwrap();
+                    constants.insert(i, *constant);
+                }
+            }
             for i in 0..len {
                 io_matrices[i].push_row_single_value(io[i].0);
             }
@@ -215,11 +240,6 @@ impl<F: Field, const MAX_IO: usize> StructureBuilder<F, MAX_IO> {
                 panic!("not enough selectors for all gates, increase S");
             }
         }
-
-        let constants = constant_table
-            .into_iter()
-            .map(|(constant, index)| (index.0, constant))
-            .collect();
 
         let gates = registry.expressions_sorted();
 
@@ -274,19 +294,17 @@ impl<F: Field, const MAX_IO: usize> ConstraintSystem<F, WitnessIndex>
     }
 
     fn constant(&mut self, value: F) -> Var<WitnessIndex> {
-        let _ = self.constant_table.get(&value);
-        panic!("not yet usable");
-        /*
+        let existing = self.constant_table.get(&value);
         match existing {
             Some(v) => Var(*v),
             None => {
                 let var = self.var();
-                //TODO: add gate
+                self.execute::<Constant, 1, 1, 0>([Var(var)]);
                 let existing = self.constant_table.insert(value, var);
                 assert!(existing.is_none());
                 Var(var)
             }
-        }*/
+        }
     }
 }
 
@@ -307,6 +325,8 @@ pub enum Exp<T> {
     Add(Box<Self>, Box<Self>),
     Mul(Box<Self>, Box<Self>),
     Sub(Box<Self>, Box<Self>),
+    /// Variant to identify the constant gate.
+    Constant,
 }
 
 impl<T> Add<Self> for Exp<T> {
@@ -357,6 +377,7 @@ impl<T: Ord + Clone> Exp<T> {
             Add(e1, e2) => Add(Box::new(e1.map(f)), Box::new(e2.map(f))),
             Mul(e1, e2) => Mul(Box::new(e1.map(f)), Box::new(e2.map(f))),
             Sub(e1, e2) => Sub(Box::new(e1.map(f)), Box::new(e2.map(f))),
+            Constant => Constant,
         }
     }
 }

@@ -48,6 +48,7 @@ where
             rx,
             products: _,
             selector_evals: _,
+            constants: _,
         } = instance;
 
         let sumcheck_prover: SumcheckProver<F, LinearizedSumcheck<IO>> =

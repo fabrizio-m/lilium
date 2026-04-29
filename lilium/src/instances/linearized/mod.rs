@@ -26,6 +26,7 @@ pub struct LinearizedInstance<F: Field, C: CommmitmentScheme<F>, const IO: usize
     pub products: [F; IO],
     /// Evals of selectors to be checked.
     pub selector_evals: [F; S],
+    pub constants: F,
 }
 
 pub struct Key<F: Field, C: CommmitmentScheme<F>, const IO: usize, const S: usize> {
@@ -44,7 +45,7 @@ where
 {
     fn len(vars: usize, param_resolver: &ParamResolver) -> usize {
         let commit = C::Commitment::len(vars, param_resolver);
-        commit + 1 + vars + IO + S
+        commit + 1 + vars + IO + S + 1
     }
 
     fn to_field_elements(&self) -> Vec<F> {
@@ -53,6 +54,7 @@ where
         elems.extend_from_slice(&self.rx.to_field_elements());
         elems.extend_from_slice(&self.products);
         elems.extend_from_slice(&self.selector_evals);
+        elems.push(self.constants);
         elems
     }
 }

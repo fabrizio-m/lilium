@@ -23,6 +23,7 @@ pub struct LcsMles<V, const IO: usize, const S: usize> {
     inputs: V,
     input_selector: V,
     gate_selectors: [V; S],
+    constants: V,
 }
 
 impl<V, const IO: usize, const S: usize> Default for LcsMles<Option<V>, IO, S> {
@@ -34,12 +35,13 @@ impl<V, const IO: usize, const S: usize> Default for LcsMles<Option<V>, IO, S> {
             inputs: None,
             input_selector: None,
             gate_selectors: [(); S].map(|_| None),
+            constants: None,
         }
     }
 }
 
 impl<V, const IO: usize, const S: usize> LcsMles<V, IO, S> {
-    pub fn new_structure(input_selector: V, gate_selectors: [V; S]) -> Self
+    pub fn new_structure(input_selector: V, gate_selectors: [V; S], constants: V) -> Self
     where
         V: Field,
     {
@@ -50,6 +52,7 @@ impl<V, const IO: usize, const S: usize> LcsMles<V, IO, S> {
             inputs: V::zero(),
             input_selector,
             gate_selectors,
+            constants,
         }
     }
 
@@ -63,6 +66,13 @@ impl<V, const IO: usize, const S: usize> LcsMles<V, IO, S> {
         V: Copy,
     {
         (self.input_selector, self.gate_selectors)
+    }
+
+    pub fn constants(&self) -> V
+    where
+        V: Copy,
+    {
+        self.constants
     }
 
     pub fn set_w(&mut self, w: V) {
@@ -83,6 +93,7 @@ pub enum Index {
     /// 1 where input expected, 0 otherwise
     InputsSelector,
     GateSelector(usize),
+    Constants,
 }
 
 impl ZeroCheckAvailable for Index {
@@ -102,6 +113,7 @@ impl<V: Clone + Copy, const IO: usize, const S: usize> Evals<V> for LcsMles<V, I
             Index::Inputs => &self.inputs,
             Index::InputsSelector => &self.input_selector,
             Index::GateSelector(i) => &self.gate_selectors[i],
+            Index::Constants => &self.constants,
         }
     }
 
@@ -122,6 +134,7 @@ impl<V: Clone + Copy, const IO: usize, const S: usize> Evals<V> for LcsMles<V, I
             .for_each(|(a, b)| {
                 *a = f(*a, b);
             });
+        let constants = f(self.constants, other.constants);
 
         Self {
             products,
@@ -130,6 +143,7 @@ impl<V: Clone + Copy, const IO: usize, const S: usize> Evals<V> for LcsMles<V, I
             inputs,
             input_selector,
             gate_selectors,
+            constants,
         }
     }
 
@@ -140,6 +154,7 @@ impl<V: Clone + Copy, const IO: usize, const S: usize> Evals<V> for LcsMles<V, I
         vec.push(self.inputs);
         vec.push(self.input_selector);
         vec.extend(self.gate_selectors);
+        vec.push(self.constants);
     }
 
     fn unflatten(elems: &mut std::vec::IntoIter<V>) -> Self {
@@ -154,6 +169,7 @@ impl<V: Clone + Copy, const IO: usize, const S: usize> Evals<V> for LcsMles<V, I
         };
         let [r_eq, w, inputs, input_selector] = [(); 4].map(|_| elems.next().unwrap());
         let gate_selectors = [(); S].map(|_| elems.next().unwrap());
+        let constants = elems.next().unwrap();
 
         Self {
             products,
@@ -162,6 +178,7 @@ impl<V: Clone + Copy, const IO: usize, const S: usize> Evals<V> for LcsMles<V, I
             inputs,
             input_selector,
             gate_selectors,
+            constants,
         }
     }
 }
@@ -173,6 +190,7 @@ const fn kinds<const IO: usize, const S: usize>() -> LcsMles<EvalKind, IO, S> {
     let inputs = EvalKind::FixedSmall;
     let input_selector = EvalKind::FixedSmall;
     let gate_selectors = [EvalKind::Committed(CommitType::Structure); S];
+    let constants = EvalKind::Committed(CommitType::Structure);
 
     LcsMles {
         products,
@@ -181,6 +199,7 @@ const fn kinds<const IO: usize, const S: usize>() -> LcsMles<EvalKind, IO, S> {
         inputs,
         input_selector,
         gate_selectors,
+        constants,
     }
 }
 
@@ -225,6 +244,7 @@ impl<F: Field, const IO: usize, const S: usize> SumcheckFunction<F> for LcsSumch
         let inputs = f(evals.inputs);
         let input_selector = f(evals.input_selector);
         let gate_selectors = evals.gate_selectors.map(&f);
+        let constants = f(evals.constants);
         Self::Mles {
             products,
             r_eq,
@@ -232,6 +252,7 @@ impl<F: Field, const IO: usize, const S: usize> SumcheckFunction<F> for LcsSumch
             inputs,
             input_selector,
             gate_selectors,
+            constants,
         }
     }
 
@@ -263,8 +284,15 @@ impl<F: Field, const IO: usize, const S: usize> SumcheckFunction<F> for LcsSumch
         for (i, constraints) in self.gates.iter().enumerate() {
             let selector = env.get(Index::GateSelector(i));
             for constraint in constraints {
-                let exp = constraint.clone();
-                acc = acc * &chall + eval_exp(&env, exp) * &selector;
+                let exp = if matches!(constraint, Exp::Constant) {
+                    let product = env.get(Index::Product(0));
+                    let constants = env.get(Index::Constants);
+                    product - constants
+                } else {
+                    let exp = constraint.clone();
+                    eval_exp(&env, exp)
+                };
+                acc = acc * &chall + exp * &selector;
             }
         }
         Some(acc)
@@ -294,5 +322,6 @@ where
             let e2 = eval_exp(env, *exp2);
             e1 - e2
         }
+        Exp::Constant => panic!("Constant shouldn't have been evaluated"),
     }
 }
