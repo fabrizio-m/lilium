@@ -9,7 +9,7 @@ use std::{
     ops::{Add, Index, Mul, Sub},
 };
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 /// `Field` wrapper which implements `Var`.
 pub struct Fi<F: Field>(F);
 

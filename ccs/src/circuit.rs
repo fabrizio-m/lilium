@@ -6,7 +6,7 @@ use crate::{
 use ark_ff::Field;
 use std::fmt::Display;
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 /// Symbolic circuit variable.
 pub struct Var<V>(pub(crate) V);
 
