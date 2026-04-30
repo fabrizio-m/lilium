@@ -23,16 +23,16 @@ Lilium allows you to prove that you know a value assignment for each variable su
 that all constraints are satisfied, and most importantly, without revealing
 the values.
 
-For example this circuit:
-$$ x - 3 = 0$$
+For example this circuit:  
+$$ x - 3 = 0 $$  
 If you $$x = 3$$, then you can prove it without revealing the value of x.
-The/a witness can be said to be 3.
-But this:
-$ x^2 + 1 = 0$
+The/a witness can be said to be 3.  
+But this:  
+$$ x^2 + 1 = 0 $$  
 There is not possible witness, and you can not know something which
-doesn't exits.
-What about this? It should have some solution:
-$ x^6 - 1 + x^5 = 0$
+doesn't exits.  
+What about this? It should have some solution:  
+$$ x^6 - 1 + x^5 = 0 $$  
 But if you don't know it, you can't prove it. Existence is not enough,
 you need knowledge.
 
