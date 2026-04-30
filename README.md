@@ -24,8 +24,8 @@ that all constraints are satisfied, and most importantly, without revealing
 the values.
 
 For example this circuit:
-$ x - 3 = 0$
-If you $x = 3$, then you can prove it without revealing the value of x.
+$$ x - 3 = 0$$
+If you $$x = 3$$, then you can prove it without revealing the value of x.
 The/a witness can be said to be 3.
 But this:
 $ x^2 + 1 = 0$
