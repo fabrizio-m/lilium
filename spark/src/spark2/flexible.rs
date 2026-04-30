@@ -79,6 +79,17 @@ impl<F: Field, C: CommmitmentScheme<F>> FlexibleSpark<F, C> {
             S8(_) => 8,
         }
     }
+
+    /// Creates an instance by properly truncating the point if needed.
+    pub fn instance(&self, point: MultiPoint<F>, eval: F) -> Instance<F> {
+        let mut vars = point.inner();
+        let n = self.segments();
+        if vars.len() > n * 8 {
+            vars.truncate(n * 8);
+        }
+        let point = MultiPoint::new(vars);
+        Instance { point, eval }
+    }
 }
 
 pub struct Instance<F: Field> {
@@ -88,15 +99,19 @@ pub struct Instance<F: Field> {
 }
 
 impl<F: Field> Instance<F> {
-    pub fn slice<const N: usize>(self) -> CommittedSparkInstance<F, N> {
+    fn slice<const N: usize>(self) -> CommittedSparkInstance<F, N> {
         let Self { point, eval } = self;
-        let original_len = point.vars();
+        let mut vars = point.inner();
+        if vars.len() > N * 8 {
+            vars.truncate(N * 8);
+        }
+        let original_len = vars.len();
+
         assert!(
             N * 8 - original_len < 8,
             "only the last segment may be incomplete"
         );
 
-        let mut vars = point.inner();
         vars.resize(N * 8, F::zero());
         let point = MultiPoint::new(vars);
 

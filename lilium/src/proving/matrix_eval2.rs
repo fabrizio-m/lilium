@@ -82,7 +82,8 @@ where
 
         for (i, eval) in instance.matrix_evals.iter().enumerate() {
             let point = point.clone();
-            let instance = flexible::Instance { point, eval: *eval };
+            // let instance = flexible::Instance { point, eval: *eval };
+            let instance = self.spark_keys[i].instance(point, *eval);
             let flexible::ProverOutput {
                 open_instance,
                 witness,
@@ -175,7 +176,8 @@ where
         for i in 0..IO {
             let eval = matrix_evals[i];
             let point = point.clone();
-            let instance = flexible::Instance { point, eval };
+            // let instance = flexible::Instance { point, eval };
+            let instance = key.spark_keys[i].instance(point, eval);
             let instance = MessageGuard::new(instance);
 
             let proof = spark_proofs.next().unwrap();
