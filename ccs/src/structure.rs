@@ -60,7 +60,7 @@ pub struct CcsStructure<F, const IO: usize, const S: usize> {
     pub input_len: usize,
     //with each multiset representing a term, and with corresponding constant coefficient
     pub gates: Vec<Constraints<Exp<usize>>>,
-    /// public_io + witness + 1
+    /// public_io + witness
     pub trace_len: usize,
     /// Maps Constant constraints to their constant.
     pub constants: BTreeMap<usize, F>,
@@ -158,9 +158,8 @@ impl<F: Field, const MAX_IO: usize> StructureBuilder<F, MAX_IO> {
 
     /// Allocate new variable, returning its index.
     fn var(&mut self) -> WitnessIndex {
-        //in this way 0 is reserved for the 1
-        self.next += 1;
         let v = self.next;
+        self.next += 1;
         self.vars.push(v);
         WitnessIndex(v)
     }
@@ -180,7 +179,7 @@ impl<F: Field, const MAX_IO: usize> StructureBuilder<F, MAX_IO> {
 
     pub fn link_outputs<const I: usize, const O: usize>(&mut self, outputs: [WitnessIndex; O]) {
         for (i, b) in outputs.into_iter().enumerate() {
-            let a = WitnessIndex(i + I + 1);
+            let a = WitnessIndex(i + I);
             <Self as ConstraintSystem<F, WitnessIndex>>::execute::<Equality, 2, 2, 0>(
                 self,
                 [a, b].map(Var),

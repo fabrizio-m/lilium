@@ -1,4 +1,4 @@
-use crate::instances::{eval_input_selector, eval_ux};
+use crate::instances::{eval_input_selector, eval_inputs};
 use ark_ff::Field;
 use ccs::structure::Exp;
 use std::{fmt::Debug, marker::PhantomData};
@@ -109,8 +109,7 @@ impl<V, const IO: usize, const S: usize> LcsMles<V, IO, S> {
     ) -> LcsMles<Option<F>, IO, S> {
         let input_len = inputs.len();
 
-        let u = F::one();
-        let inputs = eval_ux(point.inner_ref(), u, &inputs);
+        let inputs = eval_inputs(point.inner_ref(), &inputs);
         let inputs = Some(inputs);
 
         let input_selector = eval_input_selector(&point, input_len);

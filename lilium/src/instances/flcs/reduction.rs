@@ -176,7 +176,7 @@ where
 
         // Check evaluation on the point.
         let checks = sumcheck_verifier.check_evals_at_r_symbolic(evals, check.eval, &challs);
-        if checks {
+        if !checks {
             return Err(crate::Error::EvalCheck);
         }
 

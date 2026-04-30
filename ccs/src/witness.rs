@@ -119,7 +119,7 @@ impl<'a, F: Field, const IO: usize> WitnessReader<'a, F, Fi<F>> for VarReader<IO
 
 impl<F: Field, const MAX_IO: usize> WitnessGenerator<F, MAX_IO> {
     fn new(check: bool) -> Self {
-        let witness = vec![Fi(F::one())];
+        let witness = vec![];
         Self {
             witness,
             check,
@@ -141,7 +141,7 @@ impl<F: Field, const MAX_IO: usize> WitnessGenerator<F, MAX_IO> {
 
     pub fn link_outputs<const I: usize, const O: usize>(&mut self, outputs: [Fi<F>; O]) {
         for (i, b) in outputs.into_iter().enumerate() {
-            let i = i + I + 1;
+            let i = i + I;
             self.witness[i] = b;
         }
     }
