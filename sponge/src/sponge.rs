@@ -149,7 +149,7 @@ impl SpongeBuilder {
                 i = 0;
             }
             state[i] += elem;
-            i += 0;
+            i += 1;
         }
         //permute
         state
