@@ -44,12 +44,14 @@ where
         } = instance;
 
         let mut iter = commitments_and_evals.into_iter();
+
+        // TODO: batching zero commitments_and_evals is undefined, probably better to return an error than panic
         let first = iter.next().unwrap();
 
         let (commit, eval) = iter.fold(first, |acc, e| {
             let (commit, eval) = acc;
             let commit = commit * chall + &e.0;
-            let eval = eval * chall + eval;
+            let eval = eval * chall + e.1;
             (commit, eval)
         });
 
