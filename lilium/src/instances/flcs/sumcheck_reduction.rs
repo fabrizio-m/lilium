@@ -407,6 +407,7 @@ mod soundness_test {
             inputs: Fr::from(1u64),
             input_selector: Fr::from(1u64),
             gate_selectors: [Fr::from(1u64)],
+            constants: Fr::from(0),
         };
         let evals_1 = ZeroCheckMles::new(zerocheck_eval_1, inner);
         let evals_2 = ZeroCheckMles::new(zerocheck_eval_2, inner);
@@ -440,12 +441,14 @@ mod soundness_test {
         let inputs = Fr::ONE;
         let input_selector = Fr::ONE;
         let gate_selectors = [Fr::ONE];
+        let constants = Fr::from(0);
         let inner = LcsMles {
             products,
             w,
             inputs,
             input_selector,
             gate_selectors,
+            constants,
         };
         let evals = ZeroCheckMles::new(zc, inner);
 
