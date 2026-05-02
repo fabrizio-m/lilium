@@ -307,6 +307,7 @@ where
         &self,
         env: E,
     ) -> Option<V> {
+        let z = env.get(ZeroCheckIdx::ZeroCheckChallenge);
         let inner = |idx| env.get(ZeroCheckIdx::Inner(idx));
         let chall = env.get_chall(());
         let w = inner(Index::W);
@@ -339,7 +340,7 @@ where
                 };
             }
         }
-        Some(acc)
+        Some(z * acc)
     }
 }
 
@@ -367,6 +368,117 @@ where
             e1 - e2
         }
         Exp::Constant => panic!("Constant shouldn't have been evaluated"),
+    }
+}
+
+#[cfg(test)]
+mod soundness_test {
+    use super::*;
+    use ark_vesta::Fr;
+    use sumcheck::{
+        eval_check::EvalCheckEnv, sumcheck::SumcheckVerifier, zerocheck::ZeroCheckMles,
+    };
+
+    // Checks that LcsSumcheck::symbolic_function doesn't ignore the zerocheck factor
+    // and that check_evals_at_r_symbolic rejects a "malicious" sum that does not include
+    // the zerocheck multiplication.
+    //
+    // The sumcheck protocol proves:
+    //     sum = Σ_x ZC(x) * P(x)
+    // After sumcheck the verifier checks:
+    //     ZC(r) * P(r) == sum
+    #[test]
+    fn symbolic_function_checks_zerocheck_factor() {
+        // A single constraint: w * w - w = 0 (witness is self-inverse)
+        let gates = vec![vec![Exp::Sub(
+            Box::new(Exp::Mul(Box::new(Exp::Atom(0)), Box::new(Exp::Atom(0)))),
+            Box::new(Exp::Atom(0)),
+        )]];
+        let sumcheck = LcsSumcheck::<Fr, 1, 1>::new(gates, false);
+        let challs = ConstraintCombinationChallenge(Fr::from(42u64));
+
+        // Build evals with concrete values.
+        // The zerocheck field is wrapped in ZeroCheckMles.
+        let zerocheck_eval_1: Fr = Fr::from(7u64); // arbitrary
+        let zerocheck_eval_2: Fr = Fr::from(1792u64); // very different
+        let inner = LcsMles {
+            products: [Fr::from(5u64)],
+            w: Fr::from(3u64),
+            inputs: Fr::from(1u64),
+            input_selector: Fr::from(1u64),
+            gate_selectors: [Fr::from(1u64)],
+            constants: Fr::from(0),
+        };
+        let evals_1 = ZeroCheckMles::new(zerocheck_eval_1, inner);
+        let evals_2 = ZeroCheckMles::new(zerocheck_eval_2, inner);
+
+        // The symbolic_function evals should produce different results for different zerocheck values.
+        let result_1 = sumcheck
+            .symbolic_function(EvalCheckEnv::new(evals_1, challs.clone()))
+            .unwrap();
+        let result_2 = sumcheck
+            .symbolic_function(EvalCheckEnv::new(evals_2.clone(), challs.clone()))
+            .unwrap();
+        assert_ne!(
+            result_1, result_2,
+            "symbolic_function should return different values for different zerocheck fields"
+        );
+    }
+
+    // End-to-end: a cheating prover cannot get past check_evals_at_r_symbolic
+    // by setting sum = P(r) instead of sum = ZC(r) * P(r).
+    #[test]
+    fn soundness_requires_zerocheck_factor() {
+        // Single gate, single constraint: just `products[0]`.
+        let gates = vec![vec![Exp::Atom(0)]];
+        let sumcheck = LcsSumcheck::<Fr, 1, 1>::new(gates, false);
+
+        let challs = ConstraintCombinationChallenge(Fr::from(1337u64));
+
+        let zc: Fr = Fr::from(7u64); // zerocheck eval at the sumcheck challenge point
+        let products = [Fr::from(2u64)];
+        let w = Fr::ONE;
+        let inputs = Fr::ONE;
+        let input_selector = Fr::ONE;
+        let gate_selectors = [Fr::ONE];
+        let constants = Fr::from(0);
+        let inner = LcsMles {
+            products,
+            w,
+            inputs,
+            input_selector,
+            gate_selectors,
+            constants,
+        };
+        let evals = ZeroCheckMles::new(zc, inner);
+
+        // Compute the bare inner accumulator `acc` directly without using symbolic_function.
+        // This is what a malicious prover would submit if they forgot to include the ZC(r) factor.
+        //   inputs_check = input_selector * w - inputs
+        //   acc          = inputs_check + Σ_i selector_i * eval(constraint_i)
+        let inputs_check = input_selector * w - inputs;
+        let gate0 = gate_selectors[0] * products[0]; // constraint = Atom(0)
+        let acc = inputs_check + gate0;
+
+        // Sanity checks: zc != 1 and acc != 0 so the malicious / correct sums differ.
+        assert_ne!(zc, Fr::ONE);
+        assert_ne!(acc, Fr::ZERO);
+
+        let verifier = SumcheckVerifier::new_symbolic(sumcheck, 1);
+
+        // Soundness: the bare acc must NOT pass — symbolic_function should produce zc * acc rather than acc.
+        let malicious_sum = acc;
+        assert!(
+            !verifier.check_evals_at_r_symbolic(evals.clone(), malicious_sum, &challs),
+            "SumcheckVerifier accepts malicious sum (missing ZC factor) — soundness gap"
+        );
+
+        // Completeness: zc * acc must pass.
+        let correct_sum = zc * acc;
+        assert!(
+            verifier.check_evals_at_r_symbolic(evals, correct_sum, &challs),
+            "verifier rejects correct sum (zc * acc) — completeness gap"
+        );
     }
 }
 
