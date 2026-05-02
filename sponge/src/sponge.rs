@@ -152,6 +152,7 @@ impl SpongeBuilder {
             i += 1;
         }
         //permute
+        permutation.permute_mut(&mut state);
         state
     }
     pub fn sponge<
