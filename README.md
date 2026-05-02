@@ -23,16 +23,23 @@ Lilium allows you to prove that you know a value assignment for each variable su
 that all constraints are satisfied, and most importantly, without revealing
 the values.
 
-For example this circuit:  
-$$ x - 3 = 0 $$  
+For example this circuit:
+
+$$x - 3 = 0$$
+
 If you $$x = 3$$, then you can prove it without revealing the value of x.
 The/a witness can be said to be 3.  
+
 But this:  
-$$ x^2 + 1 = 0 $$  
+
+$$x^2 + 1 = 0$$
+
 There is not possible witness, and you can not know something which
 doesn't exits.  
-What about this? It should have some solution:  
-$$ x^6 - 1 + x^5 = 0 $$  
+What about this? It should have some solution:
+
+$$x^6 - 1 + x^5 = 0$$
+
 But if you don't know it, you can't prove it. Existence is not enough,
 you need knowledge.
 
@@ -189,7 +196,7 @@ Circuit types enable simple implementations of functionality that would
 require many variables and gates.
 `Uint::new` for example creates about 32 variables and 96 constraints.
 `Uint::new(cs,x)` creates a new variable with the same value of x, but
-constrained to fit in an N bits number, the$$[0..2^32]$ interval in this case.
+constrained to fit in an N bits number, the $[0..2^32]$ interval in this case.
 As the value is the same it can be discarded like `_int`.
 The original variable is now constrained to be a `u32` greater than 0.
 But we want it to be greater than 30, for that we subtract 30 from
@@ -457,7 +464,7 @@ The lengths are chosen so that the number of constraints is just
 below the next power of 2, and the reports show the number of constraints,
 not chain length. If you are interested in chain length, the values measured
 correspond to `[11, 22, 44, 89, 178, 356, 712, 1424, 2849, 5698]` and result
-in constraint counts from $$2^{12}$$ to $$2^{21}$$.  
+in constraint counts from $2^{12}$ to $2^{21}$.
 The benchmarks were run in an Azure Standard FX2mds VM.
 
 #### Proving time
