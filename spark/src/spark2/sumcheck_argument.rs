@@ -12,7 +12,7 @@ pub struct SparkOpenSumcheck<const N: usize>;
 impl<F: Field, const N: usize> SumcheckFunction<F> for SparkOpenSumcheck<N> {
     type Idx = SparkIndex;
 
-    type Mles<V: Copy + Debug> = SparkOpen<V, N>;
+    type Mles<V: Copy + Debug + Sync + Send> = SparkOpen<V, N>;
 
     type Challs = SparkChallenges<F>;
 
@@ -22,8 +22,8 @@ impl<F: Field, const N: usize> SumcheckFunction<F> for SparkOpenSumcheck<N> {
 
     fn map_evals<A, B, M>(evals: Self::Mles<A>, f: M) -> Self::Mles<B>
     where
-        A: Copy + Debug,
-        B: Copy + Debug,
+        A: Copy + Debug + Sync + Send,
+        B: Copy + Debug + Sync + Send,
         M: Fn(A) -> B,
     {
         evals.map(f)

@@ -35,7 +35,7 @@ const fn kinds() -> Evals<EvalKind> {
 impl<F: Field> SumcheckFunction<F> for ZeroCheckWrapped {
     type Idx = ZeroCheckIdx<usize>;
 
-    type Mles<V: Copy + Debug> = Evals<V>;
+    type Mles<V: Copy + Debug + Sync + Send> = Evals<V>;
 
     type Challs = NoChallenges<F>;
 
@@ -45,8 +45,8 @@ impl<F: Field> SumcheckFunction<F> for ZeroCheckWrapped {
 
     fn map_evals<A, B, M>(evals: Self::Mles<A>, f: M) -> Self::Mles<B>
     where
-        A: Copy + Debug,
-        B: Copy + Debug,
+        A: Copy + Debug + Sync + Send,
+        B: Copy + Debug + Sync + Send,
         M: Fn(A) -> B,
     {
         evals.map(&f, |inner| inner.map(&f))
@@ -78,7 +78,7 @@ struct ZeroCheckInner;
 impl<F: Field> SumcheckFunction<F> for ZeroCheckInner {
     type Idx = usize;
 
-    type Mles<V: Copy + Debug> = SimpleEval<V, 3>;
+    type Mles<V: Copy + Debug + Sync + Send> = SimpleEval<V, 3>;
 
     type Challs = NoChallenges<F>;
 
@@ -88,8 +88,8 @@ impl<F: Field> SumcheckFunction<F> for ZeroCheckInner {
 
     fn map_evals<A, B, M>(evals: Self::Mles<A>, f: M) -> Self::Mles<B>
     where
-        A: Copy + Debug,
-        B: Copy + Debug,
+        A: Copy + Debug + Sync + Send,
+        B: Copy + Debug + Sync + Send,
         M: Fn(A) -> B,
     {
         evals.map(f)

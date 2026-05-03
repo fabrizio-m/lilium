@@ -68,8 +68,24 @@ fn eval_eq<F: Field>(dest: &mut [F], mut vars: Vec<F>, zero: F) {
         let var = vars.pop().unwrap();
         let (left, right) = dest.split_at_mut(half_len);
         eval_eq(left, vars, zero);
-        for (l, r) in left.iter().zip(right.iter_mut()) {
+        /*for (l, r) in left.iter().zip(right.iter_mut()) {
             // to avoid lsp false positive
+            let r: &mut F = r;
+            *r = var * l;
+        }*/
+        extend(left, right, var);
+    }
+}
+
+fn extend<F: Field>(l: &[F], r: &mut [F], var: F) {
+    if l.len() > 512 {
+        assert_eq!(l.len(), r.len());
+        let (ll, lr) = l.split_at(l.len() / 2);
+        let (rl, rr) = r.split_at_mut(r.len() / 2);
+
+        rayon::join(|| extend(ll, rl, var), || extend(lr, rr, var));
+    } else {
+        for (l, r) in l.iter().zip(r.iter_mut()) {
             let r: &mut F = r;
             *r = var * l;
         }

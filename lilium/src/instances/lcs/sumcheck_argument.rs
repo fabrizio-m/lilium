@@ -102,7 +102,9 @@ impl ZeroCheckAvailable for Index {
     }
 }
 
-impl<V: Clone + Copy, const IO: usize, const S: usize> Evals<V> for LcsMles<V, IO, S> {
+impl<V: Clone + Copy + Sync + Send, const IO: usize, const S: usize> Evals<V>
+    for LcsMles<V, IO, S>
+{
     type Idx = Index;
 
     fn index(&self, index: Self::Idx) -> &V {
@@ -224,7 +226,7 @@ impl<F> core::ops::Index<()> for SingleChall<F> {
 impl<F: Field, const IO: usize, const S: usize> SumcheckFunction<F> for LcsSumcheck<F, IO, S> {
     type Idx = Index;
 
-    type Mles<V: Copy + std::fmt::Debug> = LcsMles<V, IO, S>;
+    type Mles<V: Copy + std::fmt::Debug + Sync + Send> = LcsMles<V, IO, S>;
 
     type ChallIdx = ();
 
@@ -234,8 +236,8 @@ impl<F: Field, const IO: usize, const S: usize> SumcheckFunction<F> for LcsSumch
 
     fn map_evals<A, B, M>(evals: Self::Mles<A>, f: M) -> Self::Mles<B>
     where
-        A: Copy + std::fmt::Debug,
-        B: Copy + std::fmt::Debug,
+        A: Copy + std::fmt::Debug + Sync + Send,
+        B: Copy + std::fmt::Debug + Sync + Send,
         M: Fn(A) -> B,
     {
         let products = evals.products.map(&f);

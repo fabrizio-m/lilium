@@ -2,7 +2,7 @@ use crate::batching::multipoint::{MultipointEvals, MultipointIdx};
 use std::vec::IntoIter;
 use sumcheck::polynomials::Evals;
 
-impl<V: Copy> Evals<V> for MultipointEvals<V> {
+impl<V: Copy + Sync + Send> Evals<V> for MultipointEvals<V> {
     type Idx = MultipointIdx;
 
     fn index(&self, index: Self::Idx) -> &V {

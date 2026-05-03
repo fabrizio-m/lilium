@@ -14,7 +14,7 @@ struct Eval<V = Fr> {
     c: V,
 }
 
-impl<V: Copy> Evals<V> for Eval<V> {
+impl<V: Copy + Sync + Send> Evals<V> for Eval<V> {
     type Idx = usize;
 
     fn combine<C: Fn(V, V) -> V>(&self, other: &Self, f: C) -> Self {
@@ -65,7 +65,7 @@ where
 struct MulGate;
 impl SumcheckFunction<Fr> for MulGate {
     type Idx = usize;
-    type Mles<V: Copy + Debug> = Eval<V>;
+    type Mles<V: Copy + Debug + Sync + Send> = Eval<V>;
     type ChallIdx = NoChallIdx;
     type Challs = NoChallenges<Fr>;
 
@@ -80,8 +80,8 @@ impl SumcheckFunction<Fr> for MulGate {
 
     fn map_evals<A, B, M>(evals: Self::Mles<A>, f: M) -> Self::Mles<B>
     where
-        A: Copy + Debug,
-        B: Copy + Debug,
+        A: Copy + Debug + Sync + Send,
+        B: Copy + Debug + Sync + Send,
         M: Fn(A) -> B,
     {
         map_evals(evals, f)
@@ -98,7 +98,7 @@ const fn kinds() -> Eval<EvalKind> {
 struct SquareGate;
 impl SumcheckFunction<Fr> for SquareGate {
     type Idx = usize;
-    type Mles<V: Copy + Debug> = Eval<V>;
+    type Mles<V: Copy + Debug + Sync + Send> = Eval<V>;
     type ChallIdx = NoChallIdx;
     type Challs = NoChallenges<Fr>;
 
@@ -111,8 +111,8 @@ impl SumcheckFunction<Fr> for SquareGate {
 
     fn map_evals<A, B, M>(evals: Self::Mles<A>, f: M) -> Self::Mles<B>
     where
-        A: Copy + Debug,
-        B: Copy + Debug,
+        A: Copy + Debug + Sync + Send,
+        B: Copy + Debug + Sync + Send,
         M: Fn(A) -> B,
     {
         map_evals(evals, f)

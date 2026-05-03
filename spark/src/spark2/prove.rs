@@ -114,6 +114,7 @@ impl<F: Field, C: CommmitmentScheme<F>, const N: usize> CommittedSpark<F, C, N> 
     where
         C: 'static,
     {
+        //here
         let vars = self.committed_structure.vars();
         let [] = transcript.send_message(&instance).unwrap();
         // The eval could be used to double check result.

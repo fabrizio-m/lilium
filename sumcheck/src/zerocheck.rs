@@ -121,9 +121,10 @@ fn write_evals<F: Field>(dest: &mut [F], flips: &[F]) {
         let (left, right) = dest.split_at_mut(dest.len() / 2);
         assert_eq!(left.len(), right.len());
         write_evals(left, &flips[1..]);
-        for (l, r) in left.iter().zip(right.iter_mut()) {
+
+        left.iter().zip(right).for_each(|(l, r)| {
             *r = *l * var;
-        }
+        });
     }
 }
 
@@ -257,7 +258,7 @@ impl<V, I> ZeroCheckMles<V, I> {
     }
 }
 
-impl<V: Copy, I: Evals<V>> Evals<V> for ZeroCheckMles<V, I> {
+impl<V: Copy + Sync + Send, I: Evals<V>> Evals<V> for ZeroCheckMles<V, I> {
     type Idx = ZeroCheckIdx<I::Idx>;
 
     fn index(&self, index: Self::Idx) -> &V {
@@ -343,6 +344,7 @@ where
         let mut powers = shrinking_powers.fix(var).into_iter();
 
         let f = |a, b| one_minus_var * a + var * b;
+        //here
         for (left, right) in left.iter_mut().zip(right) {
             let left_inner: &mut I = &mut left.inner;
             let inner = left_inner.combine(&right.inner, f);

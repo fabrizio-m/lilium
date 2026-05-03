@@ -38,7 +38,7 @@ impl ZeroCheckAvailable for Index {
     }
 }
 
-impl<V: Clone + Copy, const IO: usize> Evals<V> for LinearizedMles<V, IO> {
+impl<V: Clone + Copy + Sync + Send, const IO: usize> Evals<V> for LinearizedMles<V, IO> {
     type Idx = Index;
 
     fn index(&self, index: Self::Idx) -> &V {
@@ -102,7 +102,7 @@ impl<F> std::ops::Index<()> for SingleChall<F> {
 impl<F: Field, const IO: usize> SumcheckFunction<F> for LinearizedSumcheck<IO> {
     type Idx = Index;
 
-    type Mles<V: Copy + std::fmt::Debug> = LinearizedMles<V, IO>;
+    type Mles<V: Copy + std::fmt::Debug + Sync + Send> = LinearizedMles<V, IO>;
 
     type ChallIdx = ();
 
@@ -112,8 +112,8 @@ impl<F: Field, const IO: usize> SumcheckFunction<F> for LinearizedSumcheck<IO> {
 
     fn map_evals<A, B, M>(evals: Self::Mles<A>, f: M) -> Self::Mles<B>
     where
-        A: Copy + std::fmt::Debug,
-        B: Copy + std::fmt::Debug,
+        A: Copy + std::fmt::Debug + Sync + Send,
+        B: Copy + std::fmt::Debug + Sync + Send,
         M: Fn(A) -> B,
     {
         let matrices = evals.matrices.map(&f);

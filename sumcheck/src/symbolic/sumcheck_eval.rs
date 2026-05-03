@@ -219,6 +219,12 @@ where
         res
     }
 
+    pub fn zero_and_eval(&mut self, evals: [&S::Mles<F>; 2]) -> &[F] {
+        self.0.inner.set_stack(&self.0.accumulator_init);
+        self.0.eval_accumulate(evals);
+        self.0.inner.result()
+    }
+
     /// Consumes itself, releasing accumulated result and the inner &mut.
     pub fn finish(self) -> Vec<F> {
         let message_len = self.0.message_len;

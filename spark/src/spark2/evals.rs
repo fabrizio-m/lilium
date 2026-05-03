@@ -140,7 +140,7 @@ pub enum SparkIndex {
     Zerocheck,
 }
 
-impl<V: Copy> Evals<V> for DimensionOpen<V> {
+impl<V: Copy + Sync + Send> Evals<V> for DimensionOpen<V> {
     type Idx = DimensionIndex;
 
     fn index(&self, index: Self::Idx) -> &V {
@@ -183,7 +183,7 @@ impl<V: Copy> Evals<V> for DimensionOpen<V> {
     }
 }
 
-impl<V: Copy, const N: usize> Evals<V> for SparkOpen<V, N> {
+impl<V: Copy + Sync + Send, const N: usize> Evals<V> for SparkOpen<V, N> {
     type Idx = SparkIndex;
 
     fn index(&self, index: Self::Idx) -> &V {

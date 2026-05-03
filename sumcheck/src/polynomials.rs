@@ -1,5 +1,6 @@
 use crate::eq::eq;
 use ark_ff::Field;
+use rayon::prelude::*;
 use std::vec::IntoIter;
 use transcript::Message;
 
@@ -70,7 +71,7 @@ impl<F: Field> MultiPoint<F> {
 
 /// must be some wrapper over [F], representing all the evaluations at some
 /// point of the domain
-pub trait Evals<V>: Sized + Clone {
+pub trait Evals<V>: Sized + Clone + Send + Sync {
     type Idx: Copy;
     fn index(&self, index: Self::Idx) -> &V;
     ///should combine 2 [Self] into one by using `f` to combine each element
@@ -97,11 +98,15 @@ pub trait EvalsExt<F: Field>: Evals<F> + Sized {
         let (left, right) = mle.split_at_mut(half_len);
 
         let f = |a, b| one_minus_var * a + var * b;
-        for (left, right) in left.iter_mut().zip(right) {
+
+        let left: &mut [Self] = left;
+        left.par_iter_mut().zip(right.par_iter()).for_each(|e| {
+            let (left, right) = e;
             let left: &mut Self = left;
             let comb = left.combine(right, f);
             *left = comb;
-        }
+        });
+
         mle.truncate(half_len);
         mle
     }
@@ -189,7 +194,7 @@ impl<F> SingleEval<F> {
     }
 }
 
-impl<V: Copy> Evals<V> for SingleEval<V> {
+impl<V: Copy + Sync + Send> Evals<V> for SingleEval<V> {
     type Idx = ();
 
     fn combine<C: Fn(V, V) -> V>(&self, other: &Self, f: C) -> Self {
@@ -245,7 +250,7 @@ pub mod simple_eval {
         }
     }
 
-    impl<V: Copy + Debug, const N: usize> Evals<V> for SimpleEval<V, N> {
+    impl<V: Copy + Debug + Sync + Send, const N: usize> Evals<V> for SimpleEval<V, N> {
         type Idx = usize;
 
         fn index(&self, index: Self::Idx) -> &V {

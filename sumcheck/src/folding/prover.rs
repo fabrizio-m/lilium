@@ -5,6 +5,10 @@ use crate::{
     sumcheck::{Sum, SumcheckFunction},
 };
 use ark_ff::Field;
+use rayon::{
+    iter::{IndexedParallelIterator, ParallelIterator},
+    slice::ParallelSlice,
+};
 use sponge::sponge::Duplex;
 use transcript::Transcript;
 
@@ -33,20 +37,22 @@ impl<F: Field, SF: SumcheckFunction<F>> SumFold<F, SF> {
         transcript: &mut Transcript<F, S>,
         sumcheck_challs: SF::Challs,
     ) -> SumFoldProverOutput<F, SF> {
-        let mut evaluator = self.evaluator.clone();
-        let accumulator = evaluator.accumulator(&sumcheck_challs);
-
-        // Compute message with original function first.
+        let identity = vec![F::ZERO; self.degree + 1];
+        let identity = Message::new(identity);
+        let identity = || identity.clone();
         let message = w1
-            .iter()
-            .zip(w2.iter())
-            .fold(accumulator, |mut acc, evals| {
-                let (e1, e2) = evals;
-                acc.eval_accumulate([e1, e2]);
-                acc
+            .par_chunks(256)
+            .zip(w2.par_chunks(256))
+            .map(|(left, right)| {
+                let mut evaluator = self.evaluator.clone();
+                let challs = &sumcheck_challs;
+                let mut accumulator = evaluator.accumulator(challs);
+                for (left, right) in left.iter().zip(right) {
+                    accumulator.eval_accumulate([left, right]);
+                }
+                Message::new(accumulator.finish())
             })
-            .finish();
-        let message = Message::new(message);
+            .reduce(identity, |a, b| a + b);
 
         // Check against sums if provided.
         let instance = if let Some(sums) = sums {

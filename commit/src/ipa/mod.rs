@@ -3,6 +3,7 @@ use ark_ec::{AffineRepr, CurveGroup, Group, VariableBaseMSM};
 use ark_ff::Field;
 use hash_to_curve::CurveMap;
 use rand::{rngs::StdRng, SeedableRng};
+use rayon::{prelude::*, ThreadPoolBuilder};
 use vector_utils::{fold_basis, fold_vec};
 
 mod poly_comm;
@@ -32,13 +33,16 @@ where
     let commit_l = G::msm_unchecked(g_high, a_low);
     let commit_r = G::msm_unchecked(g_low, a_high);
     let inner_product_l = a_low
-        .iter()
+        .par_iter()
         .zip(b_high)
-        .fold(F::zero(), |acc, (a, b)| acc + *a * b);
+        .fold(F::zero, |acc, (a, b)| acc + *a * b)
+        .reduce(F::zero, F::add);
+
     let inner_product_r = a_high
-        .iter()
+        .par_iter()
         .zip(b_low)
-        .fold(F::zero(), |acc, (a, b)| acc + *a * b);
+        .fold(F::zero, |acc, (a, b)| acc + *a * b)
+        .reduce(F::zero, F::add);
     let commit_l = product_base * inner_product_l + commit_l;
     let commit_r = product_base * inner_product_r + commit_r;
     [commit_l, commit_r]
@@ -93,20 +97,50 @@ where
 
     pub fn commit_small_set(&self, a: &[u8], set: [F; 256]) -> G {
         assert_eq!(a.len(), self.vector_basis.len());
-        let mut bucket = [G::zero(); 256];
-        for (i, base) in a.iter().zip(&self.vector_basis) {
-            bucket[*i as usize] += base;
-        }
+        // let empty_bucket = [G::zero(); 256];
+        let empty_bucket = || vec![G::zero(); 256];
+        let bucket = a
+            .par_iter()
+            .zip(&self.vector_basis)
+            .fold(empty_bucket, |acc, e| {
+                let (i, base) = e;
+                let mut bucket = acc;
+                bucket[*i as usize] += base;
+                bucket
+            })
+            .reduce(empty_bucket, |b1, b2| {
+                let mut bucket = b1;
+                for i in 0..256 {
+                    bucket[i] += b2[i];
+                }
+                bucket
+            });
+
         let bucket = G::batch_convert_to_mul_base(&bucket);
         G::msm_unchecked(&bucket, &set)
     }
 
     pub fn commit_bytes(&self, a: &[u8]) -> G {
         assert_eq!(a.len(), self.vector_basis.len());
-        let mut bucket = [G::zero(); 256];
-        for (i, base) in a.iter().zip(&self.vector_basis) {
-            bucket[*i as usize] += base;
-        }
+        // let empty_bucket = [G::zero(); 256];
+        let empty_bucket = || vec![G::zero(); 256];
+        let bucket: Vec<G> = a
+            .par_iter()
+            .zip(&self.vector_basis)
+            .fold(empty_bucket, |acc, e| {
+                let (i, base) = e;
+                let mut bucket = acc;
+                bucket[*i as usize] += base;
+                bucket
+            })
+            .reduce(empty_bucket, |b1, b2| {
+                let mut bucket = b1;
+                for i in 0..256 {
+                    bucket[i] += b2[i];
+                }
+                bucket
+            });
+
         bucket
             .into_iter()
             .skip(1)
@@ -129,9 +163,11 @@ where
         let message = RoundMsg { cl, cr };
         let [chall] = transcript.send_message(&message)?;
         let chall_inv = chall.inverse().unwrap();
-        let a = fold_vec(a, [chall, chall_inv]);
-        let b = fold_vec(b, [chall_inv, chall]);
-        let basis = fold_basis::<G>(basis, [chall_inv, chall]);
+        let pool = ThreadPoolBuilder::new().build().unwrap();
+
+        let a = pool.install(|| fold_vec(a, [chall, chall_inv]));
+        let b = pool.install(|| fold_vec(b, [chall_inv, chall]));
+        let basis = pool.install(|| fold_basis::<G>(basis, [chall_inv, chall]));
         let commitment = commitment + cl * chall.square() + cr * chall_inv.square();
         let round = Round {
             a,

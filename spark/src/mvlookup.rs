@@ -21,7 +21,7 @@ pub struct LookupEval<V> {
     counts: V,
 }
 
-impl<V: Copy> Evals<V> for LookupEval<V> {
+impl<V: Copy + Sync + Send> Evals<V> for LookupEval<V> {
     type Idx = LookupIdx;
 
     fn combine<C: Fn(V, V) -> V>(&self, other: &Self, f: C) -> Self {
@@ -189,7 +189,7 @@ mod test {
     impl<F: Field> SumcheckFunction<F> for RangeCheck {
         type Idx = usize;
 
-        type Mles<V: Copy + std::fmt::Debug> = Evals<V>;
+        type Mles<V: Copy + std::fmt::Debug + Sync + Send> = Evals<V>;
 
         // reusing them as we need the same here
         type Challs = SparkChallenges<F>;
@@ -223,8 +223,8 @@ mod test {
 
         fn map_evals<A, B, M>(evals: Self::Mles<A>, f: M) -> Self::Mles<B>
         where
-            A: Copy + std::fmt::Debug,
-            B: Copy + std::fmt::Debug,
+            A: Copy + std::fmt::Debug + Sync + Send,
+            B: Copy + std::fmt::Debug + Sync + Send,
             M: Fn(A) -> B,
         {
             Evals::map(evals, f)

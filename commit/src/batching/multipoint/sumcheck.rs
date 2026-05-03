@@ -16,7 +16,7 @@ const fn kinds<const N: usize>() -> [MultipointEvals<EvalKind>; N] {
 impl<F: Field, C, const N: usize> SumcheckFunction<F> for MultipointBatching<C, N> {
     type Idx = (usize, MultipointIdx);
 
-    type Mles<V: Copy + Debug> = [MultipointEvals<V>; N];
+    type Mles<V: Copy + Debug + Sync + Send> = [MultipointEvals<V>; N];
 
     type Challs = MultipointChall<F>;
 
@@ -26,8 +26,8 @@ impl<F: Field, C, const N: usize> SumcheckFunction<F> for MultipointBatching<C, 
 
     fn map_evals<A, B, M>(evals: Self::Mles<A>, f: M) -> Self::Mles<B>
     where
-        A: Copy + Debug,
-        B: Copy + Debug,
+        A: Copy + Debug + Sync + Send,
+        B: Copy + Debug + Sync + Send,
         M: Fn(A) -> B,
     {
         evals.map(|e| {

@@ -15,7 +15,7 @@ struct SumOfProducts;
 impl<F: Field> SumcheckFunction<F> for SumOfProducts {
     type Idx = usize;
 
-    type Mles<V: Copy + Debug> = SimpleEval<V, 2>;
+    type Mles<V: Copy + Debug + Sync + Send> = SimpleEval<V, 2>;
 
     type ChallIdx = NoChallIdx;
     type Challs = NoChallenges<F>;
@@ -30,8 +30,8 @@ impl<F: Field> SumcheckFunction<F> for SumOfProducts {
 
     fn map_evals<A, B, M>(evals: Self::Mles<A>, f: M) -> Self::Mles<B>
     where
-        A: Copy + Debug,
-        B: Copy + Debug,
+        A: Copy + Debug + Sync + Send,
+        B: Copy + Debug + Sync + Send,
         M: Fn(A) -> B,
     {
         evals.map(f)

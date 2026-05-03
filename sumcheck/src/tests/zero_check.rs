@@ -23,7 +23,7 @@ type Evals<F> = SimpleEval<F, 4>;
 impl<F: Field> SumcheckFunction<F> for MulGate {
     type Idx = usize;
 
-    type Mles<V: Copy + Debug> = Evals<V>;
+    type Mles<V: Copy + Debug + Sync + Send> = Evals<V>;
 
     type ChallIdx = NoChallIdx;
 
@@ -42,8 +42,8 @@ impl<F: Field> SumcheckFunction<F> for MulGate {
 
     fn map_evals<A, B, M>(evals: Self::Mles<A>, f: M) -> Self::Mles<B>
     where
-        A: Copy + Debug,
-        B: Copy + Debug,
+        A: Copy + Debug + Sync + Send,
+        B: Copy + Debug + Sync + Send,
         M: Fn(A) -> B,
     {
         evals.map(f)

@@ -47,7 +47,7 @@ pub enum DimensionIndex {
     EqLookup,
 }
 
-impl<V: Copy> Evals<V> for DimensionEval<V> {
+impl<V: Copy + Sync + Send> Evals<V> for DimensionEval<V> {
     type Idx = DimensionIndex;
 
     fn combine<C: Fn(V, V) -> V>(&self, other: &Self, f: C) -> Self {
@@ -118,7 +118,7 @@ impl ZeroAvailable for SparkIndex {
     }
 }
 
-impl<V: Copy, const D: usize> Evals<V> for SparkEval<V, D> {
+impl<V: Copy + Sync + Send, const D: usize> Evals<V> for SparkEval<V, D> {
     type Idx = SparkIndex;
 
     fn combine<C: Fn(V, V) -> V>(&self, other: &Self, f: C) -> Self {

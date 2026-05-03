@@ -8,11 +8,13 @@ use crate::{
     SumcheckError,
 };
 use ark_ff::Field;
+use rayon::prelude::*;
 use sponge::sponge::Duplex;
 use std::{
     fmt::Debug,
     marker::PhantomData,
     ops::{Add, AddAssign, Index, Mul, MulAssign, Sub},
+    sync::Arc,
 };
 use transcript::{
     instances::PolyEvalCheck, params::ParamResolver, protocols::Reduction, Transcript,
@@ -105,17 +107,17 @@ impl<F> Index<NoChallIdx> for NoChallenges<F> {
 /// Defines a polynomial used in sumcheck as a function of multilinear
 /// polynomials
 pub trait SumcheckFunction<F: Field> {
-    type Idx: Copy + Ord + Eq + Debug;
-    type Mles<V: Copy + Debug>: Evals<V, Idx = Self::Idx>;
-    type Challs: Index<Self::ChallIdx, Output = F> + Clone + Default;
-    type ChallIdx: Copy + Ord + Eq + Debug;
+    type Idx: Copy + Ord + Eq + Debug + Send + Sync;
+    type Mles<V: Copy + Debug + Sync + Send>: Evals<V, Idx = Self::Idx>;
+    type Challs: Index<Self::ChallIdx, Output = F> + Clone + Default + Send + Sync;
+    type ChallIdx: Copy + Ord + Eq + Debug + Send + Sync;
 
     /// Provides a description of how each mle should be evaluated
     const KINDS: Self::Mles<EvalKind>;
     fn map_evals<A, B, M>(evals: Self::Mles<A>, f: M) -> Self::Mles<B>
     where
-        A: Copy + Debug,
-        B: Copy + Debug,
+        A: Copy + Debug + Sync + Send,
+        B: Copy + Debug + Sync + Send,
         M: Fn(A) -> B;
     ///computes the arbitrary degree polynomial as a function of multilinear polynomials
     fn function<V: Var<F>, E: Env<F, V, Self::Idx, Self::ChallIdx>>(env: E) -> V;
@@ -243,27 +245,46 @@ where
         let (left, right) = mle.split_at(half_len);
         let degree = self.degree;
 
-        let mut message = Message::new_degree_n(F::zero(), F::zero(), degree);
-        for (left, right) in left.iter().zip(right) {
-            // let left: &mut Eval<F, SF> = left;
-            // left.combine(right, f);
-            let env = MessageEnv::new(left, right, degree, challs.clone());
-            let m = SF::function(env);
-            message += m;
-        }
-        message
+        let message = Message::new_degree_n(F::zero(), F::zero(), degree);
+        left.par_iter()
+            .zip(right)
+            .fold_with(message.clone(), |acc, e| {
+                let (left, right) = e;
+                let env = MessageEnv::new(left, right, degree, challs.clone());
+                let m = SF::function(env);
+                acc + m
+            })
+            .reduce(|| message.clone(), Message::add)
     }
 
     pub(crate) fn message_symbolic(&self, mle: &[SF::Mles<F>], challs: &SF::Challs) -> Message<F> {
         let half_len = mle.len() / 2;
         let (left, right) = mle.split_at(half_len);
-        let mut evaluator = self.evaluator.clone();
-        let mut accumulator = evaluator.accumulator(challs);
+        let ev = Arc::new(self.evaluator.clone());
+        let challs = Arc::new(challs.clone());
 
-        for (left, right) in left.iter().zip(right) {
-            accumulator.eval_accumulate([left, right]);
-        }
-        Message::new(accumulator.finish())
+        let identity = vec![F::ZERO; self.degree + 1];
+        let identity = Message::new(identity);
+        let identity = || identity.clone();
+        let message = left
+            .par_chunks(512)
+            .zip(right.par_chunks(512))
+            .map(|(left, right)| {
+                // let mut evaluator = self.evaluator.clone();
+                let mut evaluator = ev.clone().as_ref().clone();
+                let challs = challs.as_ref();
+                let mut accumulator = evaluator.accumulator(challs);
+                for (left, right) in left.iter().zip(right) {
+                    accumulator.eval_accumulate([left, right]);
+                }
+                Message::new(accumulator.finish())
+            })
+            .reduce(identity, |a, b| {
+                assert_eq!(a.degree(), b.degree());
+                a + b
+            });
+        // Message::new(accumulator.finish())
+        message
     }
 
     pub fn prove<D: Duplex<F>>(

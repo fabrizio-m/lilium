@@ -103,7 +103,7 @@ const fn kinds() -> SimpleEval<EvalKind, 3> {
 impl<F: Field> SumcheckFunction<F> for Product {
     type Idx = usize;
 
-    type Mles<V: Copy + std::fmt::Debug> = SimpleEval<V, 3>;
+    type Mles<V: Copy + std::fmt::Debug + Sync + Send> = SimpleEval<V, 3>;
 
     type Challs = NoChallenges<F>;
 
@@ -113,8 +113,8 @@ impl<F: Field> SumcheckFunction<F> for Product {
 
     fn map_evals<A, B, M>(evals: Self::Mles<A>, f: M) -> Self::Mles<B>
     where
-        A: Copy + std::fmt::Debug,
-        B: Copy + std::fmt::Debug,
+        A: Copy + std::fmt::Debug + Sync + Send,
+        B: Copy + std::fmt::Debug + Sync + Send,
         M: Fn(A) -> B,
     {
         evals.map(f)
@@ -167,7 +167,7 @@ struct InnerProduct;
 impl<F: Field> SumcheckFunction<F> for InnerProduct {
     type Idx = usize;
 
-    type Mles<V: Copy + std::fmt::Debug> = SimpleEval<V, 2>;
+    type Mles<V: Copy + std::fmt::Debug + Sync + Send> = SimpleEval<V, 2>;
 
     type Challs = NoChallenges<F>;
 
@@ -177,8 +177,8 @@ impl<F: Field> SumcheckFunction<F> for InnerProduct {
 
     fn map_evals<A, B, M>(evals: Self::Mles<A>, f: M) -> Self::Mles<B>
     where
-        A: Copy + std::fmt::Debug,
-        B: Copy + std::fmt::Debug,
+        A: Copy + std::fmt::Debug + Sync + Send,
+        B: Copy + std::fmt::Debug + Sync + Send,
         M: Fn(A) -> B,
     {
         evals.map(f)

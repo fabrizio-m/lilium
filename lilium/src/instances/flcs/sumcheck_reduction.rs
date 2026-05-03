@@ -148,7 +148,7 @@ pub enum Index {
     Constants,
 }
 
-impl<V: Copy, const IO: usize, const S: usize> Evals<V> for LcsMles<V, IO, S> {
+impl<V: Copy + Sync + Send, const IO: usize, const S: usize> Evals<V> for LcsMles<V, IO, S> {
     type Idx = Index;
 
     fn index(&self, index: Self::Idx) -> &V {
@@ -267,7 +267,7 @@ where
 {
     type Idx = ZeroCheckIdx<Index>;
 
-    type Mles<V: Copy + Debug> = ZeroCheckMles<V, LcsMles<V, IO, S>>;
+    type Mles<V: Copy + Debug + Sync + Send> = ZeroCheckMles<V, LcsMles<V, IO, S>>;
 
     type Challs = ConstraintCombinationChallenge<F>;
 
@@ -277,8 +277,8 @@ where
 
     fn map_evals<A, B, M>(evals: Self::Mles<A>, f: M) -> Self::Mles<B>
     where
-        A: Copy + Debug,
-        B: Copy + Debug,
+        A: Copy + Debug + Sync + Send,
+        B: Copy + Debug + Sync + Send,
         M: Fn(A) -> B,
     {
         evals.map(&f, |inner| {
@@ -511,7 +511,7 @@ where
 {
     type Idx = Index;
 
-    type Mles<V: Copy + Debug> = LcsMles<V, IO, S>;
+    type Mles<V: Copy + Debug + Sync + Send> = LcsMles<V, IO, S>;
 
     type Challs = ConstraintCombinationChallenge<F>;
 
@@ -521,8 +521,8 @@ where
 
     fn map_evals<A, B, M>(evals: Self::Mles<A>, f: M) -> Self::Mles<B>
     where
-        A: Copy + Debug,
-        B: Copy + Debug,
+        A: Copy + Debug + Sync + Send,
+        B: Copy + Debug + Sync + Send,
         M: Fn(A) -> B,
     {
         let products = evals.products.map(&f);
