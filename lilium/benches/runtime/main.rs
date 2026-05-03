@@ -53,6 +53,8 @@ fn proving(c: &mut Criterion) {
     prove::<44>(&mut group, &mut rng);
     prove::<89>(&mut group, &mut rng);
     prove::<178>(&mut group, &mut rng);
+    prove::<356>(&mut group, &mut rng);
+    prove::<712>(&mut group, &mut rng);
 }
 
 fn prove<const N: usize>(group: &mut BenchmarkGroup<'_, WallTime>, rng: &mut impl Rng)
