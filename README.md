@@ -484,6 +484,30 @@ of folding, providing a more realistic point of comparison with proving.
 
 ![Commmit and fold benchmark](https://github.com/fabrizio-m/lilium/blob/master/data/benchmarks/single_threaded/Commit%20and%20fold/report/lines.svg)
 
+### Multi-threaded
+
+This is a rudimentary implementation made in a single day to capitalize on my
+Azure credit, there is more room for improvement but the results are decent.
+
+The benchmarks were ran in an Azure Standard FX48mds VM.
+
+#### Proving time
+
+![Proving time benchmark](https://github.com/fabrizio-m/lilium/blob/threading/data/benchmarks/multi_threaded/Proving%20Time/report/lines.svg)
+
+#### Folding time
+
+![Folding time benchmark](https://github.com/fabrizio-m/lilium/blob/threading/data/benchmarks/multi_threaded/Folding%20Time/report/lines.svg)
+
+#### Commit and fold
+
+You rarely just have 2 instances around to fold, most commonly you have 1 running
+instance and create a new instance to fold with it.
+This benchmark measures the time of committing to an instance in addition to that
+of folding, providing a more realistic point of comparison with proving.
+
+![Commmit and fold benchmark](https://github.com/fabrizio-m/lilium/blob/threading/data/benchmarks/multi_threaded/Commit%20and%20fold/report/lines.svg)
+
 ## Design considerations
 
 This section will explain internal design considerations of the library, it
