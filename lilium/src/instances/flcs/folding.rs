@@ -1,6 +1,9 @@
-use crate::flcs::{
-    sumcheck_reduction::{ConstraintCombinationChallenge, LcsMles, LcsSumcheck, LcsSumfold},
-    FoldableLcsInstance,
+use crate::{
+    flcs::{
+        sumcheck_reduction::{ConstraintCombinationChallenge, LcsMles, LcsSumcheck, LcsSumfold},
+        FoldableLcsInstance,
+    },
+    Error,
 };
 use ark_ff::Field;
 use ccs::{structure::Exp, witness::LinearCombinations};
@@ -40,7 +43,7 @@ where
 
     type Proof = SumFoldProof<F>;
 
-    type Error = ();
+    type Error = Error<F, C>;
 
     fn transcript_pattern(key: &Self::Key, builder: TranscriptBuilder) -> TranscriptBuilder {
         builder
@@ -55,14 +58,13 @@ where
     ) -> Result<Self::B, Self::Error> {
         // TODO: handle.
         let (instances, []): ([FoldableLcsInstance<F, C, I>; 2], _) =
-            transcript.unwrap_guard(instance).unwrap();
+            transcript.unwrap_guard(instance)?;
 
         let sums = instances.each_ref().map(|instance| instance.sum);
         let sumfold_instance = MessageGuard::new(SumFoldInstance::new(sums));
         // TODO: handle.
         let (sum, folder) =
-            SumFold::verify_reduction(key.zerofold.sumfold_key(), sumfold_instance, transcript)
-                .unwrap();
+            SumFold::verify_reduction(key.zerofold.sumfold_key(), sumfold_instance, transcript)?;
         let [a, b] = instances;
         let folded_instance = a.fold(b, folder, sum.0);
         Ok(folded_instance)
