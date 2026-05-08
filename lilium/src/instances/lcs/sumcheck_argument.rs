@@ -204,7 +204,6 @@ const fn kinds<const IO: usize, const S: usize>() -> LcsMles<EvalKind, IO, S> {
 }
 
 #[derive(Debug, Default, Clone, Copy)]
-//TODO: get from sumcheck crate
 pub struct SingleChall<F>(F);
 
 impl<F> From<F> for SingleChall<F> {
