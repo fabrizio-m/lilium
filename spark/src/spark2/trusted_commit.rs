@@ -5,7 +5,7 @@ use crate::spark2::{
 use ark_ff::Field;
 use commit::{committed_structure::CommittedStructure, CommmitmentScheme};
 use std::rc::Rc;
-use sumcheck::sumcheck::SumcheckVerifier;
+use sumcheck::sumcheck::{SumcheckProver, SumcheckVerifier};
 
 impl<const N: usize> MinorStructure<N> {
     fn new<F: Field>(mle: &SparkSparseMle<F, N>) -> Self {
@@ -50,12 +50,14 @@ impl<F: Field, C: CommmitmentScheme<F>, const N: usize> CommittedSpark<F, C, N> 
 
         let minor_structure = MinorStructure::new(&mle);
         let sumcheck_verifier = SumcheckVerifier::new_symbolic(SparkOpenSumcheck, vars);
+        let sumcheck_prover = SumcheckProver::new_symbolic(vars, &SparkOpenSumcheck);
 
         Self {
             committed_structure,
             minor_structure,
             major_structure,
             sumcheck_verifier,
+            sumcheck_prover,
             mle,
         }
     }

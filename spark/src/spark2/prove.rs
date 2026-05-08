@@ -11,7 +11,7 @@ use sponge::sponge::Duplex;
 use sumcheck::{
     eq,
     polynomials::{Evals, MultiPoint},
-    sumcheck::{CommitType, EvalKind, SumcheckFunction, SumcheckProver},
+    sumcheck::{CommitType, EvalKind, SumcheckFunction},
 };
 use transcript::{messages::SingleElement, Transcript};
 
@@ -114,13 +114,11 @@ impl<F: Field, C: CommmitmentScheme<F>, const N: usize> CommittedSpark<F, C, N> 
     where
         C: 'static,
     {
-        let vars = self.committed_structure.vars();
         let [] = transcript.send_message(&instance).unwrap();
         // The eval could be used to double check result.
         let CommittedSparkInstance { point, eval: _ } = instance;
 
-        //TODO: store
-        let sumcheck_prover = SumcheckProver::new_symbolic(vars, &SparkOpenSumcheck);
+        let sumcheck_prover = &self.sumcheck_prover;
 
         let (mles, challenges, commitments) = self.mles(point, transcript, scheme);
         let sumcheck::sumcheck::ProverOutput {

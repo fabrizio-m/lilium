@@ -2,7 +2,7 @@ use crate::spark2::{evals::SparkOpen, sumcheck_argument::SparkOpenSumcheck};
 use ark_ff::Field;
 use commit::{committed_structure::CommittedStructure, CommmitmentScheme};
 use std::rc::Rc;
-use sumcheck::sumcheck::SumcheckVerifier;
+use sumcheck::sumcheck::{SumcheckProver, SumcheckVerifier};
 
 mod evals;
 pub mod flexible;
@@ -46,6 +46,7 @@ pub struct CommittedSpark<F: Field, C: CommmitmentScheme<F>, const N: usize> {
     minor_structure: MinorStructure<N>,
     major_structure: Rc<Vec<SparkOpen<F, N>>>,
     sumcheck_verifier: SumcheckVerifier<F, SparkOpenSumcheck<N>>,
+    sumcheck_prover: SumcheckProver<F, SparkOpenSumcheck<N>>,
     mle: Rc<SparkSparseMle<F, N>>,
 }
 
