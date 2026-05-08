@@ -1,5 +1,6 @@
 use crate::symbolic::compute::{MvPoly, MvPolyTerm};
 use ark_ff::Field;
+#[cfg(test)]
 use automata::memory_machine::Memory;
 use std::{collections::BTreeMap, fmt::Debug, iter::Iterator};
 
@@ -143,6 +144,8 @@ where
         }
         var_count
     }
+
+    #[cfg(test)]
     /// Evaluate with a memory resolving variable to their value.
     pub fn eval<M: Memory<V, F>>(&self, vars: &M) -> F
     where
