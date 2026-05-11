@@ -7,13 +7,14 @@ use crate::{
 };
 use ark_ff::Field;
 use sponge::sponge::Duplex;
-use std::marker::PhantomData;
 use transcript::reduction2::{
     Argument, GuardedProof, Message, ProverOutput, Reduction, Relation, Transcript,
     TranscriptBuilder, VerifierTranscript,
 };
 
 #[derive(Clone, Debug)]
+/// An oracle over MLEs which have a small representation and
+/// can be cheaply evluated over a point by the verifier.
 pub struct SmallEvalOracle<F: Field, SF: SumcheckFunction<F>> {
     f: SF,
     evals_over_domain: Vec<SF::Mles<F>>,
@@ -47,8 +48,6 @@ impl<F: Field, SF: SumcheckFunction<F>> SmallEvalOracle<F, SF> {
     }
 }
 
-pub struct SmallOracleRelation<F, O>(PhantomData<(F, O)>);
-
 impl<F: Field, SF: SumcheckFunction<F>> Oracle<F> for SmallEvalOracle<F, SF> {
     type Evals<V> = SF::Mles<V>;
 
@@ -77,11 +76,12 @@ impl<F: Field, SF: SumcheckFunction<F>> Oracle<F> for SmallEvalOracle<F, SF> {
     }
 }
 
-pub struct SmallOracleReduction;
+/// An argument for the QuertRelation over the small oracle.
+pub struct SmallOracleArgument;
 
 type Rel<F, SF> = QueryRelation<F, SmallEvalOracle<F, SF>>;
 
-impl<F, SF> Reduction<F, Rel<F, SF>, ()> for SmallOracleReduction
+impl<F, SF> Reduction<F, Rel<F, SF>, ()> for SmallOracleArgument
 where
     F: Field,
     SF: SumcheckFunction<F>,
@@ -150,7 +150,7 @@ where
     }
 }
 
-impl<F, SF> Argument<F, Rel<F, SF>> for SmallOracleReduction
+impl<F, SF> Argument<F, Rel<F, SF>> for SmallOracleArgument
 where
     F: Field,
     SF: SumcheckFunction<F>,

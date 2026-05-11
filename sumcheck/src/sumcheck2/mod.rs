@@ -23,6 +23,9 @@ fn merge<A>(a: A, b: &A) -> A {
 }
 
 #[derive(Clone, Copy, Debug)]
+/// An instance in the sumcheck relation, consting of the
+/// claimed sum of the evaluations of the oracle over the
+/// domain. And the instance of the oracle.
 struct SumcheckInstance<F: Field, O: Oracle<F>> {
     /// The claimed sum.
     sum: F,
@@ -45,6 +48,7 @@ impl<F: Field, O: Oracle<F>> Message<F> for SumcheckInstance<F, O> {
     }
 }
 
+/// The sumcheck relation over a given oracle.
 struct SumcheckRelation<F, O>(PhantomData<(F, O)>);
 
 impl<F: Field, O: Oracle<F>> Relation for SumcheckRelation<F, O> {
@@ -77,6 +81,8 @@ impl<F: Field, O: Oracle<F>> Relation for SumcheckRelation<F, O> {
 }
 
 #[derive(Clone, Debug)]
+/// A message of the sumchecks protocol, represented as
+/// the evaluations of polynomial over the domain 0..d.
 struct SumcheckMessage<F>(Vec<F>);
 
 impl<F: Field> SumcheckMessage<F> {
@@ -90,6 +96,7 @@ impl<F: Field> SumcheckMessage<F> {
 pub struct UnexpectedDegree;
 
 impl<F: Field> Message<F> for SumcheckMessage<F> {
+    /// For the number of variables.
     type Params = usize;
 
     type Error = UnexpectedDegree;
@@ -107,9 +114,12 @@ impl<F: Field> Message<F> for SumcheckMessage<F> {
     }
 }
 
+/// The sumcheck reduction from the sumcheck relation to
+/// the oracle query relation.
 pub struct SumcheckReduction<F, O>(PhantomData<(F, O)>);
 
 #[derive(Clone, Copy, Debug)]
+/// The error of the sumcheck reduction.
 pub enum SumcheckError {
     /// Some message had the wrong degree.
     Degree(UnexpectedDegree),
@@ -117,6 +127,7 @@ pub enum SumcheckError {
     RoundSum,
 }
 
+/// The verifier key of the sumcheck reduction.
 struct SumcheckVerifierKey<F: Field, O: Oracle<F>> {
     oracle_instance_params: <SumcheckInstance<F, O> as Message<F>>::Params,
     degree: usize,
@@ -139,7 +150,6 @@ impl<F: Field, O: Oracle<F>> Reduction<F, SumcheckRelation<F, O>, QueryRelation<
         key: &Self::VerifierKey,
         builder: TranscriptBuilder,
     ) -> TranscriptBuilder {
-        //builder.round::<O::QueryRelation::Instance>(params);
         let degree = key.degree;
         (0..key.vars).fold(builder, |builder, _| {
             builder.round::<F, SumcheckMessage<F>, 1>(degree)

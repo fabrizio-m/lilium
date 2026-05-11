@@ -8,6 +8,8 @@ use transcript::reduction2::{Message, Relation};
 
 pub mod small;
 
+/// The definition of a multivariate polynomial as some function
+/// of multilinear polynomials.
 pub trait SumcheckFunction<F: Field>: Debug + Clone + 'static {
     type Mles<V>: Evals<V> + Debug;
 
@@ -22,6 +24,8 @@ pub trait SumcheckFunction<F: Field>: Debug + Clone + 'static {
 }
 
 #[derive(Clone, Debug)]
+/// An instance in the QueryRelation, made up of an instance of
+/// the oracle, an evaluation point, and an evaluation.
 pub struct OracleQueryInstance<F: Field, O> {
     pub oracle_instance: O,
     pub point: MultiPoint<F>,
@@ -29,7 +33,7 @@ pub struct OracleQueryInstance<F: Field, O> {
 }
 
 #[derive(Clone, Copy, Debug)]
-/// Unexpedted number of variables
+/// Unexpected number of variables
 pub struct UnexpectedVars;
 
 impl<F: Field> Message<F> for MultiPoint<F> {
@@ -87,6 +91,9 @@ where
     }
 }
 
+/// The oracle query relation.
+/// To be in the relation means that evaluating the given oracle
+/// on the given point, results in the given evaluation.
 pub struct QueryRelation<F, O>(PhantomData<(F, O)>);
 
 impl<F: Field, O: Oracle<F>> Relation for QueryRelation<F, O> {
