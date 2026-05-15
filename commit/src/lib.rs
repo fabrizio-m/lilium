@@ -12,6 +12,8 @@ pub mod committed_structure;
 #[cfg(feature = "ipa")]
 pub mod ipa;
 
+pub mod commit2;
+
 #[derive(Debug, Clone)]
 pub struct OpenInstance<F: Field, G> {
     commit: G,
