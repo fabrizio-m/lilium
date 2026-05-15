@@ -3,7 +3,7 @@ use crate::{
     sumcheck::Var,
 };
 use ark_ff::Field;
-use std::{fmt::Debug, marker::PhantomData};
+use std::{fmt::Debug, marker::PhantomData, rc::Rc};
 use transcript::reduction2::{Message, Relation};
 
 pub mod small;
@@ -175,7 +175,7 @@ where
 
     // many of these things would be better in the key than in the oracle.
     fn instance_evals(instance: &Self::Instance) -> Self::Evals<F>;
-    fn mle(&self) -> &[Self::Evals<F>];
+    fn structure(&self) -> Rc<Vec<Self::Evals<F>>>;
     fn function(&self) -> &Self::Function;
     fn vars(&self) -> usize;
     fn oracle_params(&self) -> <Self::Instance as Message<F>>::Params;

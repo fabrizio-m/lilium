@@ -7,6 +7,7 @@ use crate::{
 };
 use ark_ff::Field;
 use sponge::sponge::Duplex;
+use std::rc::Rc;
 use transcript::reduction2::{
     Argument, GuardedProof, Message, ProverOutput, Reduction, Relation, Transcript,
     TranscriptBuilder, VerifierTranscript,
@@ -17,7 +18,7 @@ use transcript::reduction2::{
 /// can be cheaply evluated over a point by the verifier.
 pub struct SmallEvalOracle<F: Field, SF: SumcheckFunction<F>> {
     f: SF,
-    evals_over_domain: Vec<SF::Mles<F>>,
+    evals_over_domain: Rc<Vec<SF::Mles<F>>>,
     evals: SF::Mles<fn(&MultiPoint<F>) -> F>,
     vars: usize,
 }
@@ -39,6 +40,7 @@ impl<F: Field, SF: SumcheckFunction<F>> SmallEvalOracle<F, SF> {
                 todo!()
             }
         };
+        let evals_over_domain = Rc::new(evals_over_domain);
         Self {
             f,
             evals_over_domain,
@@ -70,8 +72,8 @@ impl<F: Field, SF: SumcheckFunction<F>> Oracle<F> for SmallEvalOracle<F, SF> {
 
     type Nature = SmallNature;
 
-    fn mle(&self) -> &[Self::Evals<F>] {
-        &self.evals_over_domain
+    fn structure(&self) -> Rc<Vec<Self::Evals<F>>> {
+        self.evals_over_domain.clone()
     }
 
     fn function(&self) -> &Self::Function {

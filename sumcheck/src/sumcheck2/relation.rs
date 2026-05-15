@@ -81,7 +81,7 @@ impl<F: Field, O: Oracle<F>> Relation for SumcheckRelation<F, O> {
             });
         let locations: O::Evals<EvalLocation> = From::from(locations);
 
-        let mle = structure.mle();
+        let mle = structure.structure();
         // Creating such a thing shouldn't be allowed, thus it will
         // panic instead of returning false.
         assert_eq!(mle.len(), witness.len());

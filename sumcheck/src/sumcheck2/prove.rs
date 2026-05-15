@@ -8,13 +8,13 @@ use crate::{
 };
 use ark_ff::Field;
 use sponge::sponge::Duplex;
+use std::rc::Rc;
 use transcript::reduction2::Transcript;
 
 pub struct ProverKey<F: Field, O: Oracle<F>> {
     degree: usize,
     vars: usize,
-    //TODO: use Rc
-    structure_evals: Vec<O::Evals<F>>,
+    structure_evals: Rc<Vec<O::Evals<F>>>,
     f: O::Function,
     structure_filter: Mles<F, O, bool>,
     instance_filter: Mles<F, O, bool>,
@@ -25,7 +25,7 @@ impl<F: Field, O: Oracle<F>> ProverKey<F, O> {
         let vars = oracle.vars();
         let degree = degree::sumcheck_degree(oracle);
 
-        let structure_evals = oracle.mle().to_vec();
+        let structure_evals = oracle.structure();
 
         let f = oracle.function().clone();
 
@@ -119,7 +119,7 @@ impl<F: Field, O: Oracle<F>> ProverKey<F, O> {
         mut witness: Vec<O::Evals<F>>,
         instance_evals: O::Evals<F>,
     ) -> Vec<O::Evals<F>> {
-        for (witness, structure) in witness.iter_mut().zip(&self.structure_evals) {
+        for (witness, structure) in witness.iter_mut().zip(self.structure_evals.as_ref()) {
             self.merge_evals(witness, structure, &instance_evals);
         }
         witness
