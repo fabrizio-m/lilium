@@ -80,6 +80,7 @@ where
     fn instance_evals(instance: &Self::Instance) -> SF::Mles<F>;
     fn oracle_params(&self) -> <Self::Instance as Message<F>>::Params;
     fn evals(instance: &Self::Instance, point: &MultiPoint<F>) -> SF::Mles<OracleEval<F>>;
+    fn prover_provided(nature: &Self::Nature) -> bool;
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -299,6 +300,7 @@ where
     }
 }
 
+#[derive(Clone, Debug)]
 pub struct CompositeReductionKey<F: Field, SF: SumcheckFunction<F>> {
     // Number of evals provided to the oracle be the prover
     // and to be verified through some reduction.
@@ -354,8 +356,30 @@ where
         builder.round::<F, ProverEvals<F>, 0>(key.oracle1_evals + key.oracle2_evals)
     }
 
-    fn verifier_key(structure_1: &Self, structure_2: &(P1, P2)) -> Self::VerifierKey {
-        todo!()
+    fn verifier_key(oracle: &Self, _: &(P1, P2)) -> Self::VerifierKey {
+        let mut oracle1_evals = 0;
+        let mut oracle2_evals = 0;
+        for nature in oracle.natures().flatten_vec() {
+            match nature {
+                Either::Left(nature) => {
+                    if P1::prover_provided(&nature) {
+                        oracle1_evals += 1;
+                    }
+                }
+                Either::Right(nature) => {
+                    if P2::prover_provided(&nature) {
+                        oracle2_evals += 1;
+                    }
+                }
+            }
+        }
+        let f = oracle.f.clone();
+        CompositeReductionKey {
+            oracle1_evals,
+            oracle2_evals,
+            f,
+            _field: PhantomData,
+        }
     }
 
     fn instance_params(key: &Self::VerifierKey) -> (OracleParams, usize) {
@@ -366,7 +390,8 @@ where
         structure_1: &Self,
         structure_2: &(P1, P2),
     ) -> (Self::VerifierKey, Self::ProverKey) {
-        todo!()
+        let key = Self::verifier_key(structure_1, structure_2);
+        (key.clone(), key)
     }
 
     fn prove<S: Duplex<F>>(
@@ -476,8 +501,14 @@ where
                 // (None, None, Either::Left(_)) => todo!(),
                 // (None, None, Either::Right(_)) => todo!(),
                 // (None, Some(_), Either::Left(_)) => todo!(),
-                (None, Some(e), Either::Right(_)) => *e,
-                (Some(e), None, Either::Left(_)) => *e,
+                (None, Some(e), Either::Right(nature)) => {
+                    assert!(P2::prover_provided(nature));
+                    *e
+                }
+                (Some(e), None, Either::Left(nature)) => {
+                    assert!(P1::prover_provided(nature));
+                    *e
+                }
                 // (Some(_), None, Either::Right(_)) => todo!(),
                 // (Some(_), Some(_), Either::Left(_)) => todo!(),
                 // (Some(_), Some(_), Either::Right(_)) => todo!(),
