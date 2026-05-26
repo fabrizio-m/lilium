@@ -655,7 +655,6 @@ where
     SF: SumcheckFunction<F>,
     P1: PartialOracle<F, SF>,
     P2: PartialOracle<F, SF>,
-    Option<Either<P1::Nature, P2::Nature>>: From<SF::Natures>,
 {
     type Instance = CompositeOracleInstance<F, SF, P1, P2>;
 

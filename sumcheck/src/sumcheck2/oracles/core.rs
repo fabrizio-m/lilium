@@ -161,17 +161,11 @@ impl From<CoreNature> for EvalLocation {
     }
 }
 
-impl<F: Field, SF: SumcheckFunction<F>> From<CoreOracle<F, SF>> for () {
-    fn from(_value: CoreOracle<F, SF>) -> Self {}
-}
-
-//NOTE: Core oracle should compose from the left, and any other
-// from the right.
-impl<A> From<Either<A, CoreNature>> for Option<CoreNature> {
-    fn from(value: Either<A, CoreNature>) -> Self {
+impl<A> From<Either<CoreNature, A>> for Option<CoreNature> {
+    fn from(value: Either<CoreNature, A>) -> Self {
         match value {
-            Either::Left(_) => None,
-            Either::Right(x) => Some(x),
+            Either::Left(x) => Some(x),
+            Either::Right(_) => None,
         }
     }
 }
