@@ -1,0 +1,89 @@
+use crate::{
+    polynomials::MultiPoint,
+    sumcheck2::oracles::{
+        composite::{OracleParams, PartialOracle, PartialQueryInstance},
+        EvalLocation, SumcheckFunction,
+    },
+};
+use ark_ff::Field;
+use std::marker::PhantomData;
+use transcript::reduction2::{Message, NoError, Relation};
+
+use super::composite::OracleEval;
+
+#[derive(Clone, Copy, Debug)]
+struct EmptyOracle<F, SF>(PhantomData<(F, SF)>);
+
+#[derive(Clone, Copy, Debug)]
+pub enum NoNature {}
+
+impl From<NoNature> for EvalLocation {
+    fn from(val: NoNature) -> Self {
+        match val {}
+    }
+}
+
+#[derive(Clone, Copy, Debug)]
+pub struct EmptyInstance;
+
+impl<F: Field> Message<F> for EmptyInstance {
+    type Params = OracleParams;
+
+    type Error = NoError;
+
+    fn len(_params: &Self::Params) -> usize {
+        0
+    }
+
+    fn to_field_elements(&self, _params: &Self::Params) -> Result<Vec<F>, Self::Error> {
+        Ok(vec![])
+    }
+}
+
+impl<F, SF> From<EmptyOracle<F, SF>> for () {
+    fn from(_value: EmptyOracle<F, SF>) -> Self {}
+}
+
+pub struct EmptyRelation<F, SF>(PhantomData<(F, SF)>);
+
+impl<F: Field, SF: SumcheckFunction<F>> Relation for EmptyRelation<F, SF> {
+    type Structure = ();
+
+    type Instance = PartialQueryInstance<F, EmptyInstance>;
+
+    type Witness = Vec<SF::Mles<F>>;
+
+    fn check(
+        _structure: &Self::Structure,
+        _instance: &Self::Instance,
+        _witness: &Self::Witness,
+    ) -> bool {
+        true
+    }
+}
+
+impl<F: Field, SF: SumcheckFunction<F>> PartialOracle<F, SF> for () {
+    type Instance = EmptyInstance;
+
+    type VerifierKey = ();
+
+    type Nature = NoNature;
+
+    type QueryRelation = EmptyRelation<F, SF>;
+
+    fn instance_evals(_instance: &EmptyInstance) -> SF::Mles<F> {
+        SF::map_evals(&SF::natures(), |_| F::ZERO)
+    }
+
+    fn evals(
+        _key: &Self::VerifierKey,
+        _instance: &Self::Instance,
+        _point: &MultiPoint<F>,
+    ) -> SF::Mles<OracleEval<F>> {
+        SF::map_evals(&SF::natures(), |_| OracleEval::None)
+    }
+
+    fn prover_provided(_nature: &Self::Nature) -> bool {
+        unreachable!()
+    }
+}
