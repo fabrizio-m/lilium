@@ -1,28 +1,5 @@
-use crate::is_var;
-use syn::{Expr, Ident, Stmt, TraitItemFn, Type, TypeParam, parse_quote};
-
-enum Case {
-    Var,
-    Type(Type),
-    Array(Type, Expr),
-}
-
-impl Case {
-    fn process(fields: &[(Ident, Type)], var: &TypeParam) -> Vec<(Ident, Self)> {
-        fields
-            .iter()
-            .map(|(ident, ty)| {
-                let is_var = is_var(ty, var);
-                let ty: Self = match (is_var, ty) {
-                    (true, _) => Case::Var,
-                    (false, Type::Array(ty)) => Case::Array(*ty.elem.clone(), ty.len.clone()),
-                    (false, ty) => Case::Type(ty.clone()),
-                };
-                (ident.clone(), ty)
-            })
-            .collect()
-    }
-}
+use crate::Case;
+use syn::{Ident, Stmt, TraitItemFn, Type, TypeParam, parse_quote};
 
 pub fn impl_map(fields: &[(Ident, Type)], var: &TypeParam, name: &Ident) -> TraitItemFn {
     let constructor_fields: Vec<Ident> = fields.iter().map(|(ident, _)| ident.clone()).collect();

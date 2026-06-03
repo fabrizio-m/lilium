@@ -1,6 +1,8 @@
 use evals_core::{impl_combine, impl_flatten, impl_unflatten};
 use quote::quote;
-use syn::{Data, DeriveInput, Fields, GenericParam, Ident, Type, TypeParam, parse_macro_input};
+use syn::{
+    Data, DeriveInput, Expr, Fields, GenericParam, Ident, Type, TypeParam, parse_macro_input,
+};
 
 mod evals;
 mod evals_core;
@@ -77,5 +79,28 @@ fn is_var(ty: &Type, var: &TypeParam) -> bool {
         path.path.is_ident(&var.ident)
     } else {
         false
+    }
+}
+
+enum Case {
+    Var,
+    Type(Type),
+    Array(Type, Expr),
+}
+
+impl Case {
+    fn process(fields: &[(Ident, Type)], var: &TypeParam) -> Vec<(Ident, Self)> {
+        fields
+            .iter()
+            .map(|(ident, ty)| {
+                let is_var = is_var(ty, var);
+                let ty: Self = match (is_var, ty) {
+                    (true, _) => Case::Var,
+                    (false, Type::Array(ty)) => Case::Array(*ty.elem.clone(), ty.len.clone()),
+                    (false, ty) => Case::Type(ty.clone()),
+                };
+                (ident.clone(), ty)
+            })
+            .collect()
     }
 }
