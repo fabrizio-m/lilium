@@ -1,7 +1,7 @@
 use crate::Case;
-use syn::{Ident, Stmt, TraitItemFn, Type, TypeParam, parse_quote};
+use syn::{Ident, Stmt, TraitItemFn, Type, parse_quote};
 
-pub fn impl_combine(fields: &[(Ident, Type)], var: &TypeParam) -> TraitItemFn {
+pub fn impl_combine(fields: &[(Ident, Type)], var: &Ident) -> TraitItemFn {
     let constructor_fields: Vec<Ident> = fields.iter().map(|(ident, _)| ident.clone()).collect();
     let fields: Vec<Stmt> = Case::process(fields, var)
         .into_iter()
@@ -44,7 +44,7 @@ pub fn impl_combine(fields: &[(Ident, Type)], var: &TypeParam) -> TraitItemFn {
     }
 }
 
-pub fn impl_flatten(fields: &[(Ident, Type)], var: &TypeParam) -> TraitItemFn {
+pub fn impl_flatten(fields: &[(Ident, Type)], var: &Ident) -> TraitItemFn {
     let fields: Vec<Stmt> = Case::process(fields, var)
         .iter()
         .map(|(ident, ty)| match ty {
@@ -77,7 +77,7 @@ pub fn impl_flatten(fields: &[(Ident, Type)], var: &TypeParam) -> TraitItemFn {
     }
 }
 
-pub fn impl_unflatten(fields: &[(Ident, Type)], var: &TypeParam) -> TraitItemFn {
+pub fn impl_unflatten(fields: &[(Ident, Type)], var: &Ident) -> TraitItemFn {
     let constructor_fields: Vec<Ident> = fields.iter().map(|(ident, _)| ident.clone()).collect();
     let fields = Case::process(fields, var);
     let fields: Vec<Stmt> = fields

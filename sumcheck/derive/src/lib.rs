@@ -1,7 +1,7 @@
 use evals_core::{impl_combine, impl_flatten, impl_unflatten};
 use quote::quote;
 use syn::{
-    Data, DeriveInput, Expr, Fields, GenericParam, Generics, Ident, ItemImpl, Type, TypeParam,
+    Data, DeriveInput, Expr, Fields, GenericParam, Generics, Ident, ItemImpl, Type,
     parse_macro_input, parse_quote, punctuated::Punctuated, token::Comma,
 };
 
@@ -28,6 +28,7 @@ pub fn derive_evals(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     });
     let mut var = generic.expect("expected at least 1 type parameter").clone();
     var.bounds.clear();
+    let var = var.ident;
 
     let fields: Vec<(Ident, Type)> = if let Data::Struct(data) = data {
         if let Fields::Named(fields) = data.fields {
@@ -119,9 +120,9 @@ fn check_generics(generics: &Generics) -> Generics {
     generics
 }
 
-fn is_var(ty: &Type, var: &TypeParam) -> bool {
+fn is_var(ty: &Type, var: &Ident) -> bool {
     if let Type::Path(path) = ty {
-        path.path.is_ident(&var.ident)
+        path.path.is_ident(var)
     } else {
         false
     }
@@ -135,7 +136,7 @@ enum Case {
 }
 
 impl Case {
-    fn process(fields: &[(Ident, Type)], var: &TypeParam) -> Vec<(Ident, Self)> {
+    fn process(fields: &[(Ident, Type)], var: &Ident) -> Vec<(Ident, Self)> {
         fields
             .iter()
             .map(|(ident, ty)| {
