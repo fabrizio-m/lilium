@@ -180,6 +180,15 @@ where
 
     type QueryRelation = CommittedQueryRelation<F, C, SF>;
 
+    type Builder = C;
+
+    fn build(scheme: C, _f: &SF, structure: Rc<Vec<SF::Mles<F>>>) -> Self {
+        Self {
+            structure_evals: structure,
+            scheme,
+        }
+    }
+
     fn instance_evals(_instance: &Self::Instance) -> SF::Mles<F> {
         SF::map_evals(&SF::natures(), |_| F::ZERO)
     }

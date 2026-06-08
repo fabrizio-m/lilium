@@ -6,7 +6,7 @@ use crate::{
     },
 };
 use ark_ff::Field;
-use std::{fmt::Debug, marker::PhantomData};
+use std::{fmt::Debug, marker::PhantomData, rc::Rc};
 use transcript::reduction2::{Message, Relation};
 
 #[derive(Clone, Debug)]
@@ -58,6 +58,7 @@ where
 {
     type Instance: Message<F, Params = OracleParams> + Clone;
     type VerifierKey: From<Self> + Clone;
+    type Builder: Debug;
 
     type Nature: Into<EvalLocation> + Copy + Debug;
 
@@ -66,6 +67,8 @@ where
         Instance = PartialQueryInstance<F, Self::Instance>,
         Witness = Vec<SF::Mles<F>>,
     >;
+
+    fn build(builder: Self::Builder, f: &SF, structure: Rc<Vec<SF::Mles<F>>>) -> Self;
 
     fn instance_evals(instance: &Self::Instance) -> SF::Mles<F>;
     fn evals(

@@ -53,6 +53,45 @@ where
     partial_oracle2: P2,
 }
 
+impl<F, SF, P1, P2> CompositeOracle<F, SF, P1, P2>
+where
+    F: Field,
+    SF: SumcheckFunction<F>,
+    P1: PartialOracle<F, SF>,
+    P2: PartialOracle<F, SF>,
+    SF::Natures: Into<Either<P1::Nature, P2::Nature>>,
+{
+    pub fn new(
+        f: SF,
+        mles: Rc<Vec<SF::Mles<F>>>,
+        builder1: P1::Builder,
+        builder2: P2::Builder,
+    ) -> Self {
+        let vars = mles.len().next_power_of_two().ilog2() as usize;
+
+        let evals_per_oracle = SF::natures()
+            .flatten_vec()
+            .into_iter()
+            .fold((0, 0), |acc, elem| {
+                let nature: Either<P1::Nature, P2::Nature> = elem.into();
+                match nature {
+                    Either::Left(_) => (acc.0 + 1, acc.1),
+                    Either::Right(_) => (acc.0, acc.1 + 1),
+                }
+            });
+        let partial_oracle1 = P1::build(builder1, &f, Rc::clone(&mles));
+        let partial_oracle2 = P2::build(builder2, &f, Rc::clone(&mles));
+        Self {
+            f,
+            mles,
+            vars,
+            evals_per_oracle,
+            partial_oracle1,
+            partial_oracle2,
+        }
+    }
+}
+
 #[derive(Clone, Copy, Debug)]
 pub struct CompositeOracleInstance<F, SF, P1, P2>
 where
@@ -515,9 +554,10 @@ where
 impl<F, SF, P1, P2> PartialOracle<F, SF> for CompositeOracle<F, SF, P1, P2>
 where
     F: Field,
-    SF: SumcheckFunction<F>,
+    SF: SumcheckFunction<F> + Clone,
     P1: PartialOracle<F, SF>,
     P2: PartialOracle<F, SF>,
+    SF::Natures: Into<Either<P1::Nature, P2::Nature>>,
 {
     type Instance = CompositeOracleInstance<F, SF, P1, P2>;
 
@@ -526,6 +566,14 @@ where
     type Nature = Either<P1::Nature, P2::Nature>;
 
     type QueryRelation = CompositeQueryRelation<F, SF, P1, P2>;
+
+    type Builder = (P1::Builder, P2::Builder);
+
+    fn build(builder: Self::Builder, f: &SF, structure: Rc<Vec<<SF>::Mles<F>>>) -> Self {
+        let (builder1, builder2) = builder;
+        let mles = structure;
+        Self::new(f.clone(), mles, builder1, builder2)
+    }
 
     fn instance_evals(instance: &Self::Instance) -> SF::Mles<F> {
         let evals1 = P1::instance_evals(&instance.oracle1_instance);

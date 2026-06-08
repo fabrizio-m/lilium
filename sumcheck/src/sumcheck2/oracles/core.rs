@@ -11,7 +11,7 @@ use crate::{
 };
 use ark_ff::Field;
 use sponge::sponge::Duplex;
-use std::marker::PhantomData;
+use std::{marker::PhantomData, rc::Rc};
 use transcript::reduction2::{
     Argument, GuardedProof, Message, ProverOutput, Reduction, Relation, Transcript,
     TranscriptBuilder, VerifierTranscript,
@@ -184,7 +184,14 @@ where
 
     type Nature = CoreNature;
 
+    type Builder = Self;
+
     type QueryRelation = CoreQueryRelation<F, SF>;
+
+    fn build(builder: Self::Builder, _f: &SF, _structure: Rc<Vec<SF::Mles<F>>>) -> Self {
+        //TODO: check that the structure is correct.
+        builder
+    }
 
     fn instance_evals(instance: &Self::Instance) -> SF::Mles<F> {
         let natures = SF::natures();

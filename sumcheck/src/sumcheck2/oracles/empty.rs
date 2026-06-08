@@ -6,7 +6,7 @@ use crate::{
     },
 };
 use ark_ff::Field;
-use std::marker::PhantomData;
+use std::{marker::PhantomData, rc::Rc};
 use transcript::reduction2::{Message, NoError, Relation};
 
 #[derive(Clone, Copy, Debug)]
@@ -68,6 +68,10 @@ impl<F: Field, SF: SumcheckFunction<F>> PartialOracle<F, SF> for () {
     type Nature = NoNature;
 
     type QueryRelation = EmptyRelation<F, SF>;
+
+    type Builder = ();
+
+    fn build(_: (), _: &SF, _: Rc<Vec<SF::Mles<F>>>) -> Self {}
 
     fn instance_evals(_instance: &EmptyInstance) -> SF::Mles<F> {
         SF::map_evals(&SF::natures(), |_| F::ZERO)
