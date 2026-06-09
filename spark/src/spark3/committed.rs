@@ -1,8 +1,11 @@
 use crate::spark3::{sumcheck_argument::SparkEvals, SparkInstance, SparseMle, BYTE};
 use ark_ff::Field;
-use commit::{commit2::oracle::CommittedOracle, CommmitmentScheme};
+use commit::commit2::{oracle::CommittedOracle, CommitmentScheme};
 use std::{marker::PhantomData, rc::Rc};
-use sumcheck::sumcheck2::oracles::{composite::CompositeOracle, core::CoreOracle};
+use sumcheck::sumcheck2::{
+    evals::Evals,
+    oracles::{composite::CompositeOracle, core::CoreOracle, SumcheckFunction},
+};
 use transcript::reduction2::Relation;
 
 pub struct CommittedSparkRelation<F, C, const N: usize>(PhantomData<(F, C)>);
@@ -30,7 +33,7 @@ impl<const N: usize> MinorStructure<N> {
 
 type Oracle<F, C, SF> = CompositeOracle<F, SF, CoreOracle<F, SF>, CommittedOracle<F, C, SF>>;
 
-pub struct CommittedSparkStructure<F: Field, C: CommmitmentScheme<F>, const N: usize> {
+pub struct CommittedSparkStructure<F: Field, C: CommitmentScheme<F>, const N: usize> {
     pub oracle: Oracle<F, C, SparkEvals<(), N>>,
     pub minor_structure: MinorStructure<N>,
     pub mle: Rc<SparseMle<F, N>>,
@@ -39,7 +42,7 @@ pub struct CommittedSparkStructure<F: Field, C: CommmitmentScheme<F>, const N: u
 impl<F, C, const N: usize> Relation for CommittedSparkRelation<F, C, N>
 where
     F: Field,
-    C: CommmitmentScheme<F>,
+    C: CommitmentScheme<F>,
 {
     type Structure = CommittedSparkStructure<F, C, N>;
 
@@ -59,9 +62,10 @@ where
 fn oracle<F, C, const N: usize>(mles: &SparseMle<F, N>, pcs: C) -> Oracle<F, C, SparkEvals<(), N>>
 where
     F: Field,
-    C: CommmitmentScheme<F>,
+    C: CommitmentScheme<F>,
 {
-    // let f = SparkEvals::map_evals(&SparkEvals::natures(), |_| ());
+    let natures = <SparkEvals<(), N> as SumcheckFunction<F>>::natures();
+    let f: SparkEvals<(), N> = SparkEvals::map_evals(&natures, |_| ());
 
     let builder1: CoreOracle<F, SparkEvals<(), N>> = {
         let functions = SparkEvals::small_functions();
@@ -72,18 +76,14 @@ where
 
     let mles = Rc::new(structure(mles));
 
-    let _ = (builder1, builder2, mles);
-
-    // can't be done yet due to missing From implementation.
-    // CompositeOracle::new(f, mles, builder1, builder2)
-    todo!()
+    CompositeOracle::new(f, mles, builder1, builder2)
 }
 
 fn structure<F: Field, const N: usize>(_mles: &SparseMle<F, N>) -> Vec<SparkEvals<F, N>> {
     todo!()
 }
 
-impl<F: Field, C: CommmitmentScheme<F>, const N: usize> CommittedSparkStructure<F, C, N> {
+impl<F: Field, C: CommitmentScheme<F>, const N: usize> CommittedSparkStructure<F, C, N> {
     pub fn new(mle: Rc<SparseMle<F, N>>, pcs: C) -> Self {
         let minor_structure = MinorStructure::new(&mle);
         let oracle = oracle(&mle, pcs);
