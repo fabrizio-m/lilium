@@ -7,7 +7,9 @@ use sumcheck::{
     sumcheck2::{
         evals::{EvalsCore, EvalsExt},
         oracles::{
-            partial::{merge, OracleEval, OracleParams, PartialOracle, PartialQueryInstance},
+            partial::{
+                merge, Nature, OracleEval, OracleParams, PartialOracle, PartialQueryInstance,
+            },
             EvalLocation, SumcheckFunction,
         },
     },
@@ -34,6 +36,8 @@ pub enum CommittedNature {
     Structure,
     Witness,
 }
+
+impl Nature for CommittedNature {}
 
 impl From<CommittedNature> for EvalLocation {
     fn from(value: CommittedNature) -> Self {

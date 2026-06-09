@@ -6,7 +6,7 @@ use crate::{
     },
 };
 use ark_ff::Field;
-use std::{fmt::Debug, marker::PhantomData, rc::Rc};
+use std::{any::Any, fmt::Debug, marker::PhantomData, rc::Rc};
 use transcript::reduction2::{Message, Relation};
 
 #[derive(Clone, Debug)]
@@ -50,6 +50,40 @@ pub enum OracleEval<F> {
     None,
 }
 
+/// Dynamically typed nature which can be downcasted into any nature.
+pub struct DynamicNature(Box<dyn Any>);
+
+impl DynamicNature {
+    pub fn into<T: Any>(self) -> Option<T> {
+        self.0.downcast::<T>().ok().map(|boxed| *boxed)
+    }
+}
+
+pub trait Nature: Copy + Debug + 'static {
+    /// Do not implement, the default implementation is correct
+    /// for any type.
+    fn into_dynamic(self) -> DynamicNature {
+        DynamicNature(Box::new(self))
+    }
+
+    /// Try to downcast from a parent nature T, of which Self
+    /// is a subset of.
+    fn from<T: Nature>(x: T) -> Option<Self> {
+        x.into_dynamic().into()
+    }
+}
+
+impl<A: Nature, B: Nature> Nature for Either<A, B> {
+    fn into_dynamic(self) -> DynamicNature {
+        // Either branches towards the leaves, while any other
+        // type returns self.
+        match self {
+            Either::Left(x) => x.into_dynamic(),
+            Either::Right(x) => x.into_dynamic(),
+        }
+    }
+}
+
 pub trait PartialOracle<F, SF>: 'static + Clone + Debug
 where
     F: Field,
@@ -60,7 +94,7 @@ where
     type VerifierKey: From<Self> + Clone;
     type Builder: Debug;
 
-    type Nature: Into<EvalLocation> + Copy + Debug;
+    type Nature: Into<EvalLocation> + Copy + Debug + Nature;
 
     type QueryRelation: Relation<
         Structure = Self,

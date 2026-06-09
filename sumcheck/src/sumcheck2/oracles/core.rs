@@ -4,7 +4,7 @@ use crate::{
         evals::EvalsCore,
         oracles::{
             composite::Either,
-            partial::{OracleEval, OracleParams, PartialOracle, PartialQueryInstance},
+            partial::{Nature, OracleEval, OracleParams, PartialOracle, PartialQueryInstance},
             EvalLocation, SumcheckFunction,
         },
     },
@@ -183,6 +183,8 @@ pub enum CoreNature {
     SmallInstance(usize),
     Challenge,
 }
+
+impl Nature for CoreNature {}
 
 impl From<CoreNature> for EvalLocation {
     fn from(val: CoreNature) -> Self {

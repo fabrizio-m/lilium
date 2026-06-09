@@ -1,7 +1,7 @@
 use crate::{
     polynomials::MultiPoint,
     sumcheck2::oracles::{
-        partial::{OracleEval, OracleParams, PartialOracle, PartialQueryInstance},
+        partial::{Nature, OracleEval, OracleParams, PartialOracle, PartialQueryInstance},
         EvalLocation, SumcheckFunction,
     },
 };
@@ -14,6 +14,8 @@ struct EmptyOracle<F, SF>(PhantomData<(F, SF)>);
 
 #[derive(Clone, Copy, Debug)]
 pub enum NoNature {}
+
+impl Nature for NoNature {}
 
 impl From<NoNature> for EvalLocation {
     fn from(val: NoNature) -> Self {
