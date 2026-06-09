@@ -263,6 +263,20 @@ where
     oracle2_key: P2::VerifierKey,
 }
 
+impl<F: Field, SF: SumcheckFunction<F>, P1, P2> CompositeReductionKey<F, SF, P1, P2>
+where
+    P1: PartialOracle<F, SF>,
+    P2: PartialOracle<F, SF>,
+{
+    pub fn p1_key(&self) -> &P1::VerifierKey {
+        &self.oracle1_key
+    }
+
+    pub fn p2_key(&self) -> &P2::VerifierKey {
+        &self.oracle2_key
+    }
+}
+
 #[derive(Clone, Debug)]
 /// All evaluations provided by the prover to the 2 oracles.
 pub struct ProverEvals<F>(Vec<F>);
