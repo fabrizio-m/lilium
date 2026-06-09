@@ -74,13 +74,9 @@ where
 
     let builder2 = { pcs };
 
-    let mles = Rc::new(structure(mles));
+    let mles = Rc::new(SparkEvals::structure(mles));
 
     CompositeOracle::new(f, mles, builder1, builder2)
-}
-
-fn structure<F: Field, const N: usize>(_mles: &SparseMle<F, N>) -> Vec<SparkEvals<F, N>> {
-    todo!()
 }
 
 impl<F: Field, C: CommitmentScheme<F>, const N: usize> CommittedSparkStructure<F, C, N> {

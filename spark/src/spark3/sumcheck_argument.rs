@@ -1,7 +1,7 @@
+use crate::spark3::SparseMle;
 use ark_ff::Field;
 use commit::commit2::oracle::CommittedNature;
-use std::fmt::Debug;
-use std::vec::IntoIter;
+use std::{fmt::Debug, vec::IntoIter};
 use sumcheck::{
     polynomials::MultiPoint,
     sumcheck::Var,
@@ -59,6 +59,38 @@ impl<F: Field, const N: usize> SparkEvals<Option<Func<F>>, N> {
             zerocheck,
             challenges,
         }
+    }
+}
+
+impl<F: Field, const N: usize> SparkEvals<F, N> {
+    pub(crate) fn structure(sparse_mle: &SparseMle<F, N>) -> Vec<Self> {
+        let SparseMle { addresses, values } = sparse_mle;
+        assert_eq!(addresses.len(), values.len());
+        assert!(addresses.len().is_power_of_two());
+
+        addresses
+            .iter()
+            .zip(values)
+            .map(|(addresses, val)| {
+                let dimensions = addresses.each_ref().map(|addr| DimensionEvals {
+                    address: F::from(*addr),
+                    eq_lookup: F::ZERO,
+                    inverse: F::ZERO,
+                });
+                let zerocheck = F::ZERO;
+                let challenges = SparkChallenges {
+                    combination: F::ZERO,
+                    compression: F::ZERO,
+                    lookup: F::ZERO,
+                };
+                SparkEvals {
+                    dimensions,
+                    value: *val,
+                    zerocheck,
+                    challenges,
+                }
+            })
+            .collect()
     }
 }
 
