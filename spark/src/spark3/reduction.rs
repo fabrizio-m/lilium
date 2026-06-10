@@ -1,6 +1,6 @@
 use crate::spark3::{
     committed::{MinorStructure, SparkOracle},
-    sumcheck_argument::SparkEvals,
+    sumcheck_argument::{SparkChallenges, SparkEvals},
     SparkInstance, StaticSparkRelation, StaticSparkStructure,
 };
 use ark_ff::Field;
@@ -14,7 +14,9 @@ use sumcheck::{
     polynomials::MultiPoint,
     sumcheck2::{
         oracles::{
-            composite::{CompositeOracle, CompositeReductionKey, ProverEvals},
+            composite::{
+                CompositeOracle, CompositeOracleInstance, CompositeReductionKey, ProverEvals,
+            },
             core::{CoreOracle, CoreOracleInstance},
             partial::{Nature, PartialOracle, PartialQueryInstance},
             SumcheckFunction,
@@ -119,8 +121,8 @@ where
         let Ok((lookup_commitments, [c1, c2])) =
             transcript.receive_message(|proof| proof.lookup_commitments.clone(), &proof, &());
 
-        let lookup_challenge = c1;
-        let compression_challenge = c2;
+        let lookup_chall = c1;
+        let compression_chall = c2;
 
         let zerocheck_point = MultiPoint::new(transcript.point());
 
@@ -128,7 +130,7 @@ where
         // Another challenge is received to combine the multiple sumchecks into 1.
         let Ok((inverse_commitments, [c3])) =
             transcript.receive_message(|proof| proof.inverse_commitments.clone(), &proof, &());
-        let combination_challenge = c3;
+        let combination_chall = c3;
 
         let SparkInstance { point, eval } = instance;
 
@@ -136,18 +138,21 @@ where
         // Expected sums from computing the left side directly.
         let expected_sums =
             key.minor_structure
-                .expected_sums(&points, lookup_challenge, compression_challenge);
+                .expected_sums(&points, lookup_chall, compression_chall);
 
         let sum = expected_sums
             .into_iter()
-            .fold(F::zero(), |acc, s| acc * combination_challenge + s);
-        let sum = sum * combination_challenge + eval;
+            .fold(F::zero(), |acc, s| acc * combination_chall + s);
+        let sum = sum * combination_chall + eval;
+
+        let challenges = SparkChallenges::new(combination_chall, compression_chall, lookup_chall);
 
         let sumcheck_instance = sumcheck_instance::<F, C, N>(
             sum,
             lookup_commitments,
             inverse_commitments,
             zerocheck_point,
+            &challenges,
         );
 
         let sumcheck_proof = proof.clone().map(|proof| proof.sumcheck_proof);
@@ -185,14 +190,27 @@ where
 }
 
 fn sumcheck_instance<F, C, const N: usize>(
-    _sum: F,
-    _lookup_commitments: [C::Commitment; N],
-    _inverse_commitments: [C::Commitment; N],
-    _zerocheck_point: MultiPoint<F>,
+    sum: F,
+    lookup_commitments: [C::Commitment; N],
+    inverse_commitments: [C::Commitment; N],
+    zerocheck_point: MultiPoint<F>,
+    challenges: &SparkChallenges<F>,
 ) -> SumcheckInstance<F, SparkOracle<F, C, N>>
 where
     F: Field,
     C: CommitmentScheme<F>,
 {
-    todo!()
+    let coefficients: SparkEvals<Vec<F>, N> =
+        SparkEvals::oracle_instance(challenges, zerocheck_point);
+    let core_oracle_instance = CoreOracleInstance::new(&coefficients);
+
+    let commits = SparkEvals::arrange_commitments(lookup_commitments, inverse_commitments);
+    let committed_oracle_instance = CommittedOracleInstance::new(commits);
+
+    let oracle_instance = CompositeOracleInstance {
+        oracle1_instance: core_oracle_instance,
+        oracle2_instance: committed_oracle_instance,
+    };
+
+    SumcheckInstance::new(sum, oracle_instance)
 }

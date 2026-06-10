@@ -122,6 +122,22 @@ impl<F: Field, const N: usize> SparkEvals<Vec<F>, N> {
     }
 }
 
+impl<C: Debug + Clone, const N: usize> SparkEvals<Option<C>, N> {
+    pub fn arrange_commitments(lookup_commitments: [C; N], inverse_commitments: [C; N]) -> Self {
+        let mut dimensions = lookup_commitments.map(|commit| DimensionEvals {
+            eq_lookup: Some(commit),
+            ..Default::default()
+        });
+        for (dim, commit) in dimensions.iter_mut().zip(inverse_commitments) {
+            dim.inverse = Some(commit)
+        }
+        SparkEvals {
+            dimensions,
+            ..Default::default()
+        }
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Eq, EvalsCore, Default)]
 pub struct SparkChallenges<V: Clone + Debug> {
     combination: V,
