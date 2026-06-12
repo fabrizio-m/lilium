@@ -16,7 +16,7 @@ pub use relation::{SumcheckInstance, SumcheckRelation};
 /// the evaluations of polynomial over the domain 0..d.
 pub struct SumcheckMessage<F>(Vec<F>);
 
-pub mod degree {
+pub(crate) mod degree {
     use std::ops::{Add, AddAssign, Mul, MulAssign, Sub};
 
     use crate::{
