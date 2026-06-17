@@ -17,7 +17,7 @@ use transcript::reduction2::{
 };
 
 impl<F: Field> SumcheckMessage<F> {
-    fn to_message(&self) -> crate::message::Message<F> {
+    pub fn to_message(&self) -> crate::message::Message<F> {
         crate::message::Message::new(self.0.clone())
     }
 }
