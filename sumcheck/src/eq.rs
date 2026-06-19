@@ -55,23 +55,43 @@ fn gray() {
     }
 }*/
 
-fn eval_eq<F: Field>(dest: &mut [F], mut vars: Vec<F>, zero: F) {
+// Here vars[i] is None for a coordinate equal to 1, otherwise it's the flip factor v_i/(1-v_i).
+// A v == 1 coordinate contributes the factor x_i, so its level does no multiplication, but
+// instead it zeroes the half-cube where its bit is 0 and passes the other half unchanged.
+fn eval_eq<F: Field>(dest: &mut [F], mut vars: Vec<Option<F>>, zero: F) {
     assert!(dest.len().is_power_of_two());
     if dest.len() == 2 {
         assert_eq!(vars.len(), 1);
-        let var = vars.pop().unwrap();
-        dest[0] = zero;
-        dest[1] = zero * var;
+        match vars.pop().unwrap() {
+            Some(flip) => {
+                dest[0] = zero;
+                dest[1] = zero * flip;
+            }
+            // v == 1: bit unset -> 0, bit set -> pass through (factor 1)
+            None => {
+                dest[0] = F::zero();
+                dest[1] = zero;
+            }
+        }
     } else {
         assert_eq!(dest.len().ilog2() as usize, vars.len());
         let half_len = dest.len() / 2;
         let var = vars.pop().unwrap();
         let (left, right) = dest.split_at_mut(half_len);
         eval_eq(left, vars, zero);
-        for (l, r) in left.iter().zip(right.iter_mut()) {
-            // to avoid lsp false positive
-            let r: &mut F = r;
-            *r = var * l;
+        match var {
+            Some(flip) => {
+                for (l, r) in left.iter().zip(right.iter_mut()) {
+                    // to avoid lsp false positive
+                    let r: &mut F = r;
+                    *r = flip * l;
+                }
+            }
+            // v == 1: high bit set -> copy sub-table, high bit unset -> zero fill
+            None => {
+                right.copy_from_slice(left);
+                left.fill(F::zero());
+            }
         }
     }
 }
@@ -89,25 +109,42 @@ pub fn eq_subset<F: Field>(point: &MultiPoint<F>, n_log: usize) -> Vec<F> {
     assert!(vars.len() >= n_log, "subset bigger than full set");
     assert!(n_log > 0, "subset must not be empty");
     let len = 1 << n_log;
-    // this are the values corresponding to a 0 in the corresponding bit
+    // the values corresponding to a 0 in the corresponding bit
     let one_minus_v: Vec<F> = vars.iter().map(|x| F::one() - x).collect();
-    // the inverse of above, multiplying by it will undo multiplying by the value.
-    let mut one_minus_v_inv = one_minus_v.clone();
+    // The inverse of above, multiplying by it will undo multiplying by the value.
+    // The batch_inversion leaves any zero entries (i.e. v == 1) as 0; those are never
+    // used because those coordinates become None flips below
+    let mut one_minus_v_inv = one_minus_v[..n_log].to_vec();
     ark_ff::fields::batch_inversion(&mut one_minus_v_inv);
-    // this have the effect of setting the value of an evaluation from 0 to 1
-    // for any particular bit.
-    // combines the effect of v and one_minus_v_inv
-    let mut vars: Vec<F> = vars
+    // Flip factor v/(1-v) for each enumerated coordinate (sets a bit from 0 to 1), or None
+    // for a coordinate equal to 1, which is handled without division (1 - v == 0  and  v == 1)
+    let flips = vars
         .iter()
         .zip(one_minus_v_inv)
-        .map(|(a, b)| *a * b)
+        .map(|(var, inv)| {
+            if *var == F::one() {
+                None
+            } else {
+                Some(*var * inv)
+            }
+        })
         .collect();
-    vars.truncate(n_log);
 
-    let zero: F = one_minus_v.iter().cloned().reduce(Mul::mul).unwrap();
+    // eq at the all-zeros point x = 0...0, i.e. the product of (1 - v) over every coordinate, except
+    //     * skip enumerated (i < n_log) coordinates with v == 1 (handled by eval_eq's None branch),
+    //     * keep coordinates beyond n_log (fixed to x = 0) because a v == 1 there correctly zeros the table.
+    // Empty product (all coordinates skipped) equals 1.
+    let zero: F = one_minus_v
+        .iter()
+        .enumerate()
+        .filter(|(i, _)| *i >= n_log || vars[*i] != F::one())
+        .map(|(_, one_minus_v)| *one_minus_v)
+        .reduce(Mul::mul)
+        .unwrap_or_else(F::one);
+
     let mut eq = Vec::with_capacity(len);
     eq.resize(len, F::zero());
-    eval_eq(&mut eq, vars, zero);
+    eval_eq(&mut eq, flips, zero);
     eq
 }
 
