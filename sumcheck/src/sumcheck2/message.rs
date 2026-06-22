@@ -33,6 +33,24 @@ impl<F: Field> SumcheckMessage<F> {
         let evals = self.0.into_iter().chain([message_extra_eval]);
         Self(evals.collect())
     }
+
+    pub(crate) fn inner(&self) -> &[F] {
+        &self.0
+    }
+
+    pub(crate) fn new(evals: Vec<F>) -> Self {
+        Self(evals)
+    }
+
+    pub fn eval_at_0(&self) -> F {
+        self.0[0]
+    }
+    pub fn eval_at_1(&self) -> F {
+        self.0[1]
+    }
+    pub(crate) fn eval_at_x(&self, x: F, weights: &BarycentricWeights<F>) -> F {
+        weights.evaluate(&self.0, x)
+    }
 }
 
 impl<F: Field> Mul for SumcheckMessage<F> {
