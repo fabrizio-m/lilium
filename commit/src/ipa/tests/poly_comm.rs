@@ -4,7 +4,7 @@ use ark_vesta::{Fr, Projective, VestaConfig};
 use hash_to_curve::svdw::SvdwMap;
 use rand::thread_rng;
 use sponge::{permutation::UnsafePermutation, sponge::Sponge};
-use sumcheck::polynomials::MultiPoint;
+use sumcheck::polynomials::{EvalsExt, MultiPoint, SingleEval};
 use transcript::{params::ParamResolver, TranscriptBuilder};
 
 type Scheme = IpaCommitmentScheme<Fr, Projective, SvdwMap<VestaConfig>>;
@@ -61,4 +61,60 @@ fn ipa_pcs() {
 #[should_panic]
 fn ipa_pcs_should_fail() {
     polynomial_commitment::<Scheme>(true);
+}
+
+// The test above only checks that the opening proof verifies; it never asserts
+// that open_instance produces the correct evaluation. For open_instance the
+// eval is computed as the eq-dot-product sum of mle_i * eq(point, i). Here we
+// verify that with EvalsExt::eval_slow (an algorithmically independent evaluator),
+// so that a bug in the eq inner-product path would be caught.
+#[test]
+fn ipa_open_instance_eval_matches_independent_mle_eval() {
+    let scheme = Scheme::new(LEN_LOG);
+
+    let mut rng = thread_rng();
+    let mut elem = || Fr::rand(&mut rng);
+    let mle: Vec<Fr> = (0..LEN).map(|_| elem()).collect();
+    let commit = scheme.commit_mle(&mle);
+
+    let points: Vec<(&str, MultiPoint<Fr>)> = vec![
+        ("zero point", MultiPoint::new(vec![Fr::ZERO; LEN_LOG])),
+        (
+            "random point",
+            MultiPoint::new((0..LEN_LOG).map(|_| elem()).collect()),
+        ),
+    ];
+
+    for (case, point) in points {
+        let claimed = scheme
+            .open_instance(commit.clone(), point.clone(), &mle)
+            .eval();
+
+        let independent = EvalsExt::eval_slow(SingleEval::from_vec(mle.clone()), point).0;
+
+        assert_eq!(
+        claimed, independent,
+        "IPA open eval via eq-dot-product disagrees with independent recursive MLE evaluation (case: {case})"
+    );
+    }
+}
+
+// The eq fast evaluator inverts (1 - x_i) per coordinate, so x_i == 1 is unsupported.
+// open_instance must panic rather than return a silently-wrong evaluation.
+#[test]
+#[should_panic]
+fn ipa_open_one_coordinate_unsupported() {
+    let scheme = Scheme::new(LEN_LOG);
+
+    let mut rng = thread_rng();
+    let mut elem = || Fr::rand(&mut rng);
+    let mle: Vec<Fr> = (0..LEN).map(|_| elem()).collect();
+    let commit = scheme.commit_mle(&mle);
+
+    let point = MultiPoint::new(vec![Fr::ONE; LEN_LOG]);
+
+    // Should panic
+    let _claimed = scheme
+        .open_instance(commit.clone(), point.clone(), &mle)
+        .eval();
 }
