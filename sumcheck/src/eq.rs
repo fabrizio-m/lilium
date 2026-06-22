@@ -89,8 +89,20 @@ pub fn eq_subset<F: Field>(point: &MultiPoint<F>, n_log: usize) -> Vec<F> {
     assert!(vars.len() >= n_log, "subset bigger than full set");
     assert!(n_log > 0, "subset must not be empty");
     let len = 1 << n_log;
-    // this are the values corresponding to a 0 in the corresponding bit
-    let one_minus_v: Vec<F> = vars.iter().map(|x| F::one() - x).collect();
+    // These are the values corresponding to a 0 in the corresponding bit.
+    let one_minus_v: Vec<F> = vars
+        .iter()
+        .map(|x| {
+            // The fast evaluator inverts (1 - x_i) below, so x_i == 1 is unsupported:
+            // The batch_inversion silently skips zeros and would silently yield a
+            // wrong eq vector, so fail hard.
+            assert!(
+                *x != F::one(),
+                "eq: opening coordinate == 1 is unsupported (1 - x must be invertible)"
+            );
+            F::one() - x
+        })
+        .collect();
     // the inverse of above, multiplying by it will undo multiplying by the value.
     let mut one_minus_v_inv = one_minus_v.clone();
     ark_ff::fields::batch_inversion(&mut one_minus_v_inv);
@@ -151,4 +163,14 @@ fn test_subset() {
     for i in 0..4 {
         assert_eq!(full_eq[i], subset_eq[i]);
     }
+}
+
+// eq inverts (1 - x_i), so a coordinate == 1 must panic rather than silently compute invalid result
+#[test]
+#[should_panic]
+fn eq_one_coordinate_unsupported() {
+    use ark_vesta::Fr;
+    let vars: [Fr; 4] = [2_u32, 3, 1, 5].map(Fr::from);
+    let point: MultiPoint<Fr> = MultiPoint::new(vars.to_vec());
+    let _ = eq(&point);
 }
