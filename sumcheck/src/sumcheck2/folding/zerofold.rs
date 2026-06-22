@@ -3,7 +3,7 @@ use crate::{
     folding::utils::FieldFolder,
     sumcheck2::{
         evals::{EvalsCore, Mles},
-        folding::Foldable,
+        folding::{folding_degree, Foldable},
         oracles::{Oracle, SumcheckFunction},
         zerocheck::{ZeroSumcheck, ZeroSumcheckInstance},
         SumcheckError, SumcheckMessage,
@@ -45,18 +45,31 @@ where
     type Error = SumcheckError;
 
     fn transcript_pattern(
-        _key: &Self::VerifierKey,
-        _builder: TranscriptBuilder,
+        key: &Self::VerifierKey,
+        builder: TranscriptBuilder,
     ) -> TranscriptBuilder {
-        todo!()
+        let degree = key.degree + key.vars + 1;
+        builder.round::<F, SumcheckMessage<F>, 1>(&degree)
     }
 
-    fn verifier_key(_structure_1: &O, _structure_2: &O) -> Self::VerifierKey {
-        todo!()
+    fn verifier_key(oracle: &O, _: &O) -> Self::VerifierKey {
+        let degree = folding_degree(oracle);
+        let vars = oracle.vars();
+        let weights = (0..(vars + 1))
+            .map(|i| BarycentricWeights::compute((degree + i) as u32))
+            .collect();
+        let f = oracle.function().clone();
+        ZeroFoldKey {
+            degree,
+            vars,
+            weights,
+            f,
+        }
     }
 
-    fn key_pair(_structure_1: &O, _structure_2: &O) -> (Self::VerifierKey, Self::ProverKey) {
-        todo!()
+    fn key_pair(structure_1: &O, structure_2: &O) -> (Self::VerifierKey, Self::ProverKey) {
+        let key = Self::verifier_key(structure_1, structure_2);
+        (key.clone(), key)
     }
 
     fn prove<S: Duplex<F>>(
