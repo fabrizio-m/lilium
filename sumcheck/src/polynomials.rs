@@ -68,7 +68,7 @@ impl<F: Field> MultiPoint<F> {
     }
 }
 
-/// must be some wrapper over [F], representing all the evaluations at some
+/// must be some wrapper over `F`, representing all the evaluations at some
 /// point of the domain
 pub trait Evals<V>: Sized + Clone {
     type Idx: Copy;
