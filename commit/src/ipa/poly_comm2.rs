@@ -131,10 +131,14 @@ where
     type Error = IpaError;
 
     fn transcript_pattern(
-        _key: &Self::VerifierKey,
-        _builder: TranscriptBuilder,
+        key: &Self::VerifierKey,
+        builder: TranscriptBuilder,
     ) -> TranscriptBuilder {
-        todo!()
+        (0..key.vars)
+            .fold(builder, |builder, _| {
+                builder.round::<F, RoundMsg<G>, 1>(&())
+            })
+            .round::<F, SingleElement<F>, 0>(&())
     }
 
     fn verifier_key(_structure_1: &Self, _structure_2: &()) -> Self::VerifierKey {
