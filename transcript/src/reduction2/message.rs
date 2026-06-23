@@ -148,3 +148,20 @@ where
         Ok(vec![low, high])
     }
 }
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct SingleElement<F>(pub F);
+
+impl<F: Field> Message<F> for SingleElement<F> {
+    type Params = ();
+
+    type Error = NoError;
+
+    fn len(_: &()) -> usize {
+        1
+    }
+
+    fn to_field_elements(&self, _: &()) -> Result<Vec<F>, Self::Error> {
+        Ok(vec![self.0])
+    }
+}
