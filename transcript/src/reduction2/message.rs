@@ -72,3 +72,23 @@ impl<F, T: Message<F>, const N: usize> Message<F> for [T; N] {
         Ok(elems?.into_iter().flatten().collect())
     }
 }
+
+impl<F, T: Message<F, Error = NoError>> Message<F> for Option<T> {
+    type Params = T::Params;
+
+    type Error = ();
+
+    fn len(params: &Self::Params) -> usize {
+        T::len(params)
+    }
+
+    fn to_field_elements(&self, params: &Self::Params) -> Result<Vec<F>, Self::Error> {
+        match self {
+            Some(x) => {
+                let Ok(elems) = x.to_field_elements(params);
+                Ok(elems)
+            }
+            None => Err(()),
+        }
+    }
+}
