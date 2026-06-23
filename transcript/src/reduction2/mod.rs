@@ -1,5 +1,5 @@
 pub mod composition;
-mod message;
+pub mod message;
 mod proof;
 mod prover;
 mod reduction;
