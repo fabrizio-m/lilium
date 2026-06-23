@@ -1,7 +1,4 @@
-use crate::{
-    ipa::vector_utils::{fold_basis, fold_vec},
-    OpenInstance,
-};
+use crate::ipa::vector_utils::{fold_basis, fold_vec};
 use ark_ec::{AffineRepr, CurveGroup, Group, VariableBaseMSM};
 use ark_ff::Field;
 use hash_to_curve::CurveMap;
@@ -85,8 +82,6 @@ pub struct Proof<F, G> {
     a: F,
 }
 
-type Res<T> = Result<T, transcript::Error>;
-
 impl<F, G, M> IpaScheme<F, G, M>
 where
     F: Field,
@@ -125,7 +120,7 @@ where
         round: Round<F, G>,
         transcript: &mut Transcript<F, S>,
         product_base: G,
-    ) -> Res<(Round<F, G>, (G, G))> {
+    ) -> (Round<F, G>, (G, G)) {
         let Round {
             a,
             b,
@@ -146,37 +141,37 @@ where
             basis,
             commitment,
         };
-        Ok((round, (cl, cr)))
+        (round, (cl, cr))
     }
+
     fn reduce<S: Duplex<F>>(
         round: Round<F, G>,
         transcript: &mut Transcript<F, S>,
         u: G,
         messages: &mut Vec<(G, G)>,
-    ) -> Res<Round<F, G>> {
+    ) -> Round<F, G> {
         if round.reduced() {
-            Ok(round)
+            round
         } else {
-            let (round, (l, r)) = Self::round(round, transcript, u)?;
+            let (round, (l, r)) = Self::round(round, transcript, u);
             messages.push((l, r));
             Self::reduce(round, transcript, u, messages)
         }
     }
-    #[allow(dead_code)]
+
     pub fn prove<S: Duplex<F>>(
         &self,
         vectors: [Vec<F>; 2],
-        instance: OpenInstance<F, IpaCommitment<G>>,
+        commit: IpaCommitment<G>,
+        eval: F,
         transcript: &mut Transcript<F, S>,
-    ) -> Res<Proof<F, G>> {
+    ) -> Proof<F, G> {
+        let inner_product = eval;
+
         let [u] = transcript.send_message(&(), &());
-        let OpenInstance {
-            commit,
-            eval: inner_product,
-            ..
-        } = instance;
         let u: G::BaseField = cycle_cast(u);
         let u = self.map.map_to_curve(u);
+
         let commitment = commit.0;
         let commitment: G = commitment + u * inner_product;
 
@@ -189,11 +184,11 @@ where
             commitment,
         };
         let mut messages = vec![];
-        let last_round = Self::reduce(round, transcript, u, &mut messages)?;
+        let last_round = Self::reduce(round, transcript, u, &mut messages);
         let Round { a, .. } = last_round;
         debug_assert_eq!(a.len(), 1);
         let [] = transcript.send_message(&SingleElement(a[0]), &());
-        Ok(Proof { messages, a: a[0] })
+        Proof { messages, a: a[0] }
     }
 
     /// Creates SRS from seed for length 2^k for provided k

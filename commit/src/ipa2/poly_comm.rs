@@ -120,7 +120,7 @@ where
     G: VariableBaseMSM<ScalarField = F> + CurveGroup,
     M: CurveMap<G> + Eq + 'static,
 {
-    type ProverKey = ();
+    type ProverKey = Self;
 
     type VerifierKey = Self;
 
@@ -148,12 +148,27 @@ where
     }
 
     fn prove<S: Duplex<F>>(
-        _key: &Self::ProverKey,
-        _instance: OpenInstance<F, Self>,
-        _witness: Vec<F>,
-        _transcript: &mut Transcript<F, S>,
+        key: &Self::ProverKey,
+        instance: OpenInstance<F, Self>,
+        witness: Vec<F>,
+        transcript: &mut Transcript<F, S>,
     ) -> ProverOutput<(), Self::Proof> {
-        todo!()
+        let a = witness;
+        let OpenInstance {
+            commit,
+            point,
+            eval,
+        } = instance;
+        let b = eq(&point);
+        let vectors = [a.to_vec(), b];
+
+        let proof = key.ipa.prove(vectors, commit, eval, transcript);
+
+        ProverOutput {
+            instance: (),
+            witness: (),
+            proof,
+        }
     }
 
     fn verify<S: Duplex<F>>(
