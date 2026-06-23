@@ -43,6 +43,7 @@ impl<G: CurveGroup> Message<Scalar<G>> for IpaCommitment<G> {
 
     fn to_field_elements(&self, _: &Self::Params) -> Result<Vec<Scalar<G>>, Self::Error> {
         let affine = self.0.into_affine();
+        // NOTE: maybe there should be an error for this instead.
         let (x, y) = affine.xy().unwrap();
 
         let elems = [*x, *y]
@@ -177,10 +178,7 @@ where
         proof: GuardedProof<Self::Proof>,
         transcript: &mut VerifierTranscript<F, S>,
     ) -> Result<<() as Relation>::Instance, Self::Error> {
-        //TODO: handle
-        let (_, [u]) = transcript
-            .receive_message(|_| (), &GuardedProof::empty(), &())
-            .unwrap();
+        let Ok((_, [u])) = transcript.receive_message(|_| (), &GuardedProof::empty(), &());
         // casting challeng u into the base field, and then mapping to curve point
         let u: G::BaseField = cycle_cast(u);
         let u = key.ipa.map.map_to_curve(u);
@@ -193,10 +191,6 @@ where
 
         let commitment: G = commit.0 + u * eval;
         let mut challenges = vec![];
-        // let messages = (0..key.vars).map(|i| proof.clone().map(|proof| proof.messages[i]));
-        // let messages: Vec<MessageGuard<RoundMsg<G>>> = messages.transpose();
-        //
-        //
         let commitment: Result<G, IpaError> = (0..key.vars).try_fold(commitment, |acc, i| {
             let (msg, [chall]) = transcript
                 .receive_message(
@@ -206,13 +200,14 @@ where
                 )
                 .map_err(|()| IpaError::MissingMessage)?;
 
+            // NOTE: This shouldn't panic as the Option<T> implementation of
+            // Message only returns Ok(_) when the value is Some(_).
             let RoundMsg { cl, cr } = msg.unwrap();
             challenges.push(chall);
             let commit = acc + cl * chall.square() + cr * chall.inverse().unwrap().square();
             Ok(commit)
         });
-        //TODO:handle
-        let commitment: G = commitment.unwrap();
+        let commitment: G = commitment?;
 
         let mut challs_inv = challenges.clone();
         ark_ff::fields::batch_inversion(&mut challs_inv);
@@ -225,9 +220,8 @@ where
         // the length 1 vector.
         // Note: doesn't really need to be absorbed, but it probably isn't an
         // issue to do it anyway.
-        let (SingleElement(a), []) = transcript
-            .receive_message(|proof| SingleElement(proof.a), &proof, &())
-            .unwrap();
+        let Ok((SingleElement(a), [])) =
+            transcript.receive_message(|proof| SingleElement(proof.a), &proof, &());
 
         let b = eq(&point);
         let folded_b = compute_inner_product(&s, &b);
