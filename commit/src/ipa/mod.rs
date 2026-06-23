@@ -6,6 +6,7 @@ use rand::{rngs::StdRng, SeedableRng};
 use vector_utils::{fold_basis, fold_vec};
 
 mod poly_comm;
+pub mod poly_comm2;
 mod sponge;
 #[cfg(test)]
 mod tests;
@@ -44,7 +45,7 @@ where
     [commit_l, commit_r]
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 struct IpaScheme<F, G, M>
 where
     F: Field,
@@ -240,12 +241,14 @@ where
 
 use transcript::{
     messages::{ForeignElement, SingleElement},
+    reduction2::{self, NoError},
     utils::cycle_cast,
     Message, Transcript,
 };
 
 use crate::OpenInstance;
 
+#[derive(Clone, Copy, Debug)]
 struct RoundMsg<G: CurveGroup> {
     cl: G,
     cr: G,
@@ -277,5 +280,30 @@ impl<G: CurveGroup> Message<Scalar<G>> for RoundMsg<G> {
                 foreign.to_field_elements()
             })
             .collect()
+    }
+}
+
+impl<G: CurveGroup> reduction2::Message<Scalar<G>> for RoundMsg<G> {
+    type Params = ();
+
+    type Error = NoError;
+
+    fn len(_: &()) -> usize {
+        reduction2::message::ForeignElement::<G::BaseField, Scalar<G>>::len(&()) * 4
+    }
+
+    fn to_field_elements(&self, _: &()) -> Result<Vec<Scalar<G>>, Self::Error> {
+        let [cl, cr] = [self.cl, self.cr].map(G::into_affine);
+        let (x1, y1) = cl.xy().unwrap();
+        let (x2, y2) = cr.xy().unwrap();
+
+        Ok([x1, y1, x2, y2]
+            .into_iter()
+            .flat_map(|x| {
+                let x: G::BaseField = *x;
+                let foreign = ForeignElement::<G::BaseField, Scalar<G>>::from(x);
+                foreign.to_field_elements()
+            })
+            .collect())
     }
 }
