@@ -1,15 +1,11 @@
+use crate::ipa::vector_utils::{fold_basis, fold_vec};
 use ::sponge::sponge::Duplex;
 use ark_ec::{AffineRepr, CurveGroup, Group, VariableBaseMSM};
 use ark_ff::Field;
 use hash_to_curve::CurveMap;
 use rand::{rngs::StdRng, SeedableRng};
-use vector_utils::{fold_basis, fold_vec};
 
 mod poly_comm;
-mod sponge;
-#[cfg(test)]
-mod tests;
-pub(crate) mod vector_utils;
 
 pub use poly_comm::{IpaCommitment, IpaCommitmentScheme, IpaError};
 
@@ -155,13 +151,16 @@ where
             Self::reduce(round, transcript, u, messages)
         }
     }
+    #[allow(dead_code)]
     pub fn prove<S: Duplex<F>>(
         &self,
         vectors: [Vec<F>; 2],
         instance: OpenInstance<F, IpaCommitment<G>>,
         transcript: &mut Transcript<F, S>,
     ) -> Res<Proof<F, G>> {
-        let [u] = transcript.send_message(&instance)?;
+        // let [u] = transcript.send_message(&instance)?;
+        // TODO:
+        let u = F::ZERO;
         let OpenInstance {
             commit,
             eval: inner_product,
@@ -240,6 +239,7 @@ where
 
 use transcript::{
     messages::{ForeignElement, SingleElement},
+    reduction2::{self, NoError},
     utils::cycle_cast,
     Message, Transcript,
 };
@@ -278,5 +278,30 @@ impl<G: CurveGroup> Message<Scalar<G>> for RoundMsg<G> {
                 foreign.to_field_elements()
             })
             .collect()
+    }
+}
+
+impl<G: CurveGroup> reduction2::Message<Scalar<G>> for RoundMsg<G> {
+    type Params = ();
+
+    type Error = NoError;
+
+    fn len(_: &()) -> usize {
+        reduction2::message::ForeignElement::<G::BaseField, Scalar<G>>::len(&()) * 4
+    }
+
+    fn to_field_elements(&self, _: &()) -> Result<Vec<Scalar<G>>, Self::Error> {
+        let [cl, cr] = [self.cl, self.cr].map(G::into_affine);
+        let (x1, y1) = cl.xy().unwrap();
+        let (x2, y2) = cr.xy().unwrap();
+
+        Ok([x1, y1, x2, y2]
+            .into_iter()
+            .flat_map(|x| {
+                let x: G::BaseField = *x;
+                let foreign = ForeignElement::<G::BaseField, Scalar<G>>::from(x);
+                foreign.to_field_elements()
+            })
+            .collect())
     }
 }

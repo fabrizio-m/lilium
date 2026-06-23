@@ -11,6 +11,8 @@ pub mod batching;
 pub mod committed_structure;
 #[cfg(feature = "ipa")]
 pub mod ipa;
+#[cfg(feature = "ipa")]
+pub mod ipa2;
 
 pub mod commit2;
 
