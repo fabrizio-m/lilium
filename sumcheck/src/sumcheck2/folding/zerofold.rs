@@ -14,7 +14,7 @@ use ark_ff::Field;
 use sponge::sponge::Duplex;
 use std::marker::PhantomData;
 use transcript::reduction2::{
-    FoldingRelation, GuardedProof, ProverOutput, Reduction, Relation, Transcript,
+    FoldingRelation, FoldingScheme, GuardedProof, ProverOutput, Reduction, Relation, Transcript,
     TranscriptBuilder, VerifierTranscript,
 };
 
@@ -189,6 +189,14 @@ where
             oracle_instance,
         })
     }
+}
+
+impl<F, O> FoldingScheme<F, ZeroSumcheck<F, O>> for ZeroFold<F, O>
+where
+    F: Field,
+    O: Oracle<F>,
+    O::Instance: Foldable<F>,
+{
 }
 
 impl<F: Field, O: Oracle<F>> ZeroFoldKey<F, O> {
