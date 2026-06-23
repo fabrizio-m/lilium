@@ -1,9 +1,20 @@
-use crate::ipa::vector_utils::{fold_basis, fold_vec};
-use ::sponge::sponge::Duplex;
+use crate::{
+    ipa::vector_utils::{fold_basis, fold_vec},
+    OpenInstance,
+};
 use ark_ec::{AffineRepr, CurveGroup, Group, VariableBaseMSM};
 use ark_ff::Field;
 use hash_to_curve::CurveMap;
 use rand::{rngs::StdRng, SeedableRng};
+use sponge::sponge::Duplex;
+use transcript::{
+    reduction2::{
+        self,
+        message::{ForeignElement, SingleElement},
+        Message, NoError, Transcript,
+    },
+    utils::cycle_cast,
+};
 
 mod poly_comm;
 
@@ -123,7 +134,7 @@ where
         } = round;
         let [cl, cr] = ipa_reduce::<F, G>([&a, &b], &basis, product_base);
         let message = RoundMsg { cl, cr };
-        let [chall] = transcript.send_message(&message)?;
+        let [chall] = transcript.send_message(&message, &());
         let chall_inv = chall.inverse().unwrap();
         let a = fold_vec(a, [chall, chall_inv]);
         let b = fold_vec(b, [chall_inv, chall]);
@@ -158,9 +169,7 @@ where
         instance: OpenInstance<F, IpaCommitment<G>>,
         transcript: &mut Transcript<F, S>,
     ) -> Res<Proof<F, G>> {
-        // let [u] = transcript.send_message(&instance)?;
-        // TODO:
-        let u = F::ZERO;
+        let [u] = transcript.send_message(&(), &());
         let OpenInstance {
             commit,
             eval: inner_product,
@@ -183,44 +192,9 @@ where
         let last_round = Self::reduce(round, transcript, u, &mut messages)?;
         let Round { a, .. } = last_round;
         debug_assert_eq!(a.len(), 1);
-        let [] = transcript.send_message(&SingleElement(a[0]))?;
+        let [] = transcript.send_message(&SingleElement(a[0]), &());
         Ok(Proof { messages, a: a[0] })
     }
-    /*pub fn verify<S: Sponge<F, G>>(
-        &self,
-        sponge: &mut S,
-        commitment: G,
-        b: Vec<F>,
-        inner_product: F,
-        proof: Proof<F, G>,
-    ) -> bool {
-        let Proof { messages, a } = proof;
-        sponge.absorb_g(commitment);
-        sponge.absorb_f(inner_product);
-        let u = sponge.squeeze_g();
-        // scaling commitment to prevent shifting
-        let commitment: G = commitment + u * inner_product;
-        let mut challenges = vec![];
-        let commitment: G = messages.into_iter().fold(commitment, |acc, msg| {
-            let (cl, cr) = msg;
-            sponge.absorb_g(cl);
-            sponge.absorb_g(cr);
-            let chall = sponge.squeeze_f();
-            challenges.push(chall);
-            //TODO: batch inverses
-            acc + cl * chall.square() + cr * chall.inverse().unwrap().square()
-        });
-        let mut challs_inv = challenges.clone();
-        ark_ff::fields::batch_inversion(&mut challs_inv);
-
-        let s = challenge_combinations(&challenges, &challs_inv);
-        let folded_b = compute_inner_product(&s, &b);
-        let folded_g = G::msm_unchecked(&self.vector_basis, &s);
-        // TODO: zk opening not revealing a
-        // Checking that C = aG + abU
-        let open = (u * folded_b + folded_g) * a;
-        commitment == open
-    }*/
 
     /// Creates SRS from seed for length 2^k for provided k
     pub fn init(len_log: usize, seed: Option<u64>) -> Self {
@@ -236,15 +210,6 @@ where
         Self { vector_basis, map }
     }
 }
-
-use transcript::{
-    messages::{ForeignElement, SingleElement},
-    reduction2::{self, NoError},
-    utils::cycle_cast,
-    Message, Transcript,
-};
-
-use crate::OpenInstance;
 
 #[derive(Clone, Copy, Debug)]
 struct RoundMsg<G: CurveGroup> {
@@ -262,26 +227,6 @@ impl<G: CurveGroup> From<(G, G)> for RoundMsg<G> {
 }
 
 impl<G: CurveGroup> Message<Scalar<G>> for RoundMsg<G> {
-    fn len(vars: usize, param_resolver: &transcript::params::ParamResolver) -> usize {
-        ForeignElement::<G::BaseField, Scalar<G>>::len(vars, param_resolver) * 4
-    }
-
-    fn to_field_elements(&self) -> Vec<<G as Group>::ScalarField> {
-        let [cl, cr] = [self.cl, self.cr].map(G::into_affine);
-        let (x1, y1) = cl.xy().unwrap();
-        let (x2, y2) = cr.xy().unwrap();
-        [x1, y1, x2, y2]
-            .into_iter()
-            .flat_map(|x| {
-                let x: G::BaseField = *x;
-                let foreign = ForeignElement::<G::BaseField, Scalar<G>>::from(x);
-                foreign.to_field_elements()
-            })
-            .collect()
-    }
-}
-
-impl<G: CurveGroup> reduction2::Message<Scalar<G>> for RoundMsg<G> {
     type Params = ();
 
     type Error = NoError;
@@ -300,7 +245,8 @@ impl<G: CurveGroup> reduction2::Message<Scalar<G>> for RoundMsg<G> {
             .flat_map(|x| {
                 let x: G::BaseField = *x;
                 let foreign = ForeignElement::<G::BaseField, Scalar<G>>::from(x);
-                foreign.to_field_elements()
+                let Ok(elems) = foreign.to_field_elements(&());
+                elems
             })
             .collect())
     }
