@@ -139,12 +139,12 @@ where
             .round::<F, SingleElement<F>, 0>(&())
     }
 
-    fn verifier_key(_structure_1: &Self, _structure_2: &()) -> Self::VerifierKey {
-        todo!()
+    fn verifier_key(pcs: &Self, _: &()) -> Self::VerifierKey {
+        pcs.clone()
     }
 
-    fn key_pair(_structure_1: &Self, _structure_2: &()) -> (Self::VerifierKey, Self::ProverKey) {
-        todo!()
+    fn key_pair(pcs: &Self, _: &()) -> (Self::VerifierKey, Self::ProverKey) {
+        (pcs.clone(), pcs.clone())
     }
 
     fn prove<S: Duplex<F>>(
