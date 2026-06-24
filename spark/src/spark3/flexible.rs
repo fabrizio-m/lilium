@@ -2,11 +2,13 @@ use crate::spark3::{
     prove,
     reduction::{self, SparkError},
     sumcheck_argument::SparkEvals,
-    FlexibleSparkRelation, FlexibleSparkStructure, SparkInstance, SparkReduction,
+    FlexibleSparkRelation, FlexibleSparkStructure, SparkInstance, SparkReduction, SparseMle,
+    StaticSparkStructure,
 };
 use ark_ff::Field;
 use commit::commit2::{CommitmentScheme, OpenInstance, OpeningRelation};
 use sponge::sponge::Duplex;
+use std::rc::Rc;
 use transcript::reduction2::{
     GuardedProof, ProverOutput, Reduction, Transcript, TranscriptBuilder, VerifierTranscript,
 };
@@ -105,18 +107,109 @@ where
         }
     }
 
-    fn verifier_key(
-        _structure_1: &FlexibleSparkStructure<F>,
-        _structure_2: &C,
-    ) -> Self::VerifierKey {
-        todo!()
+    fn verifier_key(structure: &FlexibleSparkStructure<F>, pcs: &C) -> Self::VerifierKey {
+        let FlexibleSparkStructure { evals } = structure;
+        assert!(evals.len().is_power_of_two());
+        let max: u64 = evals
+            .iter()
+            .fold(0, |acc, (addr, _)| std::cmp::max(acc, *addr));
+        let bits = max.next_power_of_two().ilog2();
+
+        use VerifierKey::*;
+        if bits == 0 {
+            let structure = structure.static_structure();
+            return S1(SparkReduction::verifier_key(&structure, pcs));
+        }
+
+        match bits - 1 {
+            0..8 => S1(SparkReduction::verifier_key(
+                &structure.static_structure(),
+                pcs,
+            )),
+            8..16 => S2(SparkReduction::verifier_key(
+                &structure.static_structure(),
+                pcs,
+            )),
+            16..24 => S3(SparkReduction::verifier_key(
+                &structure.static_structure(),
+                pcs,
+            )),
+            24..32 => S4(SparkReduction::verifier_key(
+                &structure.static_structure(),
+                pcs,
+            )),
+            32..40 => S5(SparkReduction::verifier_key(
+                &structure.static_structure(),
+                pcs,
+            )),
+            40..48 => S6(SparkReduction::verifier_key(
+                &structure.static_structure(),
+                pcs,
+            )),
+            48..56 => S7(SparkReduction::verifier_key(
+                &structure.static_structure(),
+                pcs,
+            )),
+            56..64 => S8(SparkReduction::verifier_key(
+                &structure.static_structure(),
+                pcs,
+            )),
+            _ => panic!("unsupported (and impossible) size"),
+        }
     }
 
     fn key_pair(
-        _structure_1: &FlexibleSparkStructure<F>,
-        _structure_2: &C,
+        structure: &FlexibleSparkStructure<F>,
+        pcs: &C,
     ) -> (Self::VerifierKey, Self::ProverKey) {
-        todo!()
+        macro_rules! key_pair {
+            ($vk_variant: path, $pk_variant: path) => {{
+                let structure = structure.static_structure();
+                let (vk, pk) = SparkReduction::key_pair(&structure, pcs);
+                ($vk_variant(vk), $pk_variant(pk))
+            }};
+        }
+
+        let FlexibleSparkStructure { evals } = structure;
+        assert!(evals.len().is_power_of_two());
+        let max: u64 = evals
+            .iter()
+            .fold(0, |acc, (addr, _)| std::cmp::max(acc, *addr));
+        let bits = max.next_power_of_two().ilog2();
+
+        if bits == 0 {
+            let structure = structure.static_structure();
+            let (vk, pk) = SparkReduction::key_pair(&structure, pcs);
+            return (VerifierKey::S1(vk), ProverKey::S1(pk));
+        }
+
+        match bits - 1 {
+            0..8 => {
+                key_pair!(VerifierKey::S1, ProverKey::S1)
+            }
+            8..16 => {
+                key_pair!(VerifierKey::S2, ProverKey::S2)
+            }
+            16..24 => {
+                key_pair!(VerifierKey::S3, ProverKey::S3)
+            }
+            24..32 => {
+                key_pair!(VerifierKey::S4, ProverKey::S4)
+            }
+            32..40 => {
+                key_pair!(VerifierKey::S5, ProverKey::S5)
+            }
+            40..48 => {
+                key_pair!(VerifierKey::S6, ProverKey::S6)
+            }
+            48..56 => {
+                key_pair!(VerifierKey::S7, ProverKey::S7)
+            }
+            56..64 => {
+                key_pair!(VerifierKey::S8, ProverKey::S8)
+            }
+            _ => panic!("unsupported (and impossible) size"),
+        }
     }
 
     fn prove<S: Duplex<F>>(
@@ -202,5 +295,22 @@ where
             S7(key) => verify!(Proof::S7, key),
             S8(key) => verify!(Proof::S8, key),
         }
+    }
+}
+
+impl<F: Field> FlexibleSparkStructure<F> {
+    fn static_structure<const N: usize>(&self) -> StaticSparkStructure<F, N> {
+        let (addresses, values) = self
+            .evals
+            .iter()
+            .map(|(addr, val)| {
+                let bytes: [u8; 8] = addr.to_le_bytes();
+                let mut address_segments = [0; N];
+                address_segments.copy_from_slice(&bytes[0..N]);
+                (address_segments, val)
+            })
+            .unzip();
+        let mle = SparseMle { addresses, values };
+        StaticSparkStructure { mle: Rc::new(mle) }
     }
 }
