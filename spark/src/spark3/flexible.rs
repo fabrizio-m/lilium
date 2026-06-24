@@ -1,4 +1,5 @@
 use crate::spark3::{
+    prove,
     reduction::{self, SparkError},
     sumcheck_argument::SparkEvals,
     FlexibleSparkRelation, FlexibleSparkStructure, SparkInstance, SparkReduction,
@@ -38,6 +39,21 @@ where
     S8(reduction::Key<F, C, SparkEvals<(), 8>, 8>),
 }
 
+pub enum ProverKey<F, C>
+where
+    F: Field,
+    C: CommitmentScheme<F>,
+{
+    S1(prove::ProverKey<F, C, 1>),
+    S2(prove::ProverKey<F, C, 2>),
+    S3(prove::ProverKey<F, C, 3>),
+    S4(prove::ProverKey<F, C, 4>),
+    S5(prove::ProverKey<F, C, 5>),
+    S6(prove::ProverKey<F, C, 6>),
+    S7(prove::ProverKey<F, C, 7>),
+    S8(prove::ProverKey<F, C, 8>),
+}
+
 #[derive(Clone, Debug)]
 pub enum Proof<F: Field, C: CommitmentScheme<F>> {
     S1(reduction::Proof<F, C, 1>),
@@ -64,7 +80,7 @@ where
     F: Field,
     C: CommitmentScheme<F>,
 {
-    type ProverKey = ();
+    type ProverKey = ProverKey<F, C>;
 
     type VerifierKey = VerifierKey<F, C>;
 
@@ -104,12 +120,53 @@ where
     }
 
     fn prove<S: Duplex<F>>(
-        _key: &Self::ProverKey,
-        _instance: SparkInstance<F>,
+        key: &Self::ProverKey,
+        instance: SparkInstance<F>,
         _: (),
-        _transcript: &mut Transcript<F, S>,
+        transcript: &mut Transcript<F, S>,
     ) -> ProverOutput<Rel2<F, C>, Self::Proof> {
-        todo!()
+        macro_rules! prove {
+            ($variant:path,$key:ident) => {{
+                let ProverOutput {
+                    instance,
+                    witness,
+                    proof,
+                } = SparkReduction::prove($key, instance, (), transcript);
+                let proof = $variant(proof);
+                ProverOutput {
+                    instance,
+                    witness,
+                    proof,
+                }
+            }};
+        }
+
+        match key {
+            ProverKey::S1(key) => {
+                prove!(Proof::S1, key)
+            }
+            ProverKey::S2(key) => {
+                prove!(Proof::S2, key)
+            }
+            ProverKey::S3(key) => {
+                prove!(Proof::S3, key)
+            }
+            ProverKey::S4(key) => {
+                prove!(Proof::S4, key)
+            }
+            ProverKey::S5(key) => {
+                prove!(Proof::S5, key)
+            }
+            ProverKey::S6(key) => {
+                prove!(Proof::S6, key)
+            }
+            ProverKey::S7(key) => {
+                prove!(Proof::S7, key)
+            }
+            ProverKey::S8(key) => {
+                prove!(Proof::S8, key)
+            }
+        }
     }
 
     fn verify<S: Duplex<F>>(
