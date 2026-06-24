@@ -1,6 +1,7 @@
 use crate::spark3::{
-    reduction, sumcheck_argument::SparkEvals, FlexibleSparkRelation, FlexibleSparkStructure,
-    SparkInstance, SparkReduction,
+    reduction::{self, SparkError},
+    sumcheck_argument::SparkEvals,
+    FlexibleSparkRelation, FlexibleSparkStructure, SparkInstance, SparkReduction,
 };
 use ark_ff::Field;
 use commit::commit2::{CommitmentScheme, OpenInstance, OpeningRelation};
@@ -37,8 +38,26 @@ where
     S8(reduction::Key<F, C, SparkEvals<(), 8>, 8>),
 }
 
+#[derive(Clone, Debug)]
+pub enum Proof<F: Field, C: CommitmentScheme<F>> {
+    S1(reduction::Proof<F, C, 1>),
+    S2(reduction::Proof<F, C, 2>),
+    S3(reduction::Proof<F, C, 3>),
+    S4(reduction::Proof<F, C, 4>),
+    S5(reduction::Proof<F, C, 5>),
+    S6(reduction::Proof<F, C, 6>),
+    S7(reduction::Proof<F, C, 7>),
+    S8(reduction::Proof<F, C, 8>),
+}
+
 type Rel1<F> = FlexibleSparkRelation<F>;
 type Rel2<F, C> = OpeningRelation<F, C>;
+
+#[derive(Clone, Copy, Debug)]
+pub enum FlexibleSparkError {
+    UnexpectedProofSize,
+    Spark(SparkError),
+}
 
 impl<F, C> Reduction<F, Rel1<F>, Rel2<F, C>> for FlexibleSpark<F, C>
 where
@@ -49,9 +68,9 @@ where
 
     type VerifierKey = VerifierKey<F, C>;
 
-    type Proof = ();
+    type Proof = Proof<F, C>;
 
-    type Error = ();
+    type Error = FlexibleSparkError;
 
     fn transcript_pattern(
         key: &Self::VerifierKey,
@@ -94,11 +113,37 @@ where
     }
 
     fn verify<S: Duplex<F>>(
-        _key: &Self::VerifierKey,
-        _instance: SparkInstance<F>,
-        _proof: GuardedProof<Self::Proof>,
-        _transcript: &mut VerifierTranscript<F, S>,
+        key: &Self::VerifierKey,
+        instance: SparkInstance<F>,
+        proof: GuardedProof<Self::Proof>,
+        transcript: &mut VerifierTranscript<F, S>,
     ) -> Result<OpenInstance<F, C>, Self::Error> {
-        todo!()
+        use VerifierKey::*;
+
+        macro_rules! verify {
+            ($variant:path,$key:ident) => {{
+                let proof = proof.try_map(|proof| {
+                    if let $variant(proof) = proof {
+                        Some(proof)
+                    } else {
+                        None
+                    }
+                });
+                let proof = proof.map_err(|_| FlexibleSparkError::UnexpectedProofSize)?;
+                let res = SparkReduction::verify($key, instance, proof, transcript);
+                res.map_err(FlexibleSparkError::Spark)
+            }};
+        }
+
+        match key {
+            S1(key) => verify!(Proof::S1, key),
+            S2(key) => verify!(Proof::S2, key),
+            S3(key) => verify!(Proof::S3, key),
+            S4(key) => verify!(Proof::S4, key),
+            S5(key) => verify!(Proof::S5, key),
+            S6(key) => verify!(Proof::S6, key),
+            S7(key) => verify!(Proof::S7, key),
+            S8(key) => verify!(Proof::S8, key),
+        }
     }
 }
