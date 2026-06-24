@@ -96,6 +96,54 @@ where
     }
 }
 
+#[derive(Clone, Debug)]
+pub struct FlexibleSparkStructure<F: Field> {
+    evals: Rc<Vec<(u64, F)>>,
+}
+
+impl<F: Field> FlexibleSparkStructure<F> {
+    pub fn eval(&self, point: MultiPoint<F>) -> F {
+        let mut point = point.inner();
+        point.resize(u64::BITS as usize, F::ZERO);
+
+        let segments: [MultiPoint<F>; 8] = point
+            .chunks(8)
+            .map(|segment| MultiPoint::new(segment.to_vec()))
+            .collect::<Vec<_>>()
+            .try_into()
+            .unwrap();
+
+        let eqs = segments.map(|segment| eq::eq(&segment));
+
+        self.evals.iter().fold(F::ZERO, |acc, (addr, val)| {
+            //TODO: check this
+            let addr = addr.to_le_bytes();
+            let eq: F = addr
+                .iter()
+                .enumerate()
+                .fold(F::ONE, |acc, (i, addr)| acc * eqs[i][*addr as usize]);
+            acc + eq * val
+        })
+    }
+}
+
+pub struct FlexibleSparkRelation<F>(PhantomData<F>);
+
+impl<F: Field> Relation for FlexibleSparkRelation<F> {
+    type Structure = FlexibleSparkStructure<F>;
+
+    type Instance = SparkInstance<F>;
+
+    type Witness = ();
+
+    fn check(structure: &Self::Structure, instance: &SparkInstance<F>, _: &()) -> bool {
+        let SparkInstance { point, eval } = instance;
+
+        let expected = structure.eval(point.clone());
+
+        *eval == expected
+    }
+}
 // t' = eq(r,x)
 // t = (0..256) * t'
 // f = addr * eq
