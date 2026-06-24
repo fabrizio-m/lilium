@@ -1,4 +1,7 @@
-use crate::spark3::{FlexibleSparkRelation, FlexibleSparkStructure, SparkInstance, SparkReduction};
+use crate::spark3::{
+    reduction, sumcheck_argument::SparkEvals, FlexibleSparkRelation, FlexibleSparkStructure,
+    SparkInstance, SparkReduction,
+};
 use ark_ff::Field;
 use commit::commit2::{CommitmentScheme, OpenInstance, OpeningRelation};
 use sponge::sponge::Duplex;
@@ -19,6 +22,21 @@ pub enum FlexibleSpark<F: Field, C: CommitmentScheme<F>> {
     S8(SparkReduction<F, C, 8>),
 }
 
+pub enum VerifierKey<F, C>
+where
+    F: Field,
+    C: CommitmentScheme<F>,
+{
+    S1(reduction::Key<F, C, SparkEvals<(), 1>, 1>),
+    S2(reduction::Key<F, C, SparkEvals<(), 2>, 2>),
+    S3(reduction::Key<F, C, SparkEvals<(), 3>, 3>),
+    S4(reduction::Key<F, C, SparkEvals<(), 4>, 4>),
+    S5(reduction::Key<F, C, SparkEvals<(), 5>, 5>),
+    S6(reduction::Key<F, C, SparkEvals<(), 6>, 6>),
+    S7(reduction::Key<F, C, SparkEvals<(), 7>, 7>),
+    S8(reduction::Key<F, C, SparkEvals<(), 8>, 8>),
+}
+
 type Rel1<F> = FlexibleSparkRelation<F>;
 type Rel2<F, C> = OpeningRelation<F, C>;
 
@@ -29,17 +47,27 @@ where
 {
     type ProverKey = ();
 
-    type VerifierKey = ();
+    type VerifierKey = VerifierKey<F, C>;
 
     type Proof = ();
 
     type Error = ();
 
     fn transcript_pattern(
-        _key: &Self::VerifierKey,
-        _builder: TranscriptBuilder,
+        key: &Self::VerifierKey,
+        builder: TranscriptBuilder,
     ) -> TranscriptBuilder {
-        todo!()
+        use VerifierKey::*;
+        match key {
+            S1(key) => SparkReduction::transcript_pattern(key, builder),
+            S2(key) => SparkReduction::transcript_pattern(key, builder),
+            S3(key) => SparkReduction::transcript_pattern(key, builder),
+            S4(key) => SparkReduction::transcript_pattern(key, builder),
+            S5(key) => SparkReduction::transcript_pattern(key, builder),
+            S6(key) => SparkReduction::transcript_pattern(key, builder),
+            S7(key) => SparkReduction::transcript_pattern(key, builder),
+            S8(key) => SparkReduction::transcript_pattern(key, builder),
+        }
     }
 
     fn verifier_key(
