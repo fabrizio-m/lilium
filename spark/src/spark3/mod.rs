@@ -84,7 +84,7 @@ where
         instance: &Self::Instance,
         _witness: &Self::Witness,
     ) -> bool {
-        if instance.point.vars() % 8 != 0 {
+        if instance.point.vars() != N * 8 {
             return false;
         }
 
