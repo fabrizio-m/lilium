@@ -7,6 +7,7 @@ mod circuit_key;
 pub mod circuits;
 mod folding;
 mod instances;
+mod lilium2;
 mod prove;
 mod proving;
 pub mod simple_cs;
