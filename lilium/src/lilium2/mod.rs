@@ -1,2 +1,2 @@
 mod reductions;
-mod relations;
+pub mod relations;
