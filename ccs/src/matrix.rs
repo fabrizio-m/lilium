@@ -1,5 +1,7 @@
 use core::slice;
-use std::ops::Index;
+use std::ops::{Index, Mul};
+
+use ark_ff::Field;
 
 /// Sparse matrix.
 #[derive(Default, Clone, Debug)]
@@ -98,5 +100,16 @@ impl Iterator for CellIter<'_> {
                 next.copied().map(|j| (self.current_row_idx, j))
             }
         }
+    }
+}
+
+impl<F: Field> Mul<&[F]> for Matrix {
+    type Output = Vec<F>;
+
+    fn mul(self, rhs: &[F]) -> Self::Output {
+        self.rows
+            .iter()
+            .map(|row| row.iter().fold(F::ZERO, |acc, cell| acc + rhs[*cell]))
+            .collect()
     }
 }
