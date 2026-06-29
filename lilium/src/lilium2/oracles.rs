@@ -58,6 +58,19 @@ impl From<MatrixNature> for EvalLocation {
     }
 }
 
+#[derive(Clone, Copy, Debug)]
+struct Key;
+
+impl<F, SF, C, const N: usize> From<MatrixProductOracle<F, SF, C, N>> for Key
+where
+    F: Field,
+    SF: SumcheckFunction<F>,
+{
+    fn from(_: MatrixProductOracle<F, SF, C, N>) -> Self {
+        Key
+    }
+}
+
 impl<F, SF, C, const N: usize> PartialOracle<F, SF> for MatrixProductOracle<F, SF, C, N>
 where
     F: Field,
@@ -67,7 +80,7 @@ where
 {
     type Instance = MatrixProductInstance<F, C>;
 
-    type VerifierKey = Self;
+    type VerifierKey = Key;
 
     type Builder = Self;
 
@@ -84,7 +97,7 @@ where
     }
 
     fn evals(
-        _key: &Self::VerifierKey,
+        _key: &Key,
         _instance: &Self::Instance,
         _point: &MultiPoint<F>,
     ) -> <SF>::Mles<OracleEval<F>> {
