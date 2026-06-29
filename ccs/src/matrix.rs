@@ -103,7 +103,7 @@ impl Iterator for CellIter<'_> {
     }
 }
 
-impl<F: Field> Mul<&[F]> for Matrix {
+impl<F: Field> Mul<&[F]> for &Matrix {
     type Output = Vec<F>;
 
     fn mul(self, rhs: &[F]) -> Self::Output {
