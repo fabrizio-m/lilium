@@ -128,6 +128,7 @@ where
     I: SumcheckFunction<F>,
 {
     type Natures = ZerocheckNature<I::Natures>;
+    type Data = I::Data;
 
     fn natures() -> Self::Mles<Self::Natures> {
         let inner = I::natures();
@@ -136,8 +137,8 @@ where
         ZeroCheckEvals { zerocheck, inner }
     }
 
-    fn function<V: Var<F> + Debug>(&self, evals: &Self::Mles<V>) -> V {
+    fn function<V: Var<F> + Debug>(data: &Self::Data, evals: &Self::Mles<V>) -> V {
         let ZeroCheckEvals { zerocheck, inner } = evals;
-        I::function(&self.inner, inner) * zerocheck
+        I::function(data, inner) * zerocheck
     }
 }

@@ -168,6 +168,7 @@ impl<V: Clone + Debug> SparkChallenges<V> {
 
 impl<F: Field, const N: usize> SumcheckFunction<F> for SparkEvals<(), N> {
     type Natures = Either<CoreNature, CommittedNature>;
+    type Data = ();
 
     fn natures() -> Self::Mles<Self::Natures> {
         let r = |n| Either::Right(n);
@@ -185,7 +186,7 @@ impl<F: Field, const N: usize> SumcheckFunction<F> for SparkEvals<(), N> {
         }
     }
 
-    fn function<V: Var<F> + Debug>(&self, evals: &Self::Mles<V>) -> V {
+    fn function<V: Var<F> + Debug>(_: &(), evals: &Self::Mles<V>) -> V {
         let SparkEvals {
             dimensions,
             value,

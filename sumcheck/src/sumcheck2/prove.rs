@@ -3,7 +3,7 @@ use crate::{
     sumcheck2::{
         degree,
         evals::{Evals, Mles},
-        oracles::{EvalLocation, Oracle, SumcheckFunction},
+        oracles::{EvalLocation, Oracle, OracleData, SumcheckFunction},
         SumcheckMessage,
     },
 };
@@ -16,7 +16,7 @@ pub struct ProverKey<F: Field, O: Oracle<F>> {
     degree: usize,
     vars: usize,
     structure_evals: Rc<Vec<Mles<O::Function, F>>>,
-    f: O::Function,
+    data: <O::Function as SumcheckFunction<F>>::Data,
     structure_filter: Mles<O::Function, bool>,
     instance_filter: Mles<O::Function, bool>,
 }
@@ -28,7 +28,7 @@ impl<F: Field, O: Oracle<F>> ProverKey<F, O> {
 
         let structure_evals = oracle.structure();
 
-        let f = oracle.function().clone();
+        let data = oracle.data().clone();
 
         let natures = oracle.natures();
 
@@ -46,7 +46,7 @@ impl<F: Field, O: Oracle<F>> ProverKey<F, O> {
             degree,
             vars,
             structure_evals,
-            f,
+            data,
             structure_filter,
             instance_filter,
         }
@@ -103,7 +103,7 @@ impl<F: Field, O: Oracle<F>> ProverKey<F, O> {
 
         assert_eq!(witness.len(), 1);
 
-        let eval: F = self.f.function(&witness[0]);
+        let eval: F = O::Function::function(&self.data, &witness[0]);
 
         vars.reverse();
         let point = MultiPoint::new(vars);
@@ -149,13 +149,17 @@ impl<F: Field, O: Oracle<F>> ProverKey<F, O> {
 
         let mut message = vec![F::zero(); degree + 1];
         for (left, right) in left.iter().zip(right) {
-            Self::eval_acc(&self.f, &mut message, [left, right]);
+            Self::eval_acc(&self.data, &mut message, [left, right]);
         }
 
         SumcheckMessage(message)
     }
 
-    pub(crate) fn eval_acc(f: &O::Function, acc: &mut [F], evals: [&Mles<O::Function, F>; 2]) {
+    pub(crate) fn eval_acc(
+        data: &OracleData<F, O>,
+        acc: &mut [F],
+        evals: [&Mles<O::Function, F>; 2],
+    ) {
         let [left, right] = evals;
         // The last evaluations, and what is needed to compute the next.
         let mut e = <O::Function as Evals>::combine::<F, F, _, _>(left, right, |e0, e1| {
@@ -166,7 +170,7 @@ impl<F: Field, O: Oracle<F>> ProverKey<F, O> {
 
         for m in acc.iter_mut() {
             let evals = <O::Function as Evals>::map_evals(&e, |(eval, _)| *eval);
-            let eval: F = f.function(&evals);
+            let eval: F = O::Function::function(data, &evals);
 
             *m += eval;
             <O::Function as Evals>::apply(&mut e, |(last, coeff)| {
@@ -193,12 +197,12 @@ impl<F: Field, O: Oracle<F>> ProverKey<F, O> {
         self.degree
     }
 
-    pub(crate) fn f(&self) -> &O::Function {
-        &self.f
-    }
-
     pub(crate) fn vars(&self) -> usize {
         self.vars
+    }
+
+    pub(crate) fn data(&self) -> &OracleData<F, O> {
+        &self.data
     }
 
     /// Increases the degree by 1, to be used by zerocheck

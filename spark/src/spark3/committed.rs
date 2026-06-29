@@ -8,10 +8,7 @@ use std::{marker::PhantomData, rc::Rc};
 use sumcheck::{
     eq,
     polynomials::MultiPoint,
-    sumcheck2::{
-        evals::Evals,
-        oracles::{composite::CompositeOracle, core::CoreOracle, SumcheckFunction},
-    },
+    sumcheck2::oracles::{composite::CompositeOracle, core::CoreOracle},
 };
 use transcript::reduction2::Relation;
 
@@ -119,9 +116,6 @@ where
     F: Field,
     C: CommitmentScheme<F>,
 {
-    let natures = <SparkEvals<(), N> as SumcheckFunction<F>>::natures();
-    let f: SparkEvals<(), N> = SparkEvals::map_evals(&natures, |_| ());
-
     let builder1: CoreOracle<F, SparkEvals<(), N>> = {
         let functions = SparkEvals::small_functions();
         CoreOracle::new(functions)
@@ -131,7 +125,7 @@ where
 
     let mles = Rc::new(SparkEvals::structure(mles));
 
-    CompositeOracle::new(f, mles, builder1, builder2)
+    CompositeOracle::new((), mles, builder1, builder2)
 }
 
 impl<F: Field, C: CommitmentScheme<F>, const N: usize> CommittedSparkStructure<F, C, N> {

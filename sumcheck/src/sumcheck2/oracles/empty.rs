@@ -73,7 +73,7 @@ impl<F: Field, SF: SumcheckFunction<F>> PartialOracle<F, SF> for () {
 
     type Builder = ();
 
-    fn build(_: (), _: &SF, _: Rc<Vec<SF::Mles<F>>>) -> Self {}
+    fn build(_: (), _: &SF::Data, _: Rc<Vec<SF::Mles<F>>>) -> Self {}
 
     fn instance_evals(_instance: &EmptyInstance) -> SF::Mles<F> {
         SF::map_evals(&SF::natures(), |_| F::ZERO)

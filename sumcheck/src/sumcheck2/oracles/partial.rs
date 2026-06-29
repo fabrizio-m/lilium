@@ -96,7 +96,7 @@ where
         Witness = Vec<SF::Mles<F>>,
     >;
 
-    fn build(builder: Self::Builder, f: &SF, structure: Rc<Vec<SF::Mles<F>>>) -> Self;
+    fn build(builder: Self::Builder, data: &SF::Data, structure: Rc<Vec<SF::Mles<F>>>) -> Self;
 
     fn instance_evals(instance: &Self::Instance) -> SF::Mles<F>;
     fn evals(

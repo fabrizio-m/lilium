@@ -2,7 +2,7 @@ use crate::{
     polynomials::MultiPoint,
     sumcheck2::{
         evals::{Evals, Mles},
-        oracles::{Oracle, QueryRelation, SumcheckFunction},
+        oracles::{Oracle, OracleData, QueryRelation, SumcheckFunction},
         prove,
         reduction::SumcheckVerifierKey,
         zerocheck::{ZeroSumcheck, ZeroSumcheckInstance, Zerocheck},
@@ -204,7 +204,8 @@ impl<F: Field, O: Oracle<F>> prove::ProverKey<F, O> {
 
         assert_eq!(witness.len(), 1);
 
-        let eval: F = self.f().function(&witness[0]);
+        let data = self.data();
+        let eval: F = O::Function::function(data, &witness[0]);
 
         vars.reverse();
         let point = MultiPoint::new(vars);
@@ -225,7 +226,7 @@ impl<F: Field, O: Oracle<F>> prove::ProverKey<F, O> {
 
         let (left, right) = mles.split_at(mles.len() / 2);
 
-        let f = self.f();
+        let data = self.data();
 
         let powers = {
             let (left, right) = powers.split_at(mles.len() / 2);
@@ -234,14 +235,14 @@ impl<F: Field, O: Oracle<F>> prove::ProverKey<F, O> {
 
         let mut message = vec![F::zero(); degree];
         for ((left, right), powers) in left.iter().zip(right).zip(powers) {
-            Self::zerocheck_eval_acc(f, &mut message, [left, right], powers, sum.is_zero());
+            Self::zerocheck_eval_acc(data, &mut message, [left, right], powers, sum.is_zero());
         }
 
         SumcheckMessage(message)
     }
 
     fn zerocheck_eval_acc(
-        f: &O::Function,
+        data: &OracleData<F, O>,
         acc: &mut [F],
         evals: [&Mles<O::Function, F>; 2],
         powers: [F; 2],
@@ -272,7 +273,7 @@ impl<F: Field, O: Oracle<F>> prove::ProverKey<F, O> {
 
         for m in acc[2..].iter_mut() {
             let evals = <O::Function as Evals>::map_evals(&e, |(eval, _)| *eval);
-            let eval: F = f.function(&evals);
+            let eval = O::Function::function(data, &evals);
 
             *m += eval * last_power;
             <O::Function as Evals>::apply(&mut e, |(last, coeff)| {

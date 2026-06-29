@@ -4,7 +4,7 @@ use crate::{
     sumcheck2::{
         evals::{EvalsCore, Mles},
         folding::{folding_degree, Foldable},
-        oracles::{Oracle, SumcheckFunction},
+        oracles::{Oracle, OracleData, SumcheckFunction},
         zerocheck::{ZeroSumcheck, ZeroSumcheckInstance},
         SumcheckError, SumcheckMessage,
     },
@@ -27,7 +27,7 @@ pub struct ZeroFoldKey<F: Field, O: Oracle<F>> {
     vars: usize,
     // Weights for degrees d to (d + vars + 1).
     weights: Vec<BarycentricWeights<F>>,
-    f: O::Function,
+    data: OracleData<F, O>,
 }
 
 impl<F, O> Reduction<F, FoldingRelation<ZeroSumcheck<F, O>>, ZeroSumcheck<F, O>> for ZeroFold<F, O>
@@ -58,12 +58,12 @@ where
         let weights = (0..(vars + 1))
             .map(|i| BarycentricWeights::compute((degree + i) as u32))
             .collect();
-        let f = oracle.function().clone();
+        let data = oracle.data().clone();
         ZeroFoldKey {
             degree,
             vars,
             weights,
-            f,
+            data,
         }
     }
 
@@ -232,9 +232,9 @@ impl<F: Field, O: Oracle<F>> ZeroFoldKey<F, O> {
         // Multiply the first variable and fold into Vec<F>.
         for i in 0..(w1.len() / 2) {
             let evals = [&w1[i * 2], &w2[i * 2]];
-            self.f.eval_into(&mut res0, evals);
+            O::Function::eval_into(&self.data, &mut res0, evals);
             let evals = [&w1[i * 2 + 1], &w2[i * 2 + 1]];
-            self.f.eval_into(&mut res1, evals);
+            O::Function::eval_into(&self.data, &mut res1, evals);
             for i in 0..res0.len() {
                 let even = res0[i] * powers_even.inner()[i];
                 let odd = res1[i] * powers_odd.inner()[i];

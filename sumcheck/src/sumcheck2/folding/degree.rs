@@ -1,7 +1,7 @@
 use crate::sumcheck2::{
     degree::Degree,
     evals::{Evals, Mles},
-    oracles::{EvalLocation, Oracle, SumcheckFunction},
+    oracles::{EvalLocation, Oracle},
 };
 use ark_ff::Field;
 
@@ -23,6 +23,6 @@ pub fn folding_degree<F: Field, O: Oracle<F>>(oracle: &O) -> usize {
         }
     });
 
-    let degree: Degree = oracle.function().function(&intitial_degrees);
+    let degree: Degree = oracle.call_function(&intitial_degrees);
     degree.0
 }

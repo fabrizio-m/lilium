@@ -88,7 +88,7 @@ where
 
     type QueryRelation = MatrixOracleQuery<F, SF, C, N>;
 
-    fn build(builder: Self, _: &SF, _: Rc<Vec<<SF>::Mles<F>>>) -> Self {
+    fn build(builder: Self, _: &SF::Data, _: Rc<Vec<<SF>::Mles<F>>>) -> Self {
         builder
     }
 

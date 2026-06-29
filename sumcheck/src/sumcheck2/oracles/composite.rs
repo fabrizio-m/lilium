@@ -45,7 +45,7 @@ where
     F: Field,
     SF: SumcheckFunction<F>,
 {
-    f: SF,
+    data: SF::Data,
     mles: Rc<Vec<SF::Mles<F>>>,
     vars: usize,
     evals_per_oracle: (usize, usize),
@@ -61,7 +61,7 @@ where
     SF::Natures: Into<Either<P1::Nature, P2::Nature>>,
 {
     pub fn new(
-        f: SF,
+        data: SF::Data,
         mles: Rc<Vec<SF::Mles<F>>>,
         builder1: P1::Builder,
         builder2: P2::Builder,
@@ -78,11 +78,11 @@ where
                     Either::Right(_) => (acc.0, acc.1 + 1),
                 }
             });
-        let partial_oracle1 = P1::build(builder1, &f, Rc::clone(&mles));
-        let partial_oracle2 = P2::build(builder2, &f, Rc::clone(&mles));
+        let partial_oracle1 = P1::build(builder1, &data, Rc::clone(&mles));
+        let partial_oracle2 = P2::build(builder2, &data, Rc::clone(&mles));
         let partial_oracles = (partial_oracle1, partial_oracle2);
         Self {
-            f,
+            data,
             mles,
             vars,
             evals_per_oracle,
@@ -186,8 +186,8 @@ where
         Rc::clone(&self.mles)
     }
 
-    fn function(&self) -> &Self::Function {
-        &self.f
+    fn data(&self) -> &<Self::Function as SumcheckFunction<F>>::Data {
+        &self.data
     }
 
     fn vars(&self) -> usize {
@@ -261,7 +261,7 @@ where
     // and to be verified through some reduction.
     oracle1_evals: usize,
     oracle2_evals: usize,
-    f: SF,
+    data: SF::Data,
     oracle1_key: P1::VerifierKey,
     oracle2_key: P2::VerifierKey,
 }
@@ -344,13 +344,13 @@ where
                 }
             }
         }
-        let f = oracle.f.clone();
+        let data = oracle.data.clone();
         let oracle1_key = From::from(oracle.partial_oracles.0.clone());
         let oracle2_key = From::from(oracle.partial_oracles.1.clone());
         CompositeReductionKey {
             oracle1_evals,
             oracle2_evals,
-            f,
+            data,
             oracle1_key,
             oracle2_key,
         }
@@ -378,7 +378,7 @@ where
         //PERF: This computation is a byproduct of sumcheck, it would be good
         //to reuse it instead of recomputing it here.
         let evals = EvalsExt::eval(&witness, &point);
-        assert_eq!(eval, key.f.function(&evals));
+        assert_eq!(eval, SF::function(&key.data, &evals));
 
         //NOTE: The call to P1::evals isn't strictcly necessary, but doing
         //it this way allows to enforce several invariants about the partial
@@ -490,7 +490,7 @@ where
         });
         assert_eq!(prover_evals.len(), 0);
 
-        let eval = key.f.function(&evals);
+        let eval = SF::function(&key.data, &evals);
 
         if eval == expected_eval {
             let instance1 =
@@ -585,10 +585,10 @@ where
 
     type Builder = (P1::Builder, P2::Builder);
 
-    fn build(builder: Self::Builder, f: &SF, structure: Rc<Vec<<SF>::Mles<F>>>) -> Self {
+    fn build(builder: Self::Builder, data: &SF::Data, structure: Rc<Vec<<SF>::Mles<F>>>) -> Self {
         let (builder1, builder2) = builder;
         let mles = structure;
-        Self::new(f.clone(), mles, builder1, builder2)
+        Self::new(data.clone(), mles, builder1, builder2)
     }
 
     fn instance_evals(instance: &Self::Instance) -> SF::Mles<F> {

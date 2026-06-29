@@ -17,7 +17,7 @@ use transcript::reduction2::{
 /// An oracle over MLEs which have a small representation and
 /// can be cheaply evluated over a point by the verifier.
 pub struct SmallEvalOracle<F: Field, SF: SumcheckFunction<F>> {
-    f: SF,
+    data: SF::Data,
     evals_over_domain: Rc<Vec<SF::Mles<F>>>,
     evals: SF::Mles<fn(&MultiPoint<F>) -> F>,
     vars: usize,
@@ -25,7 +25,7 @@ pub struct SmallEvalOracle<F: Field, SF: SumcheckFunction<F>> {
 
 impl<F: Field, SF: SumcheckFunction<F>> SmallEvalOracle<F, SF> {
     pub fn new(
-        f: SF,
+        data: SF::Data,
         evals_over_domain: Option<Vec<SF::Mles<F>>>,
         evals: SF::Mles<fn(&MultiPoint<F>) -> F>,
         vars: usize,
@@ -42,7 +42,7 @@ impl<F: Field, SF: SumcheckFunction<F>> SmallEvalOracle<F, SF> {
         };
         let evals_over_domain = Rc::new(evals_over_domain);
         Self {
-            f,
+            data,
             evals_over_domain,
             evals,
             vars,
@@ -74,8 +74,8 @@ impl<F: Field, SF: SumcheckFunction<F>> Oracle<F> for SmallEvalOracle<F, SF> {
         self.evals_over_domain.clone()
     }
 
-    fn function(&self) -> &Self::Function {
-        &self.f
+    fn data(&self) -> &<Self::Function as SumcheckFunction<F>>::Data {
+        &self.data
     }
 
     fn vars(&self) -> usize {

@@ -225,7 +225,7 @@ where
 
     type Builder = C;
 
-    fn build(scheme: C, _f: &SF, structure: Rc<Vec<SF::Mles<F>>>) -> Self {
+    fn build(scheme: C, _: &SF::Data, structure: Rc<Vec<SF::Mles<F>>>) -> Self {
         Self {
             structure_evals: structure,
             scheme,

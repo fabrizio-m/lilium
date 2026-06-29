@@ -1,6 +1,6 @@
 use crate::sumcheck2::{
     evals::{Evals, Mles},
-    oracles::{EvalLocation, Oracle, SumcheckFunction},
+    oracles::{EvalLocation, Oracle},
 };
 use ark_ff::Field;
 use std::{marker::PhantomData, ops::Add};
@@ -47,13 +47,12 @@ pub(crate) fn oracle_evals<F: Field, O: Oracle<F>>(
     assert_eq!(mle.len(), witness.len());
 
     let instance_evals = O::instance_evals(instance);
-    let f = oracle.function();
 
     mle.iter()
         .zip(witness)
         .map(|(structure, witness)| {
             let evals = merge::<F, O>(structure, &instance_evals, witness, &locations);
-            f.function(&evals)
+            oracle.call_function(&evals)
         })
         .collect()
 }

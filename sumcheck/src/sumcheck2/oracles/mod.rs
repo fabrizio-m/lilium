@@ -1,4 +1,4 @@
-use crate::{polynomials::MultiPoint, sumcheck2::evals::Mles};
+use crate::{polynomials::MultiPoint, sumcheck::Var, sumcheck2::evals::Mles};
 use ark_ff::Field;
 use std::{fmt::Debug, marker::PhantomData, rc::Rc};
 use transcript::reduction2::{Message, Relation};
@@ -101,8 +101,7 @@ impl<F: Field, O: Oracle<F>> Relation for QueryRelation<F, O> {
         } = instance;
         assert_eq!(point.vars(), structure.vars());
         let evals = structure.eval(point, oracle_instance, witness);
-        let f = structure.function();
-        *eval == f.function(&evals)
+        *eval == O::Function::function(structure.data(), &evals)
     }
 }
 
@@ -136,7 +135,7 @@ where
     // many of these things would be better in the key than in the oracle.
     fn instance_evals(instance: &Self::Instance) -> Mles<Self::Function, F>;
     fn structure(&self) -> Rc<Vec<Mles<Self::Function, F>>>;
-    fn function(&self) -> &Self::Function;
+    fn data(&self) -> &<Self::Function as SumcheckFunction<F>>::Data;
     fn vars(&self) -> usize;
     fn oracle_params(&self) -> <Self::Instance as Message<F>>::Params;
     fn eval(
@@ -147,4 +146,10 @@ where
     ) -> Mles<Self::Function, F>;
     fn witness_from_evals(evals: &[Mles<Self::Function, F>]) -> Self::Witness;
     fn natures(&self) -> Mles<Self::Function, Self::Nature>;
+    fn call_function<V: Var<F> + Debug>(&self, evals: &Mles<Self::Function, V>) -> V {
+        let data = self.data();
+        Self::Function::function(data, evals)
+    }
 }
+
+pub type OracleData<F, O> = <<O as Oracle<F>>::Function as SumcheckFunction<F>>::Data;

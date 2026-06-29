@@ -25,7 +25,7 @@ pub(crate) mod degree {
     use crate::{
         sumcheck::Var,
         sumcheck2::evals::{Evals, Mles},
-        sumcheck2::oracles::{EvalLocation, Oracle, SumcheckFunction},
+        sumcheck2::oracles::{EvalLocation, Oracle},
     };
     use ark_ff::Field;
 
@@ -136,7 +136,7 @@ pub(crate) mod degree {
             }
         });
 
-        let degree: Degree = oracle.function().function(&intitial_degrees);
+        let degree: Degree = oracle.call_function(&intitial_degrees);
         degree.0
     }
 }

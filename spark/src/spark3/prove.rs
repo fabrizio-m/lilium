@@ -60,12 +60,10 @@ where
         let sumcheck_structure = SparkEvals::structure(mle);
         let sumcheck_structure = Rc::new(sumcheck_structure);
 
-        let f = SparkEvals::<(), N>::default();
-
         let core_oracle = CoreOracle::new(SparkEvals::small_functions());
 
         let oracle = SparkOracle::new(
-            f,
+            (),
             Rc::clone(&sumcheck_structure),
             core_oracle.clone(),
             pcs.clone(),

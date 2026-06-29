@@ -280,7 +280,7 @@ where
 
     type QueryRelation = CoreQueryRelation<F, SF>;
 
-    fn build(builder: Self::Builder, _f: &SF, _structure: Rc<Vec<SF::Mles<F>>>) -> Self {
+    fn build(builder: Self::Builder, _: &SF::Data, _: Rc<Vec<SF::Mles<F>>>) -> Self {
         //TODO: check that the structure is correct.
         builder
     }

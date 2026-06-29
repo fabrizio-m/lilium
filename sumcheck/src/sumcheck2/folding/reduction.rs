@@ -4,7 +4,7 @@ use crate::{
     sumcheck2::{
         evals::{EvalsCore, Mles},
         folding::{folding_degree, Foldable},
-        oracles::Oracle,
+        oracles::{Oracle, OracleData},
         ProverKey, SumcheckError, SumcheckInstance, SumcheckMessage, SumcheckRelation,
     },
 };
@@ -25,7 +25,7 @@ pub struct SumFoldKey<F: Field, O: Oracle<F>> {
     // Weights for degree d + 1.
     extended_weights: BarycentricWeights<F>,
     degree: usize,
-    f: O::Function,
+    data: OracleData<F, O>,
 }
 
 impl<F, O> Reduction<F, FoldingRelation<SumcheckRelation<F, O>>, SumcheckRelation<F, O>>
@@ -55,13 +55,13 @@ where
         let degree = folding_degree(oracle);
         let weights = BarycentricWeights::compute(degree as u32);
         let extended_weights = BarycentricWeights::compute(degree as u32 + 1);
-        let f = oracle.function().clone();
+        let data = oracle.data().clone();
 
         SumFoldKey {
             weights,
             extended_weights,
             degree,
-            f,
+            data,
         }
     }
 
@@ -83,7 +83,7 @@ where
         let _ = w1.iter().zip(w2.iter()).fold(&mut acc.0, |acc, evals| {
             let (e1, e2) = evals;
             let evals = [e1, e2];
-            ProverKey::<F, O>::eval_acc(&key.f, acc, evals);
+            ProverKey::<F, O>::eval_acc(&key.data, acc, evals);
             acc
         });
         let message = acc;
