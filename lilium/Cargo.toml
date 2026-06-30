@@ -11,6 +11,7 @@ autobenches = false
 ark-ff = { version = "0.4", default-features = false }
 ccs = { workspace = true }
 sumcheck = { workspace = true }
+sumcheck-derive = { workspace = true } 
 commit = { workspace = true }
 spark = { workspace = true}
 sponge = { workspace = true }

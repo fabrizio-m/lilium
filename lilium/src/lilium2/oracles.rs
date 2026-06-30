@@ -16,7 +16,7 @@ use transcript::reduction2::{Message, NoError, Relation};
 
 #[derive(Clone, Debug)]
 #[allow(dead_code)]
-struct MatrixProductOracle<F, SF, C, const N: usize>
+pub struct MatrixProductOracle<F, SF, C, const N: usize>
 where
     F: Field,
     SF: SumcheckFunction<F>,
@@ -28,7 +28,7 @@ where
 }
 
 #[derive(Clone, Copy, Debug)]
-struct MatrixProductInstance<F: Field, C: CommitmentScheme<F>> {
+pub struct MatrixProductInstance<F: Field, C: CommitmentScheme<F>> {
     /// The commitment to z(x) for each z*M_i(x).
     committment: C::Commitment,
 }
@@ -48,7 +48,7 @@ impl<F: Field, C: CommitmentScheme<F>> Message<F> for MatrixProductInstance<F, C
 }
 
 #[derive(Clone, Copy, Debug)]
-struct MatrixNature;
+pub struct MatrixNature;
 
 impl Nature for MatrixNature {}
 
@@ -59,7 +59,7 @@ impl From<MatrixNature> for EvalLocation {
 }
 
 #[derive(Clone, Copy, Debug)]
-struct Key;
+pub struct Key;
 
 impl<F, SF, C, const N: usize> From<MatrixProductOracle<F, SF, C, N>> for Key
 where
@@ -117,7 +117,7 @@ where
     }
 }
 
-struct MatrixOracleQuery<F, SF, C, const N: usize>(PhantomData<(F, SF, C)>);
+pub struct MatrixOracleQuery<F, SF, C, const N: usize>(PhantomData<(F, SF, C)>);
 
 impl<F, SF, C, const N: usize> Relation for MatrixOracleQuery<F, SF, C, N>
 where
