@@ -39,6 +39,15 @@ where
     }
 }
 
+impl<A, B, C> From<Either<A, Either<B, C>>> for Option<Either<B, C>> {
+    fn from(val: Either<A, Either<B, C>>) -> Self {
+        match val {
+            Either::Left(_) => None,
+            Either::Right(x) => Some(x),
+        }
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct CompositeOracle<F, SF, P1, P2>
 where
@@ -58,7 +67,7 @@ where
     SF: SumcheckFunction<F>,
     P1: PartialOracle<F, SF>,
     P2: PartialOracle<F, SF>,
-    SF::Natures: Into<Either<P1::Nature, P2::Nature>>,
+    SF::Natures: Into<Option<Either<P1::Nature, P2::Nature>>>,
 {
     pub fn new(
         data: SF::Data,
@@ -72,10 +81,11 @@ where
             .flatten_vec()
             .into_iter()
             .fold((0, 0), |acc, elem| {
-                let nature: Either<P1::Nature, P2::Nature> = elem.into();
+                let nature: Option<Either<P1::Nature, P2::Nature>> = elem.into();
                 match nature {
-                    Either::Left(_) => (acc.0 + 1, acc.1),
-                    Either::Right(_) => (acc.0, acc.1 + 1),
+                    Some(Either::Left(_)) => (acc.0 + 1, acc.1),
+                    Some(Either::Right(_)) => (acc.0, acc.1 + 1),
+                    None => (acc.0, acc.1),
                 }
             });
         let partial_oracle1 = P1::build(builder1, &data, Rc::clone(&mles));
@@ -573,7 +583,7 @@ where
     SF: SumcheckFunction<F> + Clone,
     P1: PartialOracle<F, SF>,
     P2: PartialOracle<F, SF>,
-    SF::Natures: Into<Either<P1::Nature, P2::Nature>>,
+    SF::Natures: Into<Option<Either<P1::Nature, P2::Nature>>>,
 {
     type Instance = CompositeOracleInstance<F, SF, P1, P2>;
 
