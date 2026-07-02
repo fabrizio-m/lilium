@@ -17,3 +17,9 @@ pub struct ZeroSumcheckInstance<F: Field, O: Oracle<F>> {
     pub(crate) zerocheck_powers: CompactPowers<F>,
     pub(crate) oracle_instance: O::Instance,
 }
+
+impl<F: Field, O: Oracle<F>> ZeroSumcheckInstance<F, O> {
+    pub fn oracle_instance(&self) -> &O::Instance {
+        &self.oracle_instance
+    }
+}

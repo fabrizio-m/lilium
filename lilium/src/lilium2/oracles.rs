@@ -1,12 +1,14 @@
 use ark_ff::Field;
 use ccs::matrix::Matrix;
-use commit::commit2::CommitmentScheme;
+use commit::commit2::oracle::CommittedOracle;
 use std::{marker::PhantomData, ops::Add, rc::Rc};
 use sumcheck::{
     polynomials::MultiPoint,
     sumcheck2::{
         evals::EvalsCore,
         oracles::{
+            composite::CompositeOracle,
+            core::CoreOracle,
             partial::{Nature, OracleEval, OracleParams, PartialOracle, PartialQueryInstance},
             EvalLocation, SumcheckFunction,
         },
@@ -15,35 +17,41 @@ use sumcheck::{
 use transcript::reduction2::{Message, NoError, Relation};
 
 #[derive(Clone, Debug)]
-#[allow(dead_code)]
-pub struct MatrixProductOracle<F, SF, C, const N: usize>
+pub struct MatrixProductOracle<F, SF, const N: usize>
 where
     F: Field,
     SF: SumcheckFunction<F>,
 {
     matrices: [Rc<Matrix>; N],
     vector: SF::Mles<bool>,
-    pcs: C,
+
     _f: PhantomData<F>,
 }
 
-#[derive(Clone, Copy, Debug)]
-pub struct MatrixProductInstance<F: Field, C: CommitmentScheme<F>> {
-    /// The commitment to z(x) for each z*M_i(x).
-    committment: C::Commitment,
+impl<F, SF, const N: usize> MatrixProductOracle<F, SF, N>
+where
+    F: Field,
+    SF: SumcheckFunction<F>,
+{
+    pub fn matrices(&self) -> &[Rc<Matrix>; N] {
+        &self.matrices
+    }
 }
 
-impl<F: Field, C: CommitmentScheme<F>> Message<F> for MatrixProductInstance<F, C> {
+#[derive(Clone, Copy, Debug)]
+pub struct MatrixProductInstance;
+
+impl<F: Field> Message<F> for MatrixProductInstance {
     type Params = OracleParams;
 
     type Error = NoError;
 
     fn len(_: &Self::Params) -> usize {
-        C::Commitment::len(&())
+        0
     }
 
     fn to_field_elements(&self, _: &Self::Params) -> Result<Vec<F>, Self::Error> {
-        self.committment.to_field_elements(&())
+        Ok(vec![])
     }
 }
 
@@ -54,31 +62,30 @@ impl Nature for MatrixNature {}
 
 impl From<MatrixNature> for EvalLocation {
     fn from(_: MatrixNature) -> Self {
-        EvalLocation::Structure
+        EvalLocation::Witness
     }
 }
 
 #[derive(Clone, Copy, Debug)]
 pub struct Key;
 
-impl<F, SF, C, const N: usize> From<MatrixProductOracle<F, SF, C, N>> for Key
+impl<F, SF, const N: usize> From<MatrixProductOracle<F, SF, N>> for Key
 where
     F: Field,
     SF: SumcheckFunction<F>,
 {
-    fn from(_: MatrixProductOracle<F, SF, C, N>) -> Self {
+    fn from(_: MatrixProductOracle<F, SF, N>) -> Self {
         Key
     }
 }
 
-impl<F, SF, C, const N: usize> PartialOracle<F, SF> for MatrixProductOracle<F, SF, C, N>
+impl<F, SF, const N: usize> PartialOracle<F, SF> for MatrixProductOracle<F, SF, N>
 where
     F: Field,
     SF: SumcheckFunction<F>,
-    C: CommitmentScheme<F>,
     SF::Natures: Nature,
 {
-    type Instance = MatrixProductInstance<F, C>;
+    type Instance = MatrixProductInstance;
 
     type VerifierKey = Key;
 
@@ -86,7 +93,7 @@ where
 
     type Nature = MatrixNature;
 
-    type QueryRelation = MatrixOracleQuery<F, SF, C, N>;
+    type QueryRelation = MatrixOracleQuery<F, SF, N>;
 
     fn build(builder: Self, _: &SF::Data, _: Rc<Vec<<SF>::Mles<F>>>) -> Self {
         builder
@@ -117,26 +124,21 @@ where
     }
 }
 
-pub struct MatrixOracleQuery<F, SF, C, const N: usize>(PhantomData<(F, SF, C)>);
+pub struct MatrixOracleQuery<F, SF, const N: usize>(PhantomData<(F, SF)>);
 
-impl<F, SF, C, const N: usize> Relation for MatrixOracleQuery<F, SF, C, N>
+impl<F, SF, const N: usize> Relation for MatrixOracleQuery<F, SF, N>
 where
     F: Field,
     SF: SumcheckFunction<F>,
-    C: CommitmentScheme<F>,
     SF::Natures: Nature,
 {
-    type Structure = MatrixProductOracle<F, SF, C, N>;
+    type Structure = MatrixProductOracle<F, SF, N>;
 
-    type Instance = PartialQueryInstance<F, MatrixProductInstance<F, C>>;
+    type Instance = PartialQueryInstance<F, MatrixProductInstance>;
 
     type Witness = Vec<SF::Mles<F>>;
 
-    fn check(
-        structure: &Self::Structure,
-        instance: &Self::Instance,
-        witness: &Self::Witness,
-    ) -> bool {
+    fn check(structure: &Self::Structure, _: &Self::Instance, witness: &Self::Witness) -> bool {
         let vector_count = structure
             .vector
             .clone()
@@ -151,6 +153,7 @@ where
         let vector = {
             let mut vector = vec![];
             let vector_filter = &structure.vector;
+            //TODO: check the nature is CommittedNature::Witness
             for witness in witness {
                 let filtered =
                     SF::combine(witness, vector_filter, |w, f| if *f { *w } else { F::ZERO });
@@ -199,7 +202,13 @@ where
             }
         }
 
-        let MatrixProductInstance { committment } = instance.oracle_instance();
-        *committment == structure.pcs.commit_mle(&vector)
+        true
     }
 }
+
+pub type FlcsOracle<F, C, SF, const IO: usize> = CompositeOracle<
+    F,
+    SF,
+    CommittedOracle<F, C, SF>,
+    CompositeOracle<F, SF, CoreOracle<F, SF>, MatrixProductOracle<F, SF, IO>>,
+>;

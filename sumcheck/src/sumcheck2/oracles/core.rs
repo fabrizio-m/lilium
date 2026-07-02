@@ -52,6 +52,30 @@ where
         });
         Self { functions }
     }
+
+    /// TODO: doc
+    pub fn set_witness(
+        instance: &CoreOracleInstance<F, SF>,
+        witness: &mut [SF::Mles<F>],
+        filter: SF::Mles<bool>,
+        generator: fn(&[F], &mut [SF::Mles<F>]),
+    ) {
+        assert!(witness.len().is_power_of_two());
+        let vars = witness.len().ilog2() as usize;
+
+        let coeffs = decode::<F, SF>(instance.elements.clone(), vars);
+        let coeffs = SF::combine(&coeffs, &filter, |coeff, filter| match (filter, coeff) {
+            (true, None) => {
+                panic!("no coefficients available for MLE")
+            }
+            (true, coeff @ Some(_)) => coeff.clone(),
+            (false, _) => None,
+        });
+
+        for coeff in coeffs.flatten_vec().into_iter().flatten() {
+            generator(&coeff, witness);
+        }
+    }
 }
 
 #[derive(Clone, Debug)]

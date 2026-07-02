@@ -1,3 +1,7 @@
+use crate::lilium2::{
+    oracles::FlcsOracle,
+    reductions::flcs::{compute_sumcheck_witness, FlcsEvals},
+};
 use ark_ff::Field;
 use ccs::{
     constraint_system::Constraints,
@@ -7,6 +11,10 @@ use ccs::{
 };
 use commit::commit2::CommitmentScheme;
 use std::marker::PhantomData;
+use sumcheck::sumcheck2::{
+    oracles::Oracle,
+    zerocheck::{ZeroSumcheck, ZeroSumcheckInstance},
+};
 use transcript::reduction2::Relation;
 
 pub struct LcsRelation<F, C, const I: usize, const IO: usize, const S: usize>(PhantomData<(F, C)>);
@@ -108,5 +116,49 @@ fn eval_exp<F: Field, const IO: usize>(exp: &Exp<usize>, io: [F; IO], constant: 
         Exp::Mul(a, b) => eval_exp(a, io, constant) * eval_exp(b, io, constant),
         Exp::Sub(a, b) => eval_exp(a, io, constant) - eval_exp(b, io, constant),
         Exp::Constant => constant.unwrap(),
+    }
+}
+
+pub struct FlcsStructure<F: Field, C: CommitmentScheme<F>, const IO: usize, const S: usize> {
+    _ccs_structure: CcsStructure<F, IO, S>,
+    _pcs: C,
+    oracle: FlcsOracle<F, C, FlcsEvals<(), IO, S>, IO>,
+}
+
+pub struct FlcsRelation<F, C, const I: usize, const IO: usize, const S: usize>(PhantomData<(F, C)>);
+
+pub struct FlcsInstance<F, C, const IO: usize, const S: usize>(
+    ZeroSumcheckInstance<F, FlcsOracle<F, C, FlcsEvals<(), IO, S>, IO>>,
+)
+where
+    F: Field,
+    C: CommitmentScheme<F>;
+
+impl<F, C, const I: usize, const IO: usize, const S: usize> Relation
+    for FlcsRelation<F, C, I, IO, S>
+where
+    F: Field,
+    C: CommitmentScheme<F>,
+{
+    type Structure = FlcsStructure<F, C, IO, S>;
+
+    type Instance = FlcsInstance<F, C, IO, S>;
+
+    type Witness = Vec<F>;
+
+    fn check(
+        structure: &Self::Structure,
+        instance: &Self::Instance,
+        witness: &Self::Witness,
+    ) -> bool {
+        let oracle = &structure.oracle;
+        let a = &instance
+            .0
+            .oracle_instance()
+            .oracle2_instance
+            .oracle1_instance;
+        let matrices = oracle.inner_oracles().1.inner_oracles().1.matrices();
+        let witness = compute_sumcheck_witness(&oracle.structure(), matrices, witness, a);
+        ZeroSumcheck::check(oracle, &instance.0, &witness)
     }
 }

@@ -1,15 +1,15 @@
 use crate::lilium2::oracles::MatrixNature;
 use ark_ff::Field;
-use ccs::structure::Exp;
+use ccs::{matrix::Matrix, structure::Exp};
 use commit::commit2::oracle::CommittedNature;
-use std::{fmt::Debug, vec::IntoIter};
+use std::{fmt::Debug, rc::Rc, vec::IntoIter};
 use sumcheck::{
     sumcheck::Var,
     sumcheck2::{
         evals::{Evals, EvalsCore},
         oracles::{
             composite::Either,
-            core::{Coeffs, CoreNature},
+            core::{Coeffs, CoreNature, CoreOracle, CoreOracleInstance},
             SumcheckFunction,
         },
     },
@@ -17,7 +17,6 @@ use sumcheck::{
 use sumcheck_derive::EvalsCore;
 
 #[derive(Clone, Copy, Debug, EvalsCore)]
-#[allow(dead_code)]
 pub struct FlcsEvals<V: Debug + Clone, const IO: usize, const S: usize> {
     /// matrix vector products M(x)z(x)
     products: [V; IO],
@@ -28,6 +27,20 @@ pub struct FlcsEvals<V: Debug + Clone, const IO: usize, const S: usize> {
     constants: V,
     /// Constraint combination challenge.
     challenge: V,
+}
+
+impl<V: Debug + Copy + Default, const IO: usize, const S: usize> Default for FlcsEvals<V, IO, S> {
+    fn default() -> Self {
+        Self {
+            products: [Default::default(); IO],
+            w: Default::default(),
+            inputs: Default::default(),
+            input_selector: Default::default(),
+            gate_selectors: [Default::default(); S],
+            constants: Default::default(),
+            challenge: Default::default(),
+        }
+    }
 }
 
 type Natures = Either<CommittedNature, Either<CoreNature, MatrixNature>>;
@@ -120,4 +133,58 @@ where
         Exp::Sub(e1, e2) => eval_exp(evals, e1) - eval_exp(evals, e2),
         Exp::Constant => evals.constants.clone(),
     }
+}
+
+#[test]
+fn print_natures() {
+    use ark_vesta::Fr;
+    use sumcheck::sumcheck2::oracles::EvalLocation;
+
+    let natures = <FlcsEvals<(), 4, 3> as SumcheckFunction<Fr>>::natures();
+    let natures = FlcsEvals::map_evals(&natures, |nature| EvalLocation::from(*nature));
+    dbg!(natures);
+}
+
+pub fn compute_sumcheck_witness<F, const IO: usize, const S: usize>(
+    structure: &[FlcsEvals<F, IO, S>],
+    matrices: &[Rc<Matrix>; IO],
+    witness: &[F],
+    core_instance: &CoreOracleInstance<F, FlcsEvals<(), IO, S>>,
+) -> Vec<FlcsEvals<F, IO, S>>
+where
+    F: Field,
+{
+    let mut sumcheck_witness: Vec<FlcsEvals<F, IO, S>> = structure
+        .iter()
+        .zip(witness)
+        .map(|(structure, witness)| {
+            let mut eval = *structure;
+            eval.w = *witness;
+            eval
+        })
+        .collect();
+    let filter = FlcsEvals {
+        inputs: true,
+        ..Default::default()
+    };
+    CoreOracle::set_witness(
+        core_instance,
+        &mut sumcheck_witness,
+        filter,
+        |inputs, witness| {
+            for (input, witness) in inputs.iter().zip(witness) {
+                witness.inputs = *input;
+            }
+        },
+    );
+
+    for (i, matrix) in matrices.iter().enumerate() {
+        let product = matrix.as_ref() * witness;
+
+        for (witness, product) in sumcheck_witness.iter_mut().zip(product) {
+            witness.products[i] = product;
+        }
+    }
+
+    sumcheck_witness
 }
